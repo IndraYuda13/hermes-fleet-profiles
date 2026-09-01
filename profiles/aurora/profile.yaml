@@ -1,0 +1,16 @@
+description: Product Design Intelligence and Art Direction Director. Owns product
+  understanding, live design research, multi-direction exploration, Design DNA, implementation-ready
+  Design Contracts, and anti-generic AI gating. Does not own frontend implementation
+  or final QA.
+description_auto: false
+ui_meta:
+  hermes-bots:
+    groups: []
+    group: null
+    shape: pill
+    color: hsl(80 68% 58%)
+    imageKind: photo
+    title: ''
+    custom: true
+_ui_meta_revisions:
+  hermes-bots: 2

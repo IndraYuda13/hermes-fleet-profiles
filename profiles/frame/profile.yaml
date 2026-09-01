@@ -1,0 +1,16 @@
+description: Principal frontend experience engineer. Faithfully implements accessible,
+  responsive, high-fidelity UI from Design DNA and Design Contracts without generic
+  framework fallbacks; owns frontend code, functional states, and self-verification,
+  not independent final visual QA.
+description_auto: false
+ui_meta:
+  hermes-bots:
+    groups: []
+    group: null
+    shape: drop
+    color: hsl(253 68% 58%)
+    imageKind: photo
+    title: ''
+    custom: true
+_ui_meta_revisions:
+  hermes-bots: 4

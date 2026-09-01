@@ -1,0 +1,15 @@
+description: Principal current technical-intelligence researcher. Verifies AI/software
+  releases, GitHub/code signals, APIs, CVEs, papers, emerging tech and weak signals
+  using primary sources, dates, contradiction checks and reproducible evidence.
+description_auto: false
+ui_meta:
+  hermes-bots:
+    shape: cloud
+    color: hsl(342 68% 58%)
+    imageKind: photo
+    title: ''
+    custom: true
+    groups: []
+    group: null
+_ui_meta_revisions:
+  hermes-bots: 2

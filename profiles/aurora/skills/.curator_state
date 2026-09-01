@@ -1,0 +1,9 @@
+{
+  "last_report_path": "/root/.hermes/profiles/aurora/logs/curator/20260829-123834",
+  "last_run_at": "2026-08-29T12:38:34.470235+00:00",
+  "last_run_duration_seconds": 188.433892,
+  "last_run_summary": "auto: no changes; llm: API call failed after 3 retries: HTTP 429: [antigravity/claude-opus-4-6-thinking] [429]: {\n  \"error\": {\n    \"code\": 429,\n    \"message\": \"Resource has been exhausted (e.g. check quota (reset after 48s)",
+  "last_run_summary_shown_at": null,
+  "paused": false,
+  "run_count": 1
+}

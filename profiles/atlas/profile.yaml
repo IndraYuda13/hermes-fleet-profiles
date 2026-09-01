@@ -1,0 +1,15 @@
+description: Principal infrastructure/SRE/deployment engineer. Owns VPS/cloud, Docker/Compose,
+  systemd, networking, DNS/TLS/proxies/tunnels, databases at runtime, observability,
+  incidents, backups, migrations rollout and production verification.
+description_auto: false
+ui_meta:
+  hermes-bots:
+    shape: cloud
+    color: hsl(323 68% 58%)
+    imageKind: photo
+    title: ''
+    custom: true
+    groups: []
+    group: null
+_ui_meta_revisions:
+  hermes-bots: 3

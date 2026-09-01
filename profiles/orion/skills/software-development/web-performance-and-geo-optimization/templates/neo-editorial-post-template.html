@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{POST_TITLE}} | {{SITE_NAME}}</title>
+  <meta name="description" content="{{POST_META_DESCRIPTION}}">
+  <link rel="canonical" href="{{POST_CANONICAL_URL}}" />
+  
+  <!-- Open Graph -->
+  <meta property="og:type" content="article" />
+  <meta property="og:title" content="{{POST_TITLE}}" />
+  <meta property="og:description" content="{{POST_META_DESCRIPTION}}" />
+  <meta property="og:url" content="{{POST_CANONICAL_URL}}" />
+  <meta property="og:image" content="{{POST_HERO_IMAGE_URL}}" />
+
+  <!-- Fonts: Syne & Plus Jakarta Sans with display=swap -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+  
+  <!-- Bootstrap 5.3+ CSS & Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  
+  <style>
+    :root {
+      --bg-dark: #0B0E14;
+      --bg-surface: #121824;
+      --bg-card: #182030;
+      --accent-cyan: #00F0FF;
+      --accent-amber: #FFB800;
+      --accent-purple: #B026FF;
+      --text-main: #F1F5F9;
+      --text-muted: #94A3B8;
+      --border-light: rgba(255, 255, 255, 0.08);
+      --border-active: rgba(0, 240, 255, 0.3);
+    }
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      line-height: 1.8;
+    }
+    h1, h2, h3, h4 { font-family: 'Syne', sans-serif; color: #fff; font-weight: 700; }
+    .badge-cat {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 4px 10px;
+      border-radius: 4px;
+      background: rgba(0, 240, 255, 0.15);
+      color: var(--accent-cyan);
+      border: 1px solid rgba(0, 240, 255, 0.3);
+    }
+    .direct-answer-box {
+      background: rgba(0, 240, 255, 0.05);
+      border-left: 4px solid var(--accent-cyan);
+      padding: 22px;
+      border-radius: 0 12px 12px 0;
+      margin: 28px 0;
+    }
+    .toc-box {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-light);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 30px;
+    }
+    .toc-box ol { margin: 0; padding-left: 20px; }
+    .toc-box a { color: var(--text-muted); text-decoration: none; }
+    .toc-box a:hover { color: var(--accent-cyan); }
+    .review-score-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      border-radius: 16px;
+      padding: 28px;
+      margin: 36px 0;
+    }
+  </style>
+
+  <!-- Schema Article / Review JSON-LD -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "{{POST_TITLE}}",
+    "description": "{{POST_META_DESCRIPTION}}",
+    "image": "{{POST_HERO_IMAGE_URL}}",
+    "author": {
+      "@type": "Person",
+      "name": "{{AUTHOR_NAME}}"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "{{SITE_NAME}}",
+      "url": "{{SITE_URL}}"
+    },
+    "datePublished": "{{DATE_PUBLISHED}}",
+    "mainEntityOfPage": "{{POST_CANONICAL_URL}}"
+  }
+  </script>
+</head>
+<body>
+
+  <!-- Reading Progress Bar -->
+  <div id="readingProgress" style="position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,#00F0FF,#B026FF);z-index:9999;width:0%;"></div>
+
+  <!-- Header -->
+  <header class="py-3 border-bottom border-secondary sticky-top" style="background:rgba(11,14,20,0.95);backdrop-filter:blur(10px);">
+    <div class="container d-flex justify-content-between align-items-center">
+      <a href="index.html" class="fw-bold text-white text-decoration-none fs-4 font-syne">{{SITE_NAME}}</a>
+      <a href="index.html" class="btn btn-outline-secondary btn-sm rounded-pill px-3">← Feed</a>
+    </div>
+  </header>
+
+  <!-- Post Header -->
+  <article class="py-5">
+    <div class="container" style="max-width: 820px;">
+      <span class="badge-cat">{{POST_CATEGORY}}</span>
+      <h1 class="my-3 display-5">{{POST_TITLE}}</h1>
+      <p class="lead text-muted">{{POST_LEAD_SUMMARY}}</p>
+
+      <div class="d-flex align-items-center gap-3 py-3 border-bottom border-secondary mb-4">
+        <div>
+          <h6 class="mb-0 fw-bold text-white">{{AUTHOR_NAME}}</h6>
+          <small class="text-secondary">{{DATE_PUBLISHED}} • {{READING_TIME}} Baca</small>
+        </div>
+      </div>
+
+      <img fetchpriority="high" src="{{POST_HERO_IMAGE_URL}}" class="img-fluid rounded-4 mb-4 border border-secondary" alt="{{POST_TITLE}}">
+
+      <!-- BLUF / Direct Answer Box for Google AI Overview -->
+      <div class="direct-answer-box">
+        <h6 class="text-uppercase fw-bold text-info mb-1"><i class="bi bi-lightning-charge-fill"></i> Ringkasan Singkat:</h6>
+        <p>{{POST_DIRECT_ANSWER}}</p>
+      </div>
+
+      <!-- Table of Contents -->
+      <div class="toc-box">
+        <h6 class="fw-bold text-white mb-2">Daftar Isi</h6>
+        <ol>
+          <li><a href="#section-1">{{SECTION_1_TITLE}}</a></li>
+          <li><a href="#section-2">{{SECTION_2_TITLE}}</a></li>
+          <li><a href="#verdict">{{SECTION_VERDICT_TITLE}}</a></li>
+        </ol>
+      </div>
+
+      <!-- Main Body -->
+      <div class="post-content" id="postBody">
+        <h2 id="section-1">{{SECTION_1_TITLE}}</h2>
+        <p>{{SECTION_1_CONTENT}}</p>
+
+        <h2 id="section-2">{{SECTION_2_TITLE}}</h2>
+        <p>{{SECTION_2_CONTENT}}</p>
+
+        <!-- Product / Topic Scorecard (Optional) -->
+        <div class="review-score-box" id="verdict">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 class="mb-0">{{PRODUCT_OR_TOPIC_NAME}}</h4>
+            <span class="badge bg-warning text-dark fs-5 px-3 py-2 fw-bold">{{SCORE_VALUE}} / 10</span>
+          </div>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <strong class="text-success">Kelebihan:</strong>
+              <ul class="small text-light mt-1">
+                <li>{{PRO_1}}</li>
+                <li>{{PRO_2}}</li>
+              </ul>
+            </div>
+            <div class="col-md-6">
+              <strong class="text-danger">Kekurangan:</strong>
+              <ul class="small text-light mt-1">
+                <li>{{CON_1}}</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <footer class="py-4 text-center border-top border-secondary text-secondary small">
+    &copy; {{CURRENT_YEAR}} {{SITE_NAME}}. All Rights Reserved.
+  </footer>
+
+  <script>
+    // Reading Progress & Smooth Scroll
+    window.addEventListener('scroll', () => {
+      const body = document.getElementById('postBody');
+      if (body) {
+        const total = body.clientHeight - window.innerHeight;
+        const p = Math.max(0, Math.min(1, (window.scrollY - body.offsetTop + 100) / total));
+        document.getElementById('readingProgress').style.width = (p * 100) + '%';
+      }
+    });
+  </script>
+</body>
+</html>

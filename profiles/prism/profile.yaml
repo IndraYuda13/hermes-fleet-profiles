@@ -1,0 +1,16 @@
+description: Principal functional verification, data and benchmark engineer. Owns
+  regression, API/data contracts, boundary/concurrency/state tests, numerical correctness,
+  performance measurement, benchmark integrity and reproducibility; independent from
+  implementers.
+description_auto: false
+ui_meta:
+  hermes-bots:
+    groups: []
+    group: null
+    shape: hexagon
+    color: hsl(345 68% 58%)
+    imageKind: photo
+    title: ''
+    custom: true
+_ui_meta_revisions:
+  hermes-bots: 6

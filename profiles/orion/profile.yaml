@@ -1,0 +1,17 @@
+description: Adaptive Chief of Staff, orchestrator, and quality governor. Decomposes
+  cross-domain goals, determines UI Design Depth (0-3), routes only necessary specialists
+  with marginal-value discipline, manages dependencies/review/remediation, and synthesizes
+  evidence. Strictly read-only on production source code (zero production edits);
+  all code implementation and defect remediation are routed to specialists via Kanban.
+description_auto: false
+ui_meta:
+  hermes-bots:
+    groups: []
+    group: null
+    shape: triangle
+    color: hsl(101 68% 58%)
+    imageKind: photo
+    title: ''
+    custom: true
+_ui_meta_revisions:
+  hermes-bots: 5

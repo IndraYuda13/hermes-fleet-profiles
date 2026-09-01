@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "installed": {
+    "frontend-design": {
+      "source": "skills.sh",
+      "identifier": "skills-sh/anthropics/skills/frontend-design",
+      "trust_level": "trusted",
+      "scan_verdict": "safe",
+      "content_hash": "sha256:12ab514cc24cdab6",
+      "install_path": "frontend-design",
+      "files": [
+        "SKILL.md"
+      ],
+      "metadata": {
+        "source_url": "https://github.com/anthropics/skills/tree/f6656c1256d5a8adfa37db9110046ef20bac644c/skills/frontend-design",
+        "source_revision": "f6656c1256d5a8adfa37db9110046ef20bac644c"
+      },
+      "scan_provenance": {
+        "source": "skills-sh/anthropics/skills/frontend-design",
+        "source_url": "https://github.com/anthropics/skills/tree/f6656c1256d5a8adfa37db9110046ef20bac644c/skills/frontend-design",
+        "bundle_hash": "sha256:12ab514cc24cdab608302ac2396995516b9bf2076a9082a3d0cf13882def0175",
+        "scanner_version": "skills-guard-v1",
+        "verdict": "safe",
+        "trust_level": "trusted",
+        "findings": [],
+        "rules": [],
+        "scanned_at": "2026-08-15T10:01:35.230041+00:00",
+        "summary": "frontend-design: clean scan, no threats detected",
+        "fresh": false
+      },
+      "installed_at": "2026-08-15T10:02:16.152469+00:00",
+      "updated_at": "2026-08-15T10:02:16.152480+00:00"
+    }
+  }
+}

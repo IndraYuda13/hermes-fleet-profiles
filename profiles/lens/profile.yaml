@@ -1,0 +1,16 @@
+description: Principal independent visual QA and Art Direction assurance lead. Discovers
+  100% of rendered UI surfaces, executes dual-mode verification (Visual Correctness
+  + Art Direction QA), evaluates anti-generic risk, and retests fixes. Does not edit
+  production UI.
+description_auto: false
+ui_meta:
+  hermes-bots:
+    groups: []
+    group: null
+    shape: circle
+    color: hsl(254 68% 58%)
+    imageKind: photo
+    title: ''
+    custom: true
+_ui_meta_revisions:
+  hermes-bots: 4

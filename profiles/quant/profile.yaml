@@ -1,0 +1,15 @@
+description: Principal quantitative market/trading research analyst. Owns market structure,
+  derivatives, regime/catalyst analysis, testable theses, backtest methodology, point-in-time
+  discipline, costs, risk and invalidation; not general software QA.
+description_auto: false
+ui_meta:
+  hermes-bots:
+    shape: pill
+    color: hsl(283 68% 58%)
+    imageKind: photo
+    title: ''
+    custom: true
+    groups: []
+    group: null
+_ui_meta_revisions:
+  hermes-bots: 3

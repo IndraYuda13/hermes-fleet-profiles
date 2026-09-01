@@ -1,0 +1,312 @@
+# MyXL Android APK Case Note
+
+## Target
+- Name: MyXL Android app
+- Type: Android XAPK/APK reverse-engineering target
+- Goal: triage the app structure, network stack, app-owned request protection, and likely first RE lanes for API/header/body signing or encryption work
+- Scope / boundaries:
+  - current milestone is acquisition + static triage only
+  - no runtime instrumentation or active request replay has been completed yet
+
+## Current Milestone
+- Public artifact acquired locally and unpacked enough for first-pass triage.
+- Initial RE lane is now narrowed to app-owned okhttp/retrofit construction plus HMAC / URL / request-body encryption interceptors.
+- Auth and quota lanes have been narrowed further via dex-string triage into CIAM auth/session persistence and `service_user` quota repositories/entities.
+- A first workspace-local Python client skeleton now exists at `/root/.openclaw/workspace/projects/myxl-client/`.
+- Static smali-first passes have now pinned more of the CIAM lane without heavy decompilation or runtime emulation:
+  - `e2/b` injects `ax-request-at` plus CIAM device/request metadata
+  - `e2/a` injects `Authorization`, not `ax-api-signature`
+  - `spice.l()` feeds the CIAM Retrofit base URL via `config.i()`
+  - the strongest current first-login chain is now `ciam/request-otp` followed by `ciam/validate-otp`, while `claim-token` / `extend-session` look more like resume lanes and `openid-connect/token` stays important for refresh/alternate grants
+  - `spice.m()` is now the strongest proven upstream source for CIAM `config.h()` crypto secret material
+  - `ax-fingerprint` is no longer a vague blocker; its plaintext, IV, mode, and config-secret dependency are now pinned statically
+- The current frontier is now even narrower: recover the literal behind `config.h()` / `spice.m()`, confirm the deeper `spice` implementation layer, and then retest the live auth lane.
+- Targeted loader/bootstrap triage has now proven that the missing `spice`/`Cardamom` layer sits behind a native wrapper/bootstrap path rather than an ordinary visible Java-only path.
+- Latest loader refinement: `libxkpsztrjxa.so` co-locates the five opaque asset blob names with `AAssetManager_open`, `makeDexElements` / `makeInMemoryDexElements`, `getClassLoader`, `mInitialApplication`, `mAllApplications`, and `com.myxlultimate.app.MainApplication`, which is the strongest current static evidence that native bootstrap opens hidden asset payloads, patches dex/classloader state, and swaps handoff into the real `MainApplication`.
+- A separate modded 8.0.0 specimen is now confirmed as a repacked universal APK with wrapper `Application` `com.myxlultimate.srwqw.ershw`, native bootstrap `libcuthojkryh.so`, and explicit `libmyxl-secret.so` JNI secret getters such as `getCiamHmacKey` and `getCiamUrl`; this is now a parallel high-ROI lane for secret-vault and loader diffing against 9.1.0.
+- Latest refinement from that lane: `libmyxl-secret.so` 8.0.0 is not stripped and its JNI getters return fixed literals directly from `.rodata`; 9.1.0 `libcardamom.so` keeps the same getter family and also returns fixed literals from `.rodata`, but the current values are rotated opaque/base64url-like strings rather than the human-readable URL / UUID / hex forms seen in 8.0.0.
+- New static narrowing on the CIAM HMAC question:
+  - `Java_com_myxlultimate_core_spice_Cardamom_getCiamHmacKey` at `libcardamom.so:0x27430` is a trivial getter that copies 64 bytes from `.rodata` virtual address `0x17981` into a fresh Java string buffer and returns it, with no native decode/decrypt stage in that getter.
+  - The returned literal is `jDaxHwocBR2jF9Rfzc_PQ34SH-sWsKas88CDxiue6-Kbes-z7C7DyRoBQD93Dleg`.
+  - Strongest downstream Java evidence says CIAM HMAC consumption is raw string-byte usage, not base64-decoded usage: `tmp/root-scratch/myxl-apktool-base/smali/Z1/m.smali` method `c(...)` loads `d$a$a.h()` and immediately does `new SecretKeySpec(secret.getBytes(UTF_8), algorithm)` before `Mac.init(...)`.
+  - Therefore the remaining uncertainty is narrower than before: not `raw vs decoded at HMAC callsite`, but whether some intermediate Java layer rewrites `spice.m()` / `config.h()` before `Z1/m.c(...)` sees it.
+
+## Artifacts
+- Acquired file: `/root/.openclaw/workspace/downloads/myxl/myXL_9.1.0_apkcombo.com.xapk`
+- SHA256: `7f3ad9848a15180f919caaeae590ed49a7e0650667cbfbfe21e887d0474fc386`
+- Package: `com.apps.MyXL`
+- Version: `9.1.0`
+- Version code: `1216`
+- Split members:
+  - `com.apps.MyXL.apk`
+  - `config.arm64_v8a.apk`
+  - `config.xxhdpi.apk`
+- Working extraction root: `/root/.openclaw/workspace/state/re/myxl-9.1.0/`
+
+## Confirmed Findings
+- The app uses `okhttp3` and `retrofit2`.
+- Dex-string triage confirms a CIAM-centered auth lane with concrete local/session artifacts:
+  - `CiamAuthApi.kt`
+  - `CiamOtpTransactionalApi.kt`
+  - `CiamSessionDao.kt`, `CiamSessionEntity.kt`, `CiamSessionTable.kt`
+  - `CiamProfileDao.kt`, `CiamProfileTable.kt`
+  - `AutoLoginUseCase.kt`, `RequestOtpUseCase.kt`, `ValidateOtpRequestEntity`, `OtpMethodUseCase.kt`, `ExtendSessionUseCase.kt`, `LogoutUseCase.kt`
+- Confirmed auth-related relative path strings visible in dex:
+  - `ciam/request-otp`
+  - `ciam/validate-otp`
+  - `refresh-token`
+  - `extend-session`
+  - `logout`
+  - `regstatus-request-otp`
+  - `regstatus-validate-otp`
+  - `authorization-token/generate`
+  - `ciam/pin/check`
+  - `/auths/api/v8/pin/validate/session`
+- Confirmed auth base URL family in dex:
+  - `https://api.myxl.xlaxiata.co.id/auths/api/v8/`
+- Confirmed local CIAM session schema persisted on-device contains:
+  - `subscriber_id`
+  - `msisdn`
+  - `access_token`
+  - `expires_in`
+  - `refresh_expires_in`
+  - `refresh_token`
+  - `scope`
+  - `session_state`
+  - `token_type`
+  - `id_token`
+  - `is_auto_login`
+  - `vendor_name`
+  - `is_convergence`
+- Confirmed quota-related API strings visible in dex:
+  - `https://api.myxl.xlaxiata.co.id/api/v8/packages/quota-summary`
+  - `https://api.myxl.xlaxiata.co.id/api/v8/packages/quota-summary/satu-lite`
+  - `https://api.myxl.xlaxiata.co.id/api/v8/packages/quota-details`
+  - `https://api.myxl.xlaxiata.co.id/api/v8/packages/balance-and-credit`
+  - `https://api.myxl.xlaxiata.co.id/ftth/api/v8/quota-summary`
+  - `https://api.myxl.xlaxiata.co.id/ftth/api/v8/quota-details`
+  - `https://api.myxl.xlaxiata.co.id/sharings/api/v8/family-plan/quota-summary`
+- Confirmed quota-related app namespaces visible in dex:
+  - `com.myxlultimate.service_user.data.webservice.repository.QuotaDetailsRepositoryImpl`
+  - `com.myxlultimate.service_user.data.webservice.repository.PackageRepositoryImpl`
+  - `com.myxlultimate.service_user.domain.usecase.packages.GetQuotaAndBalanceUseCase`
+  - `com.myxlultimate.service_user.domain.entity.QuotaSummaryEntity`
+  - `com.myxlultimate.service_user.domain.entity.QuotaDetailsV2Entity`
+  - `com.myxlultimate.service_user.domain.entity.BalanceSummaryEntity`
+- Confirmed likely app-owned request/header material names visible in dex:
+  - `Authorization` and `Bearer %s`
+  - `ax-token`
+  - `ax-api-signature`
+  - `ax-device-id`
+  - `ax-request-id`
+  - `ax-request-at`
+  - `ax-request-device`
+  - `ax-request-device-model`
+  - `x-signature`
+  - `x-signature-time`
+- Further smali-level proof now pinned for the auth/signature stack:
+  - `CiamAuthApi.kt` exposes exact header names `Authorization`, `refresh-token`, `ax-request-at`, and `ax-api-signature`
+  - CIAM path literals confirmed in smali include `ciam/request-otp`, `ciam/validate-otp`, `openid-connect/token`, `claim-token`, and `extend-session`
+  - main app signature injector adds `x-hv: v3`, `x-signature-time`, and `x-signature`
+  - main app OkHttp interceptor order was pinned as: `apiKeyInterceptor` -> `apiTokenInterceptor` -> `injectRequestBodyInterceptor` -> `requestHeaderInterceptor` -> `requestHeaderEncryptionInterceptor` -> `requestBodyEncryptionInterceptor` -> `responseBodyEncryptionInterceptor` -> `DatadogInterceptor`
+  - CIAM OkHttp builder order was pinned as: `e2/b` -> `e2/a` -> extra interceptors from `com.aleph_labs.ciam.auth.d.h()` -> `CertificatePinner`
+  - `e2/b` injects `ax-request-at`, `ax-device-id`, `ax-request-id`, `ax-request-device`, `ax-request-device-model`, and `ax-fingerprint`
+  - `e2/a` is now proven to inject `Authorization` and to explicitly exclude `claim-token`, `ciam/request-otp`, and `ciam/validate-otp` from that authorization path
+  - `x-signature` plaintext composition is now proven for two groups:
+    - DEFAULT: `<ciam_access_token_d>;<x-signature-time>;`
+    - NON_LOGIN: `<x-signature-time>;<lang>;`
+  - exact normalized path fed into signing logic is `URI.getPath().substring(1)`
+  - `UrlEncryptionUtil.b(...)` matches groups with case-insensitive `contains` and falls back to `DEFAULT`
+  - `HmacSecretKey.c(...)` proven secret-input composition starts from `spice.r()` and then combines method, normalized path, and depending on group also CIAM access token / extra string
+  - additional secret root `spice.s()` is used by `HmacSecretKey.a(...)`
+  - `spice.l()` feeds `config.i()` which is used as the CIAM Retrofit base URL; a concrete auth base literal also appears as `https://api.myxl.xlaxiata.co.id/auths/api/v8/`
+  - `spice.m()` is now the strongest proven upstream feed into `config.h()` in the CIAM config object built by `MainApplication`
+  - current strongest candidate final raw value, if `spice.m()` maps one-to-one to Cardamom HMAC getter, is the 64-char literal `jDaxHwocBR2jF9Rfzc_PQ34SH-sWsKas88CDxiue6-Kbes-z7C7DyRoBQD93Dleg`
+  - `spice.h()/i()/j()/k()` populate the two CIAM Basic-auth pairs; best current likely pairing is:
+    - `spice.i()` -> `config.c()`
+    - `spice.k()` -> `config.e()`
+    - `spice.h()` -> `config.d()`
+    - `spice.j()` -> `config.f()`
+  - `config.c()/e()` and `config.d()/f()` are used as left/right pairs for `Authorization: Basic base64(left:right)` material in the CIAM lane
+  - `config.h()` is used as crypto/signing key material in the CIAM stack
+  - HMAC path proof is now stronger: `Z1/m.c(...)` uses the `config.h()` string directly as UTF-8 key bytes for `SecretKeySpec`, with no base64 decode step in that method
+  - `ax-request-at` exact format is now proven as `yyyy-MM-dd'T'HH:mm:ss.SSSZ`
+  - `ax-api-signature` on the validate lane is now narrowed to `Base64(HMAC-SHA256(source, secret))`
+  - validate-OTP signature source is now pinned as:
+    - `secondFormattedTime + grant_type + contactType + contact + code + scope`
+    - where `secondFormattedTime = requestAt + 300 seconds`
+    - and `scope` defaults to `openid`
+  - `ax-fingerprint` is now pinned much further than before:
+    - `e2/b` sets it via `Z1/n.b(context, contact)`
+    - plaintext format is:
+      - `MANUFACTURER|MODEL|LANG|RESOLUTION|TZ_NO_PLUS|IP|FONT_SCALE|Android RELEASE|CONTACT`
+    - `LANG` collapses to `id` or `en`
+    - empty contact falls back to `6287800000000`
+    - final transform is:
+      - `Base64_NoWrap(AES-CBC-PKCS5(key=UTF8(config.h()), iv=16 zero bytes, plaintext=fingerprintPlaintextUTF8))`
+    - this means the same missing CIAM secret now blocks both validate signing and realistic fingerprint generation
+  - targeted loader/native inventory has now pinned the hidden bootstrap much harder:
+    - manifest `Application` is `rkvms.xneyv`, not `com.myxlultimate.app.MainApplication`
+    - `rkvms.xneyv` loads `libxkpsztrjxa.so` and dispatches `attachBaseContext()` / `onCreate()` into native `xbjib()` / `igaqr()`
+    - `libxkpsztrjxa.so` contains strong loader strings such as `ActivityThread`, `LoadedApk`, `mInitialApplication`, `mAllApplications`, `className`, `dexElements`, `makeDexElements`, `makeInMemoryDexElements`, `getClassLoader`, and `com.myxlultimate.app.MainApplication`
+    - the same loader embeds all five opaque asset names directly:
+      - `2060646840632894026.tmp` @ `0x168df`
+      - `4822903038286211128.tmp` @ `0x1735a`
+      - `13517552333869596573.tmp` @ `0x1780a`
+      - `3745038646708603704.tmp` @ `0x17ed8`
+      - `5315470199885215375.tmp` @ `0x17ef0`
+    - nearby anchors in the same binary include `makeDexElements` @ `0x168fc`, `mInitialApplication` @ `0x174d7`, `mAllApplications` @ `0x176f5`, `makeInMemoryDexElements` @ `0x179d5`, and `com.myxlultimate.app.MainApplication` @ `0x17b4c`
+    - this is stronger than a vague packed-loader hypothesis: it specifically supports asset-open -> dex/classloader patch -> `Application` swap/handoff into the real `MainApplication`
+    - XAPK inventory shows 10 normal dex files in base APK and 5 high-entropy `.tmp` asset blobs that are plausible encrypted secondary payload candidates; first-byte samples are non-DEX/non-ZIP and measured entropy is ~7.99 bits/byte, consistent with encrypted or compressed payload blobs rather than plain resources
+    - newest loader xref narrowed that pool: current `libxkpsztrjxa.so` directly references hidden asset blob `13517552333869596573.tmp` in a loader function around `0x244e4`, immediately around an asset-open pattern and a downstream handoff call, so at least one `.tmp` blob is now a concrete hot-path bootstrap candidate rather than just ambient asset noise
+    - `libcardamom.so` looks like the native secret/config vault, while `libxkpsztrjxa.so` looks like the actual loader/bootstrap layer
+  - the strongest currently proven OTP/token mapping is now:
+    - request OTP via `ciam/request-otp`
+    - validate OTP via `ciam/validate-otp`
+    - persist the returned token bundle directly into `ciam_session`
+    - use `Authorization: Bearer <access_token>` for later app calls
+  - newest guarded probe result after client retune:
+    - `projects/myxl-client/myxl_client.py` can now switch `form|json` body shape and emit candidate CIAM gate headers
+    - using raw current-build Cardamom outputs directly as `x-api-key`, CIAM `Authorization Basic`, forced `ax-request-at`, and `ax-fingerprint` secret material still left `ciam/request-otp` at the same wrapper response `{"code":"151","message":"code=404, message=Not Found","status":"FAILED"}` for both body shapes
+    - practical reading: raw Cardamom getter values are not enough as-is; there is still an upstream decode/transform or deeper bootstrap mismatch before live CIAM config is correct
+  - `openid-connect/token` remains proven for refresh and other grant branches, but is no longer treated as the simplest first-login mainline
+  - `extend-session` is now proven to return `exchange_code`
+- Concrete API roots are embedded in dex strings:
+  - `https://api.myxl.xlaxiata.co.id/api/v8/`
+  - `https://api.myxl.xlaxiata.co.id/ftth/api/v8/`
+  - `https://api.myxl.xlaxiata.co.id/gamification/api/v8/`
+  - `https://api.myxl.xlaxiata.co.id/postpaid/api/v8/`
+  - `https://api.myxl.xlaxiata.co.id/sharings/api/v8/`
+  - `https://api.myxl.xlaxiata.co.id/misc/api/v8/`
+- App-owned protection-related code is visible in class strings:
+  - `com/myxlultimate/app/interceptor/encryption/HmacSecretKey`
+  - `com/myxlultimate/core/network_interceptor/RequestBodyEncryptionInterceptor`
+  - `UrlEncryptionUtil`
+  - explicit `CertificatePinner` wiring in okhttp builder signatures
+- Third-party stacks are prominent but not the primary target:
+  - Alibaba/Alipay Griver mini-app stack
+  - AppsFlyer
+  - Firebase
+  - Datadog okhttp tracing
+  - MoEngage
+  - SQLCipher
+  - Sentry
+- Native libraries in `config.arm64_v8a.apk` include:
+  - `libchecks.so`
+  - `libsecurity_lite.so`
+  - `libvosWrapperEx.so`
+  - `libxkpsztrjxa.so`
+  - `libsqlcipher.so`
+  - barcode/Sentry helpers
+
+## Hypotheses In Play
+- Request auth/signing likely involves app-owned okhttp interceptors rather than only a generic third-party SDK.
+- URL and/or body transformation likely happens before the request reaches the final okhttp client send path.
+- Some security checks or anti-tamper logic may be delegated into `libchecks.so`, `libsecurity_lite.so`, `libvosWrapperEx.so`, or `libxkpsztrjxa.so`, but that is not yet proven to be on the hot request-signing path.
+
+## Probes Run
+- Acquired public XAPK from APKCombo-resolved mirror path.
+- Validated package/version/splits via XAPK `manifest.json` and `aapt dump badging`.
+- Extracted base and split APKs.
+- Ran string-level dex triage for network/security markers, endpoints, and app-owned namespace indicators.
+- Listed native libraries from the arm64 config split.
+- Ran multiple light smali-first passes over `e2/a`, `e2/b`, `a2/a`, `MainApplication`, and related auth/config classes to avoid heavy decompilation and emulator load.
+- Performed guarded live HTTP probes against the current best candidate auth endpoints from the workspace Python client and direct requests; current result is still the app wrapper error `{"code":"151","status":"FAILED","message":"code=404, message=Not Found"}` rather than a live auth/session response.
+- Retuned the local Python client to use the CIAM auth base `https://api.myxl.xlaxiata.co.id/auths/api/v8/`, a `request-otp -> validate-otp` first-login assumption, and a built-in validate signer skeleton that matches the proven HMAC source ordering while leaving the missing CIAM secret configurable.
+- Prepared a runtime-capture tool lane without attaching a device yet:
+  - `adb` installed system-wide
+  - dedicated isolated venv at `/opt/venvs/mobile-sniff` now contains `mitmproxy` and `frida-tools`
+  - runtime sniffing remains deferred because no Android device/emulator is attached and the user preferred not to run a heavy emulator on this VPS
+
+## Blockers
+- APKMirror final download path hits Cloudflare challenge from this VPS, so alternate smaller APK artifact from that mirror is not yet available.
+- Exact generator path for CIAM `ax-api-signature` is now narrowed much further, but the concrete secret value behind `config.h()` / `spice.m()` is still missing; that keeps the validate signer non-live.
+- `ax-request-at` formatting is now proven, but realistic `ax-fingerprint` generation is still blocked by the same missing `config.h()` secret because CIAM helper `Z1/n` encrypts device/contact material with that secret.
+- `claim-token` remains a real token lane, but current evidence points to it as a separate resume/autologin path rather than the cleanest first-login mainline.
+- Quota/profile calls in Python therefore still need a signer plug-in, not hardcoded live signing logic.
+- Guarded live probes against current best candidate auth endpoints still return the app wrapper error `code=151 / code=404`, which strongly suggests one or more of the CIAM config/signing/fingerprint pieces is still missing.
+- The concrete class bodies for `com/myxlultimate/core/spice/a`, `com/myxlultimate/core/spice/Cardamom`, and `com/aleph_labs/ciam/auth/d$a$a` are still absent from the current apktool tree, so some mapping is xref-driven rather than field-name-perfect.
+- Their absence now fits the loader hypothesis better than a simple apktool miss: visible `MainApplication.attachBaseContext()` immediately calls `Cardamom$a.c()` and `spice.a.b(context)`, but the provider bodies themselves are not present in decoded dex.
+- The strongest remaining blocker is now structural, not just logical: key parts of the provider/bootstrap layer are likely hidden behind native-assisted Application swap / dex patching before the visible Java layer stabilizes.
+- No runtime hook / packet capture yet, so final transformed request bodies and token exchange behavior are not proven from live traffic.
+
+## Next Best Action
+- Recover the concrete CIAM secret value behind `config.h()`; current best upstream source is still `spice.m()`, but there is now a strong candidate lane because `Cardamom_getCiamHmacKey` in 9.1.0 can be extracted statically from `.rodata`.
+- Treat the raw-use hypothesis as weakened, not primary: guarded live probes already showed that plugging raw Cardamom values directly into the request-otp gate does not move the oracle off `151 / 404`.
+- Use the modded 8.0.0 specimen as a parallel shortcut lane: `libmyxl-secret.so` already proved the older build exposed direct final-form values, while 9.1.0 shows the same getter family with rotated opaque literals; this narrows the remaining question from extraction to semantic use.
+- Resolve the real implementation behind `com/myxlultimate/core/spice/a` and `Cardamom` to understand the exact one-to-one mapping from `spice.(h/i/j/k/l/m/r/s)` into CIAM config fields and to decide whether the extracted 9.1.0 Cardamom values are consumed as-is or decoded further.
+- Narrowest next proof step: instrument only the native bootstrap boundary. Hook `AAssetManager_open` plus the reflective `makeDexElements` / `makeInMemoryDexElements` path during `rkvms.xneyv.attachBaseContext()` / `xbjib()` so the run logs which `.tmp` blob is opened and yields the decrypted bytes before or after dex insertion.
+- If static-only follow-up is preferred first, disassemble `JNI_OnLoad` and the two native exports behind `xbjib()` / `igaqr()` to recover the exact asset-open and `ActivityThread` / `LoadedApk` mutation sequence.
+- Resolve `UrlEncryptionUtil.a(...)` precisely so the normalized-path rule can be cloned in Python without guesswork for later signed app API calls.
+- Keep the auth-chain focus on the now-stronger first-login path `ciam/request-otp` -> `ciam/validate-otp`, while leaving `claim-token` and `openid-connect/token` as secondary/resume/refresh lanes unless stronger proof reverses that.
+- If static RE keeps stalling after the loader/native pass, switch to the lightest real-runtime path: HP Android asli via ADB over Wi-Fi for trace/sniff, not a heavy VPS emulator.
+- Runtime probe pack is now prepared under `/root/.openclaw/workspace/projects/myxl-client/instrumentation/` plus `/root/.openclaw/workspace/projects/myxl-client/RUNTIME-PROBE.md`:
+  - `myxl_hmac_probe_v1.js` compares `Cardamom.getCiamHmacKey()` vs `d$a$a.h()` vs the `Z1.m.c(...)` secret path and logs `SecretKeySpec` bytes
+  - `myxl_loader_asset_probe_v1.js` watches `AAssetManager_open` and dex insertion (`makeDexElements` / `makeInMemoryDexElements`) to catch the hidden `.tmp` bootstrap blob at launch
+- Once those are proven, upgrade `/root/.openclaw/workspace/projects/myxl-client/` from guarded prototype to live-tested client.
+
+## Distilled Reusable Lesson
+- For large telco/service apps with many third-party SDKs, do not get distracted by Griver/Firebase/AppsFlyer noise first. Start from app-owned okhttp/retrofit assembly plus the explicitly named encryption/signing interceptors, then move outward to pinning and native helpers only if those paths demand it.
+
+## Update 2026-04-06 - hidden loader asset decryption breakthrough
+- Static loader proof is now beyond xref speculation.
+- `libxkpsztrjxa.so` contains:
+  - one 5-slot asset-name table for the hidden blobs, in this exact order:
+    - `2060646840632894026.tmp`
+    - `4822903038286211128.tmp`
+    - `13517552333869596573.tmp`
+    - `3745038646708603704.tmp`
+    - `5315470199885215375.tmp`
+  - two parallel 5-slot 32-byte key-share tables
+- The live native decode pipeline is now statically recoverable:
+  1. open each hidden asset with `AAssetManager_open`
+  2. XOR the two 32-byte key shares for that asset to derive the final per-blob key
+  3. decrypt with AES-256-GCM (`mbedtls_gcm_setkey(..., 0x100)`, IV length `12`, tag length `16`)
+  4. inflate the decrypted payload with zlib/gzip path (`inflateInit2_(31)`)
+- Offline decryption succeeded for all five hidden blobs.
+- New reusable helper script:
+  - `projects/myxl-client/extract_hidden_assets.py`
+- Confirmed hidden class ownership after offline decrypt:
+  - `13517552333869596573.tmp` -> `com/myxlultimate/core/spice/Cardamom`, `com/myxlultimate/core/spice/a`, `com/myxlultimate/core/util/EncryptionUtil`
+  - `2060646840632894026.tmp` -> `com/aleph_labs/ciam/auth/d`, `d$a`, `d$a$a`
+- Critical mapping correction from the hidden classes:
+  - `spice.l()` calls `Cardamom.getCiamHmacKey()` and then passes the raw getter through `spice.t(...)`
+  - `spice.m()` calls `Cardamom.getCiamUrl()` and then passes it through `spice.t(...)`
+  - visible `MainApplication` plus hidden `d$a$a` now prove the live `config.h()` path is:
+    - `Cardamom.getCiamHmacKey() -> spice.l() -> spice.t(...) -> d$a$a field i -> d$a$a.h() -> Z1/m.c(...)`
+- Important meaning for the login blocker:
+  - the raw `libcardamom.so` getter output is not the final CIAM HMAC secret
+  - `spice.t(...)` transforms the raw Cardamom values using material seeded from `spice.b(context)`
+  - hidden `spice.a` proves `spice.b(context)` stores package-signing-certificate bytes into static field `c`
+  - hidden `spice.t(...)` then routes through `EncryptionUtil.g/f(...)`, where the transform depends on `d(c)` and `d(c).substring(0,10)`
+- Practical reading:
+  - the earlier guarded `151 / 404` probe with raw Cardamom values failed for a real reason, not because the request skeleton was random
+  - the next highest-leverage lane is no longer generic runtime probing first, but cloning `spice.t(...)` offline with the stock 9.1.0 signing-certificate bytes so the final CIAM values can be reproduced exactly
+
+## Update 2026-04-07 - exact `spice.t(...)` transform closed
+- The `spice` transform is no longer a shape guess. It is now traced end to end from hidden dex code.
+- Closed chain:
+  - `spice.d([B)`
+    - wraps X509 cert bytes
+    - on Android 26+ uses standard `java.util.Base64` encoder when called from `spice.d`
+    - strips newline characters afterward
+  - `spice.t(raw)`
+    - calls `EncryptionUtil.g(EncryptionUtil.a, raw, take(spice.d(c), 10), null, spice.d(c), 4, null)`
+  - wrapper `EncryptionUtil.g(..., mask=4)` injects default decoder `EncryptionUtil$decryptAes$2`
+  - that decoder uses URL-safe Base64 decode for the raw Cardamom payload
+  - `EncryptionUtil.f(message, keySeed, decoder, ivSeed)` then does:
+    - `keyHashHex = sha256(keySeed)` as lowercase hex string
+    - AES key = first 32 UTF-8 bytes of that hex string
+    - `ivHashHex = sha256(ivSeed)` as lowercase hex string
+    - IV = first 16 UTF-8 bytes of that hex string
+    - decrypt with `AES/CBC/PKCS5Padding`
+    - plaintext returned as UTF-8 string
+- Additional native proof added:
+  - `libcardamom.so` getter `Java_com_myxlultimate_core_spice_Cardamom_getCiamHmacKey` is a direct rodata-copy routine, not a hidden extra transform path inside the getter itself
+  - current raw literal confirmed again from the function body: `jDaxHwocBR2jF9Rfzc_PQ34SH-sWsKas88CDxiue6-Kbes-z7C7DyRoBQD93Dleg`
+- Important remaining mismatch after exact replay:
+  - replaying the exact traced transform with the shipped APK signer cert still does **not** decrypt the current static getter payload cleanly
+  - this means the remaining open boundary is narrowed to runtime signer-source truth or runtime getter-payload truth, not the `spice.t(...)` algorithm itself
+- New narrow runtime closer prepared:
+  - `projects/myxl-client/instrumentation/myxl_spice_probe_v2.js`
+  - purpose: capture `spice.y -> spice.d -> spice.t -> spice.l/m` live so the signer-source mismatch can be closed directly

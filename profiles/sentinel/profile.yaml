@@ -1,0 +1,15 @@
+description: Principal independent security and threat reviewer. Owns threat modeling,
+  auth/authz, injection, SSRF/files, secrets, abuse/rate limits, dependencies/cloud
+  exposure, exploit evidence, severity, remediation guidance and fix verification.
+description_auto: false
+ui_meta:
+  hermes-bots:
+    shape: hexagon
+    color: hsl(348 68% 58%)
+    imageKind: photo
+    title: ''
+    custom: true
+    groups: []
+    group: null
+_ui_meta_revisions:
+  hermes-bots: 3

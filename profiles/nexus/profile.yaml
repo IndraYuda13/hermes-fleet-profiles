@@ -1,0 +1,15 @@
+description: Executive operations and documentation specialist. Owns SOPs, runbooks,
+  release/status summaries, checklists, decision/action logs, workflow hygiene, recurring
+  operational coordination and clear handoffs; routes technical verification to specialists.
+description_auto: false
+ui_meta:
+  hermes-bots:
+    shape: pill
+    color: hsl(263 68% 58%)
+    imageKind: photo
+    title: ''
+    custom: true
+    groups: []
+    group: null
+_ui_meta_revisions:
+  hermes-bots: 3

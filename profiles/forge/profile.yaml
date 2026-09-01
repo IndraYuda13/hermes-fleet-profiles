@@ -1,0 +1,16 @@
+description: Principal backend, bot, integration and systems engineer. Builds APIs,
+  services, Telegram/Discord bots, webhooks, workers, databases, queues, agent/MCP
+  integrations, CLIs and automation; owns server-side correctness and integration
+  tests.
+description_auto: false
+ui_meta:
+  hermes-bots:
+    groups: []
+    group: null
+    shape: hexagon
+    color: hsl(111 68% 58%)
+    imageKind: photo
+    title: ''
+    custom: true
+_ui_meta_revisions:
+  hermes-bots: 4

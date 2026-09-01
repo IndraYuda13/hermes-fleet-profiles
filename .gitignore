@@ -1,0 +1,60 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Runtime SQLite DBs & WAL files
+*.db
+*.db-shm
+*.db-wal
+*.db.*
+*.lock
+*.sock
+*.pid
+
+# Ephemeral Runtime State, Logs, Cache & Sessions
+logs/
+sessions/
+cache/
+audio_cache/
+image_cache/
+browser-profile/
+sandboxes/
+terminal-sessions/
+desktop/
+runtime/
+pending/
+pending_messages/
+backups/
+.curator_backups/
+state-snapshots/
+state/
+a2a_audit.jsonl
+a2a_conversations/
+gateway-starts.log
+models_dev_cache.*
+ollama_cloud_models_cache.json
+provider_models_cache.json
+.skills_prompt_snapshot.json
+.restart_last_processed.json
+.update_check
+context_length_cache.yaml
+sticker_cache.json
+spawn-ledger.json
+processes.json
+gateway_state.json
+channel_directory.json
+tui-theme-boot.json
+web-ui-build-stamp.json
+fleet_restart_pending
+
+# Secrets & Credentials (NEVER COMMIT)
+.env
+.env*
+auth.json
+google_token.json
+google_client_secret.json
+
+# Local OS metadata
+.DS_Store
+Thumbs.db
