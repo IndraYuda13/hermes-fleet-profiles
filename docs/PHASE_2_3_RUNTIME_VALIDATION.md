@@ -130,6 +130,15 @@ probes ORION, AURORA, FRAME, PRISM and LENS with a bounded 90-second live-model
 readiness check. A provider outage therefore fails fast instead of consuming a
 full gauntlet run and leaving an orphaned partial graph.
 
+The first ORION closure is also a remediation decision gate. If PRISM or LENS
+returns actionable FAIL evidence, ORION completes that decision task only after
+creating a linked FRAME remediation → PRISM retest + LENS retest → ORION final
+closure chain. FRAME commits a new revision; both original verifier roles must
+regenerate their reports, manifests and rendered evidence for that same HEAD.
+Only the final ORION PASS closure is materialized. Infrastructure BLOCKED is
+never converted into a fake remediation task, and a second unresolved loop
+fails closed for operator inspection.
+
 This is intentionally not one long synchronous A2A call. Hermes' inbound A2A
 reply deadline is independent of the harness HTTP timeout and is unsuitable as
 the sole lifecycle for a multi-stage build. A2A discovery and role probes still

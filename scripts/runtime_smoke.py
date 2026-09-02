@@ -775,11 +775,42 @@ as the parents dependencies:
    for the same exact revision, call kanban_complete with a substantive summary
    and metadata containing artifact_kind="orion-closure",
    mission_id="{mission_id}", owner="orion", result="PASS", the exact shared
-   revision, method, and the FRAME/PRISM/LENS task ids. If either verifier
-   failed, revisions differ, or evidence is missing, call kanban_block instead.
+   revision, method, and the FRAME/PRISM/LENS task ids.
+
+   If either verifier reports FAIL with actionable product defects, do NOT
+   block this first closure task. Instead create exactly four additional child
+   tasks in the same tenant and workspace, with the same runtime/retry/goal
+   policy and idempotency keys prefixed
+   "fleet-ui-gauntlet:{mission_id}:remediation-1:":
+
+   a. FRAME remediation, parent=[this first closure task]. Its body must include
+      every exact PRISM/LENS defect ID, severity and acceptance condition. FRAME
+      owns all app source edits, must create a new Git commit, and must rewrite
+      evidence/manifests/frame-implementation.json for the new HEAD with every
+      required manifest field.
+   b. PRISM retest, parent=[FRAME remediation]. PRISM must rerun all functional
+      checks plus every applicable defect regression, overwrite FUNCTIONAL_QA.md
+      and prism-functional.json for the new exact HEAD, and never edit app
+      source.
+   c. LENS retest, parent=[FRAME remediation]. LENS must recapture all required
+      screenshots, rerun every visual/anti-slop gate plus every applicable
+      defect regression, overwrite VISUAL_QA.md and lens-rendered.json for the
+      new exact HEAD, and never edit app source.
+   d. ORION final closure, parents=[PRISM retest, LENS retest]. It must complete
+      with artifact_kind="orion-closure" only when both retests PASS the same
+      new HEAD and all required manifests are complete. Otherwise it must block
+      with the exact unresolved evidence; a second silent remediation loop is
+      forbidden.
+
+   After creating all four tasks, complete this first closure task with
+   artifact_kind="orion-remediation-dispatch", result="REMEDIATION_DISPATCHED",
+   the original revision, exact defect IDs, and all four new task IDs. If a
+   verifier is BLOCKED by missing infrastructure/evidence rather than reporting
+   actionable product defects, call kanban_block instead of inventing a fix.
+
    The deterministic harness will materialize CLOSURE_REPORT.md and the ORION
-   manifest from this completion metadata because ORION intentionally has no
-   production filesystem tool.
+   manifest only from the final artifact_kind="orion-closure" PASS metadata
+   because ORION intentionally has no production filesystem tool.
 
 Complete your current root task only after the five-task graph exists. Include
 all child task ids in your kanban_complete metadata. Do not implement, verify,
@@ -895,33 +926,37 @@ Do not report PASS if a required peer, browser capture, functional check, artifa
             if str(task.get("assignee", "")).lower() == "orion"
             and "closure" in str(task.get("title", "")).lower()
         ]
-        if len(closure_candidates) != 1:
+        if not closure_candidates:
             raise RuntimeError(
-                f"expected exactly one ORION closure task, found {len(closure_candidates)}"
+                "expected at least one ORION closure task, found none"
             )
-        closure_id = task_id_from_json(closure_candidates[0])
-        if not closure_id:
-            raise RuntimeError("ORION closure task has no id")
-        payload = kanban.show(closure_id)
-        metadata: dict[str, Any] = {}
-        for run in reversed(payload.get("runs") or []):
-            if isinstance(run, dict):
-                candidate = metadata_object(run.get("metadata"))
-                if candidate.get("artifact_kind") == "orion-closure":
-                    metadata = candidate
-                    break
-        summary = str(payload.get("latest_summary") or "").strip()
-        if not metadata:
-            raise RuntimeError("ORION closure completion metadata is missing")
-        if metadata.get("mission_id") != mission_id or metadata.get("result") != "PASS":
-            raise RuntimeError("ORION closure metadata does not attest PASS for this mission")
         head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
-        if metadata.get("revision") != head:
+        matches: list[tuple[str, str, dict[str, Any]]] = []
+        for task in closure_candidates:
+            closure_id = task_id_from_json(task)
+            if not closure_id:
+                continue
+            payload = kanban.show(closure_id)
+            summary = str(payload.get("latest_summary") or "").strip()
+            for run in reversed(payload.get("runs") or []):
+                if not isinstance(run, dict):
+                    continue
+                metadata = metadata_object(run.get("metadata"))
+                if (
+                    metadata.get("artifact_kind") == "orion-closure"
+                    and metadata.get("mission_id") == mission_id
+                    and metadata.get("result") == "PASS"
+                    and metadata.get("revision") == head
+                    and summary
+                ):
+                    matches.append((closure_id, summary, metadata))
+                    break
+        if len(matches) != 1:
             raise RuntimeError(
-                f"ORION closure revision={metadata.get('revision')!r}, HEAD={head}"
+                f"expected exactly one final ORION PASS closure for HEAD {head}, "
+                f"found {len(matches)}"
             )
-        if not summary:
-            raise RuntimeError("ORION closure summary is empty")
+        closure_id, summary, metadata = matches[0]
 
         report = within(root, "CLOSURE_REPORT.md")
         report.write_text(

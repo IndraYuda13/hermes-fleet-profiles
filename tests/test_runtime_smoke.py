@@ -195,6 +195,9 @@ class UIGauntletValidationTests(unittest.TestCase):
         self.assertIn("goal_max_turns=40", prompt)
         self.assertIn("max_retries=2", prompt)
         self.assertEqual(prompt.count("every required key exactly"), 4)
+        self.assertIn('artifact_kind="orion-remediation-dispatch"', prompt)
+        self.assertIn("FRAME remediation, parent=[this first closure task]", prompt)
+        self.assertIn("ORION final closure", prompt)
 
     def test_ui_model_preflight_passes_only_when_every_worker_answers(self):
         class ReadyClient:
@@ -280,6 +283,18 @@ class UIGauntletValidationTests(unittest.TestCase):
         class FakeKanban:
             def show(self, task_id):
                 self.task_id = task_id
+                if task_id == "t_dispatch":
+                    return {
+                        "latest_summary": "Remediation chain dispatched.",
+                        "runs": [{
+                            "metadata": {
+                                "artifact_kind": "orion-remediation-dispatch",
+                                "mission_id": "UI-TEST-closure",
+                                "result": "REMEDIATION_DISPATCHED",
+                                "revision": head,
+                            }
+                        }],
+                    }
                 return {
                     "latest_summary": "Both independent verifiers passed the exact revision.",
                     "runs": [{
@@ -298,7 +313,10 @@ class UIGauntletValidationTests(unittest.TestCase):
             FakeKanban(),
             root,
             "UI-TEST-closure",
-            [{"id": "t_close", "title": "ORION closure", "assignee": "orion"}],
+            [
+                {"id": "t_dispatch", "title": "ORION closure", "assignee": "orion"},
+                {"id": "t_close", "title": "ORION final closure", "assignee": "orion"},
+            ],
         )
         self.assertEqual(closure_id, "t_close")
         self.assertIn("independent verifiers", summary)
