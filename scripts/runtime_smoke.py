@@ -38,6 +38,9 @@ SECRET_PATTERNS = (
     re.compile(r"(?i)(authorization\s*:\s*bearer\s+)[^\s\"']+"),
     re.compile(r"(?i)((?:api[_-]?key|token|secret|password)\s*[=:]\s*)[^\s,;]+"),
 )
+A2A_FAILURE_MARKERS = (
+    "[agent did not reply in time]",
+)
 
 
 def utc_now() -> str:
@@ -125,6 +128,17 @@ def extract_text(value: Any) -> str:
 
     visit(value)
     return "\n".join(dict.fromkeys(found))
+
+
+def a2a_reply_failure(reply: str) -> str | None:
+    """Return a bounded failure reason for terminal text emitted by A2A."""
+    normalized = reply.strip().lower()
+    for marker in A2A_FAILURE_MARKERS:
+        if marker.lower() in normalized:
+            return marker.strip("[]")
+    if not normalized:
+        return "agent returned an empty final reply"
+    return None
 
 
 def parse_attestation(text: str, marker: str) -> dict[str, Any] | None:
@@ -646,6 +660,13 @@ Do not report PASS if a required peer, browser capture, functional check, artifa
             reply = extract_text(response)
         except Exception as exc:
             self.add("ui-gauntlet-call", "FAIL", f"{type(exc).__name__}: {exc}", "orion")
+            return
+        reply_failure = a2a_reply_failure(reply)
+        if reply_failure:
+            self.add(
+                "ui-gauntlet-call", "FAIL", f"ORION A2A failure: {reply_failure}", "orion",
+                mission_id=mission_id, workspace=str(root), reply=reply[-6000:],
+            )
             return
         self.add(
             "ui-gauntlet-call", "PASS", "ORION returned a final A2A response", "orion",
