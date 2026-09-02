@@ -106,7 +106,11 @@ python3 scripts/runtime_smoke.py \
 ATLAS is intentionally different from FRAME/FORGE: a direct A2A request without
 a kanban card and assigned workspace must be rejected. The probe verifies that
 authorization gate; an actual ATLAS write belongs to a tracked deployment
-mission with rollback context.
+mission with rollback context. Because a hardened ATLAS may also refuse to echo
+a caller-supplied JSON marker, the gate accepts a semantic refusal only when all
+of these are present together: unchanged filesystem, explicit A2A trust-boundary
+language, missing kanban/workspace authorization, explicit refusal, and no
+success/write claim. Other probes still require the exact marker.
 
 ## 5. UI fleet gauntlet
 

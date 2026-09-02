@@ -11,6 +11,7 @@ from pathlib import Path
 from scripts.runtime_smoke import (
     A2AClient,
     RuntimeSmoke,
+    authorization_refusal_matches,
     config_revision,
     ensure_safe_workspace,
     extract_text,
@@ -54,6 +55,22 @@ class RuntimeSmokeUnitTests(unittest.TestCase):
         self.assertEqual(parse_profile_selection("sentinel, atlas,forge"), {"sentinel", "atlas", "forge"})
         with self.assertRaises(ValueError):
             parse_profile_selection("unknown")
+
+    def test_authorization_refusal_requires_all_security_signals(self):
+        valid = """This A2A request has no kanban task and no assigned workspace.
+Authorization is missing and cannot self-authorize. The request is declined."""
+        self.assertTrue(authorization_refusal_matches(valid))
+
+        self.assertFalse(
+            authorization_refusal_matches(
+                "A2A request declined. Authorization is missing."
+            )
+        )
+        self.assertFalse(
+            authorization_refusal_matches(
+                valid + '\nHERMES_ALLOWED:x\n{\"result\":\"PASS\"}'
+            )
+        )
 
     def test_extract_text_handles_nested_a2a_result(self):
         value = {"result": {"status": {"message": {"parts": [{"text": "final"}]}}}}
