@@ -1,0 +1,99 @@
+version: 1
+name: ui-prototype
+purpose: Product-specific, production-shaped UI prototypes without generic AI slop.
+
+entry:
+  owner: orion
+  requires:
+    - product objective
+    - target users
+    - primary journeys
+    - functional constraints
+    - available brand/reference material
+
+stages:
+  - id: discovery
+    owner: aurora
+    outputs: [PRODUCT_CONTEXT.md, REFERENCE_LEDGER.md]
+    gate:
+      - product context is explicit
+      - references are inspected rather than name-dropped
+      - assumptions and unknowns are recorded
+
+  - id: direction
+    owner: aurora
+    outputs: [DESIGN_DIRECTIONS.md]
+    gate:
+      - at least three materially different macro-directions
+      - each direction is justified by product context
+      - no default neon-purple, glass-card, gradient-hero convergence without evidence
+
+  - id: contract
+    owner: aurora
+    outputs: [DESIGN_DNA.md, DESIGN_CONTRACT.md]
+    gate:
+      - information architecture and hierarchy defined
+      - responsive behavior and interaction states defined
+      - typography, color, spacing, motion and component rules defined
+      - required routes, data states and accessibility expectations defined
+
+  - id: implementation
+    owner: frame
+    inputs: [DESIGN_DNA.md, DESIGN_CONTRACT.md]
+    outputs: [frontend-source, implementation-evidence]
+    gate:
+      - no unauthorized design-direction substitution
+      - loading, empty, error, success and disabled states implemented
+      - keyboard and reduced-motion behavior implemented
+      - responsive behavior verified during implementation
+
+  - id: functional-verification
+    owner: prism
+    when: material interactions or application state exist
+    outputs: [FUNCTIONAL_QA.md]
+    gate:
+      - primary journeys pass
+      - regression suite passes
+      - report references exact implementation revision
+
+  - id: rendered-verification
+    owner: lens
+    outputs: [VISUAL_QA.md, visual-evidence-manifest]
+    gate:
+      - required routes, states and viewports captured
+      - no overflow, clipping, broken assets or placeholder leakage
+      - hierarchy, density, typography and interaction match the contract
+      - macro-composition is product-specific, not template convergence
+      - report references exact implementation revision
+
+  - id: remediation
+    owner: frame
+    when: any verifier reports a material defect
+    outputs: [remediated-source, remediation-ledger]
+    gate:
+      - every change maps to a defect ID
+      - no verifier edits production source
+
+  - id: retest
+    owner: original-verifier
+    outputs: [RETEST_REPORT.md]
+    gate:
+      - fixed defects are rerun at the new exact revision
+      - stale evidence is rejected
+
+  - id: closure
+    owner: orion
+    outputs: [CLOSURE_REPORT.md]
+    gate:
+      - no unresolved blocker or high-severity defect
+      - no UNKNOWN affecting the core objective
+      - implementation and all PASS reports reference the same revision
+      - owner acceptance is explicit or state remains ACCEPTANCE_PENDING
+
+minimum_viewports:
+  - {name: mobile-small, width: 320}
+  - {name: mobile, width: 390}
+  - {name: tablet, width: 768}
+  - {name: desktop, width: 1440}
+  - {name: desktop-wide, width: 1920}
+

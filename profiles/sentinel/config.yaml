@@ -31,19 +31,11 @@ a2a_agents:
     timeout: 300
     url: http://127.0.0.1:9910
 approvals:
-  denial_breaker_threshold: 3
-  destructive_slash_confirm: false
-  mcp_reload_confirm: false
-  mode: 'off'
-command_allowlist:
-  - overwrite system config
-  - copy/move file into system config path
-  - delete in root path
-  - in-place edit of system config
-  - stop/restart system service
-  - script execution via -e/-c flag
-  - in-place edit of Hermes config/env
-  - execute_code
+  denial_breaker_threshold: 2
+  destructive_slash_confirm: true
+  mcp_reload_confirm: true
+  mode: smart
+command_allowlist: []
 context_file_max_chars: 150000
 curator:
   consolidate: true
@@ -68,24 +60,11 @@ custom_providers:
         context_length: 500000
     name: Local (localhost:20128)
 dashboard:
-  auth: password:Yuda&4321
-  basic_auth:
-    password_hash: scrypt$16384$8$1$0eXJEdFBdYSqYlK2x+jPqA==$UG3TB3MSll45aeoj28VCfPh9QoDoVOON3/NwovBuTgU=
-    secret: _ySyQFpxxVw-ccBcHSWjxIlI4BLMLlCO12NGNHMt1Vo
-    username: admin
   cors_origins: '[''https://hermes.indrayuda.my.id'']'
   host: 0.0.0.0
 delegation:
-  api_key: REDACTED
-  base_url: http://localhost:20128/v1
-  max_concurrent_children: 6
-  max_spawn_depth: 2
-  model: ag-opus-pool
-  orchestrator_enabled: true
-  provider: LocalAPI
-  reasoning_effort: high
-  subagent_auto_approve: true
-  worktree_isolation: false
+  orchestrator_enabled: false
+  subagent_auto_approve: false
 display:
   platforms:
     telegram:
@@ -172,39 +151,7 @@ mcp_servers:
 memory:
   write_approval: false
 moa:
-  aggregator:
-    model: ag/claude-opus-4-6-thinking
-    provider: custom:local-(localhost:20128)
-  default_preset: default
-  enabled: true
-  fanout: user_turn
-  max_tokens: 4096
-  presets:
-    default:
-      aggregator:
-        model: ag/claude-opus-4-6-thinking
-        provider: custom:local-(localhost:20128)
-      fanout: user_turn
-      reference_max_tokens: 600
-      reference_models:
-        - model: ag/claude-sonnet-4-6
-          provider: custom:local-(localhost:20128)
-        - model: ag/claude-opus-4-6-thinking
-          provider: custom:local-(localhost:20128)
-        - model: ag/gemini-3-flash-agent
-          provider: custom:local-(localhost:20128)
-        - model: ag/gemini-pro-agent
-          provider: custom:local-(localhost:20128)
-  privacy_filter: display
-  reference_models:
-    - model: ag/claude-sonnet-4-6
-      provider: custom:local-(localhost:20128)
-    - model: ag/claude-opus-4-6-thinking
-      provider: custom:local-(localhost:20128)
-    - model: ag/gemini-3-flash-agent
-      provider: custom:local-(localhost:20128)
-    - model: ag/gemini-pro-agent
-      provider: custom:local-(localhost:20128)
+  enabled: false
 model:
   context_length: 950000
   default: ag-opus-pool
@@ -218,44 +165,29 @@ onboarding:
     tool_progress_prompt: true
 platform_toolsets:
   a2a:
-    - a2a
-    - browser
-    - clarify
-    - code_execution
-    - computer_use
-    - cronjob
-    - delegation
-    - file
-    - hermes-a2a
-    - image_gen
-    - kanban
-    - memory
-    - session_search
-    - skills
-    - terminal
-    - todo
-    - tts
-    - vision
-    - web
+  - a2a
+  - browser
+  - clarify
+  - code_execution
+  - file
+  - hermes-a2a
+  - kanban
+  - session_search
+  - skills
+  - terminal
+  - web
   cli:
-    - a2a
-    - browser
-    - clarify
-    - code_execution
-    - computer_use
-    - cronjob
-    - delegation
-    - file
-    - image_gen
-    - kanban
-    - memory
-    - session_search
-    - skills
-    - terminal
-    - todo
-    - tts
-    - vision
-    - web
+  - a2a
+  - browser
+  - clarify
+  - code_execution
+  - file
+  - hermes-a2a
+  - kanban
+  - session_search
+  - skills
+  - terminal
+  - web
 plugins:
   disabled: []
   enabled:
@@ -457,17 +389,15 @@ skills:
     - yuanbao
   write_approval: false
 toolsets:
-  - file
-  - terminal
-  - code_execution
-  - web
-  - browser
-  - delegation
-  - kanban
+- file
+- terminal
+- code_execution
+- web
+- browser
+- kanban
 web:
   backend: firecrawl
   extract_backend: firecrawl
-  firecrawl_api_key: REDACTED
   firecrawl_api_url: https://firecrawl.indrayuda.my.id
   firecrawl_url: https://firecrawl.indrayuda.my.id
   search_backend: firecrawl
