@@ -18,10 +18,12 @@ from scripts.runtime_smoke import (
     extract_text,
     attestation_matches,
     line_content_matches,
+    metadata_object,
     parse_attestation,
     parse_profile_selection,
     png_size,
     redact_json,
+    task_id_from_json,
 )
 
 
@@ -39,6 +41,15 @@ class RuntimeSmokeUnitTests(unittest.TestCase):
             "agent returned an empty final reply",
         )
         self.assertIsNone(a2a_reply_failure("Mission completed with evidence."))
+
+    def test_kanban_json_helpers_accept_stable_and_wrapped_shapes(self):
+        self.assertEqual(task_id_from_json({"id": "t_root"}), "t_root")
+        self.assertEqual(
+            task_id_from_json({"result": {"task_id": "t_child"}}),
+            "t_child",
+        )
+        self.assertEqual(metadata_object('{"result":"PASS"}')["result"], "PASS")
+        self.assertEqual(metadata_object("not-json"), {})
 
     def test_redacts_nested_secret_evidence(self):
         value = redact_json({"Authorization": "Bearer abc", "reply": "token=very-secret-value"})
@@ -216,6 +227,49 @@ class UIGauntletValidationTests(unittest.TestCase):
         self.smoke.validate_ui_gauntlet(root, mission_id)
         failures = [record.detail for record in self.smoke.records if record.result != "PASS"]
         self.assertEqual(failures, [])
+
+    def test_materializes_orion_closure_from_kanban_metadata(self):
+        root = self.base / "closure"
+        root.mkdir()
+        subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+        subprocess.run(["git", "config", "user.name", "Test"], cwd=root, check=True)
+        subprocess.run(["git", "config", "user.email", "test@localhost"], cwd=root, check=True)
+        (root / "app.js").write_text("verified\n", encoding="utf-8")
+        subprocess.run(["git", "add", "app.js"], cwd=root, check=True)
+        subprocess.run(["git", "commit", "-qm", "feat: fixture"], cwd=root, check=True)
+        head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
+
+        class FakeKanban:
+            def show(self, task_id):
+                self.task_id = task_id
+                return {
+                    "latest_summary": "Both independent verifiers passed the exact revision.",
+                    "runs": [{
+                        "metadata": {
+                            "artifact_kind": "orion-closure",
+                            "mission_id": "UI-TEST-closure",
+                            "owner": "orion",
+                            "result": "PASS",
+                            "revision": head,
+                            "method": "parent handoff comparison",
+                        }
+                    }],
+                }
+
+        closure_id, summary = self.smoke.materialize_orion_closure(
+            FakeKanban(),
+            root,
+            "UI-TEST-closure",
+            [{"id": "t_close", "title": "ORION closure", "assignee": "orion"}],
+        )
+        self.assertEqual(closure_id, "t_close")
+        self.assertIn("independent verifiers", summary)
+        manifest = json.loads(
+            (root / "evidence/manifests/orion-closure.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(manifest["revision"], head)
+        self.assertEqual(manifest["owner"], "orion")
+        self.assertTrue((root / "CLOSURE_REPORT.md").is_file())
 
 
 if __name__ == "__main__":

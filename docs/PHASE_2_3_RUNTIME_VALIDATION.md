@@ -114,12 +114,24 @@ success/write claim. Other probes still require the exact marker.
 
 ## 5. UI fleet gauntlet
 
-The UI gauntlet enters through ORION and requires live collaboration:
+The UI gauntlet enters through ORION's durable Kanban worker lane and requires
+live collaboration:
 
 `AURORA → FRAME → PRISM → LENS → FRAME remediation (if needed) → retest → ORION`
 
 It builds a local static RelayOps prototype only. The fixture forbids external
-accounts, APIs, credentials and deployment.
+accounts, APIs, credentials and deployment. The harness creates a tenant-scoped
+ORION root card with a shared `dir:` workspace. ORION must create the linked
+AURORA, FRAME, PRISM, LENS and closure cards. The embedded gateway dispatcher
+injects `HERMES_KANBAN_TASK` and `HERMES_KANBAN_WORKSPACE` into every worker.
+The harness polls JSON task state and fails on blocked, incomplete, unexpected
+or timed-out graphs.
+
+This is intentionally not one long synchronous A2A call. Hermes' inbound A2A
+reply deadline is independent of the harness HTTP timeout and is unsuitable as
+the sole lifecycle for a multi-stage build. A2A discovery and role probes still
+prove the live mesh; Kanban provides durable authorization, dependencies,
+heartbeats, retry state and handoffs for the long-running SDLC mission.
 
 ```bash
 python3 scripts/runtime_smoke.py \
@@ -139,6 +151,11 @@ PASS requires:
   exact current Git HEAD;
 - no missing state/viewport disguised as PASS;
 - fixture-specific anti-slop source checks passing.
+
+The final `CLOSURE_REPORT.md` and ORION manifest are deterministically
+materialized from the ORION closure task's completion summary and metadata.
+This preserves ORION ownership while keeping production filesystem tools out of
+the coordinator profile.
 
 Evidence summaries are written under
 `/srv/hermes-fleet-staging/.fleet-smoke-evidence/`. They are runtime artifacts

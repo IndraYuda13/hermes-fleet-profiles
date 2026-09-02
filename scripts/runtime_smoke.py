@@ -41,6 +41,8 @@ SECRET_PATTERNS = (
 A2A_FAILURE_MARKERS = (
     "[agent did not reply in time]",
 )
+KANBAN_ACTIVE_STATUSES = {"triage", "todo", "ready", "running", "review", "scheduled"}
+KANBAN_FAILURE_STATUSES = {"blocked"}
 
 
 def utc_now() -> str:
@@ -139,6 +141,37 @@ def a2a_reply_failure(reply: str) -> str | None:
     if not normalized:
         return "agent returned an empty final reply"
     return None
+
+
+def task_id_from_json(value: Any) -> str | None:
+    """Extract a task id from the stable CLI object or a wrapped response."""
+    if isinstance(value, dict):
+        for key in ("id", "task_id"):
+            candidate = value.get(key)
+            if isinstance(candidate, str) and candidate:
+                return candidate
+        for child in value.values():
+            candidate = task_id_from_json(child)
+            if candidate:
+                return candidate
+    elif isinstance(value, list):
+        for child in value:
+            candidate = task_id_from_json(child)
+            if candidate:
+                return candidate
+    return None
+
+
+def metadata_object(value: Any) -> dict[str, Any]:
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str):
+        try:
+            decoded = json.loads(value)
+        except json.JSONDecodeError:
+            return {}
+        return decoded if isinstance(decoded, dict) else {}
+    return {}
 
 
 def parse_attestation(text: str, marker: str) -> dict[str, Any] | None:
@@ -316,6 +349,66 @@ class A2AClient:
             raise RuntimeError(f"A2A JSON-RPC error: {value['error']}")
         return value
 
+
+class KanbanCLI:
+    """Narrow JSON-only adapter for the installed Hermes Kanban CLI."""
+
+    def __init__(self, hermes_home: Path) -> None:
+        self.hermes_home = hermes_home
+        self.command = os.environ.get("HERMES_FLEET_CLI", "hermes")
+
+    def invoke(self, args: list[str], timeout: int = 60) -> Any:
+        env = os.environ.copy()
+        env["HERMES_HOME"] = str(self.hermes_home)
+        completed = subprocess.run(
+            [self.command, "kanban", *args],
+            text=True,
+            capture_output=True,
+            env=env,
+            timeout=timeout,
+            check=False,
+        )
+        if completed.returncode != 0:
+            detail = redact_text((completed.stderr or completed.stdout).strip())
+            raise RuntimeError(
+                f"kanban {' '.join(args[:2])} exited {completed.returncode}: {detail}"
+            )
+        try:
+            return json.loads(completed.stdout)
+        except json.JSONDecodeError as exc:
+            raise RuntimeError(f"kanban returned non-JSON output: {exc}") from exc
+
+    def create_ui_root(self, mission_id: str, root: Path, body: str) -> dict[str, Any]:
+        value = self.invoke([
+            "create",
+            f"[{mission_id}] ORION durable UI orchestration",
+            "--body", body,
+            "--assignee", "orion",
+            "--workspace", f"dir:{root}",
+            "--tenant", mission_id,
+            "--idempotency-key", f"fleet-ui-gauntlet:{mission_id}:root",
+            "--max-runtime", "2h",
+            "--max-retries", "1",
+            "--goal",
+            "--goal-max-turns", "40",
+            "--created-by", "fleet-runtime-smoke",
+            "--json",
+        ])
+        if not isinstance(value, dict):
+            raise RuntimeError("kanban create returned a non-object")
+        return value
+
+    def list_tenant(self, mission_id: str) -> list[dict[str, Any]]:
+        value = self.invoke(["list", "--tenant", mission_id, "--json"])
+        if not isinstance(value, list) or not all(isinstance(item, dict) for item in value):
+            raise RuntimeError("kanban list returned an invalid task collection")
+        return value
+
+    def show(self, task_id: str) -> dict[str, Any]:
+        value = self.invoke(["show", task_id, "--json"])
+        if not isinstance(value, dict):
+            raise RuntimeError("kanban show returned a non-object")
+        return value
 
 class RuntimeSmoke:
     def __init__(
@@ -602,7 +695,7 @@ Do not touch any other path and do not delegate. Verify the exact content, then 
                     reply=reply[-4000:],
                 )
 
-    def gauntlet_prompt(self, mission_id: str, root: Path) -> str:
+    def gauntlet_prompt(self, mission_id: str, root: Path, initial_revision: str) -> str:
         brief = self.gauntlet["brief"]
         artifacts = "\n".join(f"- {item}" for item in self.gauntlet["required_artifacts"])
         manifests = "\n".join(f"- {item}" for item in self.gauntlet["required_manifests"])
@@ -615,9 +708,71 @@ Do not touch any other path and do not delegate. Verify the exact content, then 
         return f"""UI FLEET GAUNTLET — mission {mission_id}
 
 Operate only inside this disposable Git workspace: {root}
-You are ORION. Coordinate and judge; your own production edits must remain zero.
-Use the enforced path AURORA design → FRAME implementation → PRISM functional QA → LENS independent rendered QA → FRAME remediation if needed → original-verifier retest → ORION closure.
-Do not substitute hidden delegation, MOA, or self-certification for the named A2A roles.
+Initial Git revision: {initial_revision}
+You are ORION running as a dispatcher-spawned Kanban worker. Your current task
+and workspace authorization are injected as HERMES_KANBAN_TASK and
+HERMES_KANBAN_WORKSPACE. Coordinate and judge; your own production edits must
+remain exactly zero. Do not use synchronous A2A calls for the long-running
+implementation. Build a durable dependency graph with kanban_create.
+
+Create exactly five child tasks, all with tenant={mission_id},
+workspace_kind="dir", workspace_path="{root}", max_runtime_seconds=3600,
+max_retries=1, goal_mode=true, goal_max_turns=20, and unique idempotency keys prefixed
+"fleet-ui-gauntlet:{mission_id}:". Use the task ids returned by kanban_create
+as the parents dependencies:
+
+1. AURORA design, parent=[your current ORION task]. AURORA must inspect
+   MISSION.md and write PRODUCT_CONTEXT.md, REFERENCE_LEDGER.md,
+   DESIGN_DIRECTIONS.md, DESIGN_DNA.md, DESIGN_CONTRACT.md, and
+   evidence/manifests/aurora-contract.json. It must not edit app production
+   source. Its manifest must use mission_id={mission_id}, its real Kanban task
+   id, owner=aurora, revision={initial_revision}, a non-empty method, and PASS
+   only if the full design contract is complete. It must finish through
+   kanban_complete with matching structured metadata.
+
+2. FRAME implementation, parent=[AURORA task]. FRAME must read the design
+   contract, implement app/index.html, app/styles.css and app/app.js, cover all
+   required states and journeys, keyboard/focus/reduced-motion behavior and all
+   required responsive widths. FRAME must stage the design and app source and
+   create a real Git commit. After that commit it must write
+   evidence/manifests/frame-implementation.json referencing the exact current
+   Git HEAD, then kanban_complete with matching structured metadata.
+
+3. PRISM functional verification, parent=[FRAME task]. PRISM must never edit
+   app production source. It must test every primary journey and required
+   state, write FUNCTIONAL_QA.md and
+   evidence/manifests/prism-functional.json bound to the exact Git HEAD, and
+   kanban_complete with structured PASS or FAIL metadata. It must not disguise
+   an untested journey as PASS.
+
+4. LENS rendered verification, parent=[FRAME task]. LENS must never edit app
+   production source. It must render the real app, inspect required states and
+   capture real PNGs at exact widths 320, 390, 768, 1440 and 1920 at the paths
+   in MISSION.md. It must write VISUAL_QA.md and
+   evidence/manifests/lens-rendered.json bound to the exact Git HEAD, then
+   kanban_complete with structured PASS or FAIL metadata. Missing browser
+   evidence is FAIL, never an assumed PASS.
+
+5. ORION closure, parents=[PRISM task, LENS task], assignee=orion. This closure
+   worker must inspect the injected parent handoffs. It must not edit app source
+   or fabricate missing artifacts. If both independent verifiers report PASS
+   for the same exact revision, call kanban_complete with a substantive summary
+   and metadata containing artifact_kind="orion-closure",
+   mission_id="{mission_id}", owner="orion", result="PASS", the exact shared
+   revision, method, and the FRAME/PRISM/LENS task ids. If either verifier
+   failed, revisions differ, or evidence is missing, call kanban_block instead.
+   The deterministic harness will materialize CLOSURE_REPORT.md and the ORION
+   manifest from this completion metadata because ORION intentionally has no
+   production filesystem tool.
+
+Complete your current root task only after the five-task graph exists. Include
+all child task ids in your kanban_complete metadata. Do not implement, verify,
+or self-certify any child stage yourself.
+
+Enforced path: AURORA design → FRAME implementation → PRISM functional QA and
+LENS independent rendered QA → FRAME remediation if a verifier requests it →
+original-verifier retest → ORION closure. Do not substitute hidden delegation,
+MOA, or self-certification for named roles.
 
 Product: {brief['product']}
 Objective: {brief['objective']}
@@ -640,6 +795,83 @@ Every manifest must follow governance/schemas/evidence-manifest.schema.json sema
 
 Do not report PASS if a required peer, browser capture, functional check, artifact, state, or viewport is missing. End BLOCKED instead. Return a concise closure summary only after writing the required evidence through the proper specialist owners."""
 
+    @staticmethod
+    def compact_tasks(tasks: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        return [
+            {
+                "id": task.get("id") or task.get("task_id"),
+                "title": task.get("title"),
+                "assignee": task.get("assignee"),
+                "status": task.get("status"),
+            }
+            for task in tasks
+        ]
+
+    def materialize_orion_closure(
+        self,
+        kanban: KanbanCLI,
+        root: Path,
+        mission_id: str,
+        tasks: list[dict[str, Any]],
+    ) -> tuple[str, str]:
+        closure_candidates = [
+            task for task in tasks
+            if str(task.get("assignee", "")).lower() == "orion"
+            and "closure" in str(task.get("title", "")).lower()
+        ]
+        if len(closure_candidates) != 1:
+            raise RuntimeError(
+                f"expected exactly one ORION closure task, found {len(closure_candidates)}"
+            )
+        closure_id = task_id_from_json(closure_candidates[0])
+        if not closure_id:
+            raise RuntimeError("ORION closure task has no id")
+        payload = kanban.show(closure_id)
+        metadata: dict[str, Any] = {}
+        for run in reversed(payload.get("runs") or []):
+            if isinstance(run, dict):
+                candidate = metadata_object(run.get("metadata"))
+                if candidate.get("artifact_kind") == "orion-closure":
+                    metadata = candidate
+                    break
+        summary = str(payload.get("latest_summary") or "").strip()
+        if not metadata:
+            raise RuntimeError("ORION closure completion metadata is missing")
+        if metadata.get("mission_id") != mission_id or metadata.get("result") != "PASS":
+            raise RuntimeError("ORION closure metadata does not attest PASS for this mission")
+        head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
+        if metadata.get("revision") != head:
+            raise RuntimeError(
+                f"ORION closure revision={metadata.get('revision')!r}, HEAD={head}"
+            )
+        if not summary:
+            raise RuntimeError("ORION closure summary is empty")
+
+        report = within(root, "CLOSURE_REPORT.md")
+        report.write_text(
+            f"# RelayOps UI Gauntlet Closure\n\n"
+            f"- Mission: `{mission_id}`\n"
+            f"- ORION task: `{closure_id}`\n"
+            f"- Final revision: `{head}`\n"
+            f"- Result: **PASS**\n\n"
+            f"## ORION judgment\n\n{summary}\n",
+            encoding="utf-8",
+        )
+        manifest = within(root, "evidence/manifests/orion-closure.json")
+        manifest.parent.mkdir(parents=True, exist_ok=True)
+        manifest.write_text(json.dumps({
+            "mission_id": mission_id,
+            "task_id": closure_id,
+            "owner": "orion",
+            "verifier": None,
+            "revision": head,
+            "method": str(metadata.get("method") or "ORION Kanban parent-handoff judgment"),
+            "result": "PASS",
+            "timestamp": utc_now(),
+            "materialized_by": "scripts/runtime_smoke.py",
+        }, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        return closure_id, summary
+
     def run_ui_gauntlet(self, workspace: Path) -> None:
         mission_id = f"UI-{datetime.now(timezone.utc).strftime('%Y%m%d')}-{uuid.uuid4().hex[:8]}"
         root = within(workspace, f"ui-gauntlet/{mission_id}")
@@ -647,30 +879,87 @@ Do not report PASS if a required peer, browser capture, functional check, artifa
         subprocess.run(["git", "init", "-q"], cwd=root, check=True)
         subprocess.run(["git", "config", "user.name", "Hermes Fleet Gauntlet"], cwd=root, check=True)
         subprocess.run(["git", "config", "user.email", "fleet-gauntlet@localhost"], cwd=root, check=True)
-        (root / "MISSION.md").write_text(self.gauntlet_prompt(mission_id, root), encoding="utf-8")
+        placeholder_revision = "RESOLVED_IN_KANBAN_ROOT_TASK"
+        (root / "MISSION.md").write_text(
+            self.gauntlet_prompt(mission_id, root, placeholder_revision), encoding="utf-8"
+        )
         subprocess.run(["git", "add", "MISSION.md"], cwd=root, check=True)
         subprocess.run(["git", "commit", "-qm", "test: initialize UI gauntlet"], cwd=root, check=True)
+        initial_revision = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=root, text=True
+        ).strip()
+        prompt = self.gauntlet_prompt(mission_id, root, initial_revision)
+        kanban = KanbanCLI(self.hermes_home)
         try:
-            response = self.client.send(
-                "orion",
-                int(self.roles["orion"]["a2a_port"]),
-                str(self.pack["rpc_path"]),
-                self.gauntlet_prompt(mission_id, root),
-            )
-            reply = extract_text(response)
+            created = kanban.create_ui_root(mission_id, root, prompt)
+            root_task_id = task_id_from_json(created)
+            if not root_task_id:
+                raise RuntimeError("kanban create response has no task id")
         except Exception as exc:
-            self.add("ui-gauntlet-call", "FAIL", f"{type(exc).__name__}: {exc}", "orion")
-            return
-        reply_failure = a2a_reply_failure(reply)
-        if reply_failure:
             self.add(
-                "ui-gauntlet-call", "FAIL", f"ORION A2A failure: {reply_failure}", "orion",
-                mission_id=mission_id, workspace=str(root), reply=reply[-6000:],
+                "ui-gauntlet-call", "FAIL", f"Kanban mission creation failed: {type(exc).__name__}: {exc}",
+                "orion", mission_id=mission_id, workspace=str(root),
             )
+            self.validate_ui_gauntlet(root, mission_id)
+            return
+
+        deadline = time.monotonic() + self.timeout
+        tasks: list[dict[str, Any]] = []
+        failure: str | None = None
+        while time.monotonic() < deadline:
+            try:
+                tasks = kanban.list_tenant(mission_id)
+            except Exception as exc:
+                failure = f"Kanban polling failed: {type(exc).__name__}: {exc}"
+                break
+            statuses = {str(task.get("status", "unknown")) for task in tasks}
+            failed = [task for task in tasks if task.get("status") in KANBAN_FAILURE_STATUSES]
+            if failed:
+                failure = "Kanban mission blocked: " + ", ".join(
+                    f"{task_id_from_json(task) or '?'}@{task.get('assignee') or '?'}"
+                    for task in failed
+                )
+                break
+            active = statuses & KANBAN_ACTIVE_STATUSES
+            if tasks and not active:
+                minimum_tasks = int(self.gauntlet.get("minimum_task_count", 6))
+                if len(tasks) < minimum_tasks:
+                    failure = (
+                        f"ORION produced an incomplete task graph "
+                        f"({len(tasks)}/{minimum_tasks} tasks)"
+                    )
+                elif statuses != {"done"}:
+                    failure = f"Kanban mission ended in unexpected states: {sorted(statuses)}"
+                break
+            time.sleep(10)
+        else:
+            failure = f"Kanban mission exceeded {self.timeout}s harness timeout"
+
+        if failure:
+            self.add(
+                "ui-gauntlet-call", "FAIL", failure, "orion",
+                mission_id=mission_id, workspace=str(root), root_task_id=root_task_id,
+                tasks=self.compact_tasks(tasks),
+            )
+            self.validate_ui_gauntlet(root, mission_id)
+            return
+
+        try:
+            closure_task_id, reply = self.materialize_orion_closure(
+                kanban, root, mission_id, tasks
+            )
+        except Exception as exc:
+            self.add(
+                "ui-gauntlet-call", "FAIL", f"Closure materialization failed: {type(exc).__name__}: {exc}",
+                "orion", mission_id=mission_id, workspace=str(root),
+                root_task_id=root_task_id, tasks=self.compact_tasks(tasks),
+            )
+            self.validate_ui_gauntlet(root, mission_id)
             return
         self.add(
-            "ui-gauntlet-call", "PASS", "ORION returned a final A2A response", "orion",
-            mission_id=mission_id, workspace=str(root), reply=reply[-6000:],
+            "ui-gauntlet-call", "PASS", "durable Kanban UI mission completed", "orion",
+            mission_id=mission_id, workspace=str(root), root_task_id=root_task_id,
+            closure_task_id=closure_task_id, tasks=self.compact_tasks(tasks), reply=reply[-6000:],
         )
         self.validate_ui_gauntlet(root, mission_id)
 

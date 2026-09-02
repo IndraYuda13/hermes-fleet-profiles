@@ -2,6 +2,8 @@ version: 1
 name: ui-prototype-gauntlet
 entry_profile: orion
 timeout_seconds: 3600
+execution_transport: kanban
+minimum_task_count: 6
 
 brief:
   product: RelayOps
@@ -66,4 +68,3 @@ forbidden_source_patterns:
   - backdrop-filter
   - lorem ipsum
   - ai-powered
-
