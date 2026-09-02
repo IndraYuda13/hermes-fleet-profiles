@@ -73,6 +73,11 @@ manifest_required_true_fields:
   evidence/manifests/prism-functional.json: [source_anti_slop_zero_matches]
   evidence/manifests/lens-rendered.json: [source_anti_slop_zero_matches]
 
+manifest_reconcilable_fields:
+  - verifier
+  - timestamp
+  - source_anti_slop_zero_matches
+
 forbidden_source_patterns:
   - linear-gradient
   - radial-gradient

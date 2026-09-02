@@ -13,6 +13,7 @@
     "artifact": {"type": ["string", "null"]},
     "revision": {"type": "string", "minLength": 7},
     "method": {"type": "string", "minLength": 1},
+    "materialized_by": {"type": "string", "minLength": 1},
     "environment": {"type": ["string", "null"]},
     "route": {"type": ["string", "null"]},
     "state": {"type": ["string", "null"]},

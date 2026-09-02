@@ -1003,6 +1003,84 @@ Do not report PASS if a required peer, browser capture, functional check, artifa
         }, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         return closure_id, summary
 
+    def reconcile_specialist_manifests(
+        self,
+        kanban: KanbanCLI,
+        root: Path,
+        mission_id: str,
+        tasks: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        """Copy omitted evidence fields from the exact owning task metadata."""
+        expected_owners = self.gauntlet["expected_owners"]
+        allowed_fields = tuple(self.gauntlet.get("manifest_reconcilable_fields", []))
+        task_index = {
+            task_id_from_json(task): task
+            for task in tasks
+            if task_id_from_json(task)
+        }
+        reconciled: list[dict[str, Any]] = []
+        for relative in self.gauntlet["required_manifests"]:
+            owner = expected_owners[relative]
+            if owner == "orion":
+                continue
+            path = within(root, relative)
+            if not path.is_file():
+                continue
+            try:
+                manifest = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                continue
+            if not isinstance(manifest, dict):
+                continue
+            task_id = str(manifest.get("task_id") or "")
+            task = task_index.get(task_id)
+            if (
+                not task
+                or str(task.get("assignee") or "").lower() != owner
+                or manifest.get("mission_id") != mission_id
+                or manifest.get("owner") != owner
+            ):
+                continue
+            payload = kanban.show(task_id)
+            matching_metadata: dict[str, Any] = {}
+            for run in reversed(payload.get("runs") or []):
+                if not isinstance(run, dict):
+                    continue
+                candidate = metadata_object(run.get("metadata"))
+                if (
+                    candidate.get("mission_id") == mission_id
+                    and candidate.get("task_id") == task_id
+                    and candidate.get("owner") == owner
+                    and candidate.get("revision") == manifest.get("revision")
+                    and candidate.get("result") == manifest.get("result") == "PASS"
+                ):
+                    matching_metadata = candidate
+                    break
+            if not matching_metadata:
+                continue
+            patched_fields: list[str] = []
+            for field_name in allowed_fields:
+                if field_name not in matching_metadata:
+                    continue
+                if field_name not in manifest:
+                    manifest[field_name] = matching_metadata[field_name]
+                    patched_fields.append(field_name)
+                elif manifest[field_name] != matching_metadata[field_name]:
+                    raise RuntimeError(
+                        f"{relative} conflicts with {task_id} metadata for {field_name}"
+                    )
+            if patched_fields:
+                path.write_text(
+                    json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+                reconciled.append({
+                    "manifest": relative,
+                    "task_id": task_id,
+                    "fields": patched_fields,
+                })
+        return reconciled
+
     def run_ui_gauntlet(self, workspace: Path) -> None:
         mission_id = f"UI-{datetime.now(timezone.utc).strftime('%Y%m%d')}-{uuid.uuid4().hex[:8]}"
         if not self.ui_model_preflight(mission_id):
@@ -1099,6 +1177,9 @@ Do not report PASS if a required peer, browser capture, functional check, artifa
             closure_task_id, reply = self.materialize_orion_closure(
                 kanban, root, mission_id, tasks
             )
+            reconciled = self.reconcile_specialist_manifests(
+                kanban, root, mission_id, tasks
+            )
         except Exception as exc:
             self.add(
                 "ui-gauntlet-call", "FAIL", f"Closure materialization failed: {type(exc).__name__}: {exc}",
@@ -1107,6 +1188,17 @@ Do not report PASS if a required peer, browser capture, functional check, artifa
             )
             self.validate_ui_gauntlet(root, mission_id)
             return
+        self.add(
+            "ui-manifest-reconciliation",
+            "PASS",
+            (
+                f"reconciled {len(reconciled)} specialist manifest(s) from exact "
+                "Kanban completion metadata"
+                if reconciled
+                else "specialist manifests required no metadata reconciliation"
+            ),
+            reconciled=reconciled,
+        )
         self.add(
             "ui-gauntlet-call", "PASS", "durable Kanban UI mission completed", "orion",
             mission_id=mission_id, workspace=str(root), root_task_id=root_task_id,

@@ -332,6 +332,44 @@ class UIGauntletValidationTests(unittest.TestCase):
         self.assertEqual(manifest["owner"], "orion")
         self.assertTrue((root / "CLOSURE_REPORT.md").is_file())
 
+    def test_reconciles_only_missing_fields_from_exact_owner_metadata(self):
+        root = self.base / "reconcile"
+        manifest_path = root / "evidence/manifests/frame-implementation.json"
+        manifest_path.parent.mkdir(parents=True)
+        manifest_path.write_text(json.dumps({
+            "mission_id": "UI-TEST-reconcile",
+            "task_id": "t_frame",
+            "owner": "frame",
+            "revision": "abc123456789",
+            "method": "fixture",
+            "result": "PASS",
+        }), encoding="utf-8")
+
+        class FakeKanban:
+            def show(self, _task_id):
+                return {"runs": [{"metadata": {
+                    "mission_id": "UI-TEST-reconcile",
+                    "task_id": "t_frame",
+                    "owner": "frame",
+                    "verifier": "frame",
+                    "revision": "abc123456789",
+                    "result": "PASS",
+                    "timestamp": "2026-09-02T00:00:00Z",
+                    "source_anti_slop_zero_matches": True,
+                }}]}
+
+        reconciled = self.smoke.reconcile_specialist_manifests(
+            FakeKanban(),
+            root,
+            "UI-TEST-reconcile",
+            [{"id": "t_frame", "assignee": "frame"}],
+        )
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        self.assertEqual(len(reconciled), 1)
+        self.assertEqual(manifest["verifier"], "frame")
+        self.assertEqual(manifest["timestamp"], "2026-09-02T00:00:00Z")
+        self.assertIs(manifest["source_anti_slop_zero_matches"], True)
+
 
 if __name__ == "__main__":
     unittest.main()

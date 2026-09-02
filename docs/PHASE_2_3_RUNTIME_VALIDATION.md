@@ -174,6 +174,13 @@ materialized from the ORION closure task's completion summary and metadata.
 This preserves ORION ownership while keeping production filesystem tools out of
 the coordinator profile.
 
+Specialist manifests remain agent-authored. If FRAME, PRISM or LENS omits only
+an allowed evidence field from the file but its exact owning Kanban completion
+metadata contains that field with the same mission, task, owner, revision and
+PASS result, the harness deterministically reconciles the omission. It never
+creates a missing specialist manifest, overwrites a conflicting value, changes
+production source, or borrows evidence from another task/revision.
+
 Evidence summaries are written under
 `/srv/hermes-fleet-staging/.fleet-smoke-evidence/`. They are runtime artifacts
 and must not be synced into Git.
