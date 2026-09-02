@@ -38,8 +38,8 @@ def replace_top_level(text: str, key: str, value: object | None) -> str:
     return "".join(lines[:start]) + replacement + "".join(lines[end:])
 
 
-def apply_policy(config_path: Path, role: dict[str, object]) -> None:
-    text = config_path.read_text(encoding="utf-8")
+def render_policy(text: str, role: dict[str, object], profile_name: str) -> str:
+    """Render policy-owned fields while preserving every runtime-owned field."""
     current = yaml.safe_load(text) or {}
 
     text = replace_top_level(text, "toolsets", role["allowed_root_toolsets"])
@@ -50,7 +50,6 @@ def apply_policy(config_path: Path, role: dict[str, object]) -> None:
         }
         text = replace_top_level(text, "platform_toolsets", platform_value)
 
-    profile_name = config_path.parent.name
     if profile_name == "groupbot":
         text = replace_top_level(text, "terminal", None)
     else:
@@ -82,6 +81,12 @@ def apply_policy(config_path: Path, role: dict[str, object]) -> None:
         text = replace_top_level(text, "kanban", kanban)
 
     yaml.safe_load(text)
+    return text
+
+
+def apply_policy(config_path: Path, role: dict[str, object]) -> None:
+    text = config_path.read_text(encoding="utf-8")
+    text = render_policy(text, role, config_path.parent.name)
     config_path.write_text(text, encoding="utf-8")
 
 
@@ -98,4 +103,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

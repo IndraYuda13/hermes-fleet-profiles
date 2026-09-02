@@ -36,6 +36,7 @@ hermes-fleet-profiles/
 ├── requirements-policy.txt
 ├── scripts/
 │   ├── apply_role_policy.py     # Render role boundaries into configs
+│   ├── deploy_role_policy.py    # Surgical, backed-up live policy overlay
 │   ├── sanitize_config.py       # Remove committed runtime secrets
 │   ├── sanitize_skill_examples.py # Remove credential-shaped doc samples
 │   ├── runtime_smoke.py         # Live config, A2A, SoD and UI gauntlet
@@ -74,6 +75,15 @@ Before exporting live changes back into Git:
 ```bash
 ./scripts/sync.sh                 # staged validation + itemized dry-run
 ./scripts/sync.sh --apply         # requires a clean Git worktree
+```
+
+For an existing configured fleet, apply policy without replacing runtime-owned
+credentials, providers, channel identifiers, plugins or skills:
+
+```bash
+python3 scripts/deploy_role_policy.py --hermes-home "$HOME/.hermes"          # dry-run
+# Stop all fleet gateways after reviewing the plan.
+python3 scripts/deploy_role_policy.py --hermes-home "$HOME/.hermes" --apply
 ```
 
 ## Policy gate

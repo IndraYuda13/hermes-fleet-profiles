@@ -29,19 +29,34 @@ config after `--replace-config`; never sync those identifiers back to Git.
 
 ## Staged deployment
 
+Prefer the surgical role-policy overlay for an existing configured fleet. It
+changes only policy-owned tool, MOA, delegation, approval and review fields;
+runtime-owned providers, credentials, platform identifiers, plugins and skills
+remain untouched.
+
+First run its non-mutating plan while gateways are still online:
+
 ```bash
 git pull --ff-only
 python3 -m pip install -r requirements-policy.txt
 python3 scripts/sanitize_config.py --check profiles/*/config.yaml
 python3 scripts/validate_fleet.py
-./bootstrap.sh
+python3 scripts/deploy_role_policy.py --hermes-home "$HOME/.hermes"
 ```
 
-Review the dry-run output. Then, with gateways stopped:
+Review the field-only plan. Stop every default/profile gateway. The apply mode
+will refuse if any declared A2A port is still listening, then create a mode-0600
+backup and automatically restore it on failure:
 
 ```bash
-./bootstrap.sh --apply --replace-config
+python3 scripts/deploy_role_policy.py \
+  --hermes-home "$HOME/.hermes" \
+  --apply
 ```
+
+Use `./bootstrap.sh --apply --replace-config` only for a deliberate full config
+replacement after every runtime environment value and GROUPBOT overlay is
+prepared. It is not the normal upgrade path for an already configured fleet.
 
 Restart the affected services and run:
 
@@ -64,8 +79,8 @@ hermes status --deep
 
 ## Rollback
 
-`bootstrap.sh` prints the exact recovery directory it created. Stop gateways,
-restore the affected profile declarations from that directory, restart, then
+The deployment command prints the exact recovery directory it created. Stop
+gateways, restore each `PROFILE/config.yaml` from that directory, restart, then
 repeat `hermes status --deep` and A2A smoke checks.
 
 Do not use a forced Git reset as runtime rollback. Git state and live Hermes
