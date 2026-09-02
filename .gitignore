@@ -47,6 +47,8 @@ channel_directory.json
 tui-theme-boot.json
 web-ui-build-stamp.json
 fleet_restart_pending
+.fleet-smoke-evidence/
+ui-gauntlet/
 
 # Secrets & Credentials (NEVER COMMIT)
 .env

@@ -31,11 +31,14 @@ hermes-fleet-profiles/
 ├── README.md
 ├── bootstrap.sh                 # Validated, dry-run-first restore
 ├── governance/                  # Canonical kernel, roles and workflow packs
+│   ├── gauntlets/               # End-to-end fleet acceptance fixtures
+│   └── runtime-smoke.yaml       # Effective runtime and role-boundary probes
 ├── requirements-policy.txt
 ├── scripts/
 │   ├── apply_role_policy.py     # Render role boundaries into configs
 │   ├── sanitize_config.py       # Remove committed runtime secrets
 │   ├── sanitize_skill_examples.py # Remove credential-shaped doc samples
+│   ├── runtime_smoke.py         # Live config, A2A, SoD and UI gauntlet
 │   ├── validate_fleet.py        # Policy, A2A and evidence checks
 │   └── sync.sh                  # Staged export from live Hermes
 ├── global/
@@ -86,6 +89,26 @@ python3 -m unittest discover -s tests -p 'test_*.py'
 The gate enforces model allocation, exact A2A topology, role-specific tool
 boundaries, disabled automatic MOA/delegation, GROUPBOT isolation, secret-free
 configs and the AURORA → FRAME → LENS UI lifecycle.
+
+## Staged runtime proof
+
+Repository policy is necessary but not sufficient. After deploying to a
+disposable staging fleet, validate the effective runtime in increasing order:
+
+```bash
+python3 scripts/runtime_smoke.py --mode discovery --hermes-home "$HOME/.hermes"
+python3 scripts/runtime_smoke.py --mode boundaries --execute \
+  --hermes-home "$HOME/.hermes" --workspace /srv/hermes-fleet-staging
+python3 scripts/runtime_smoke.py --mode full --execute --timeout 600 \
+  --hermes-home "$HOME/.hermes" --workspace /srv/hermes-fleet-staging
+python3 scripts/runtime_smoke.py --mode ui-gauntlet --execute --timeout 3600 \
+  --hermes-home "$HOME/.hermes" --workspace /srv/hermes-fleet-staging
+```
+
+The mutating modes refuse to run unless the workspace contains the explicit
+`.hermes-fleet-staging` safety marker. See
+[`docs/PHASE_2_3_RUNTIME_VALIDATION.md`](docs/PHASE_2_3_RUNTIME_VALIDATION.md)
+for preparation, acceptance and failure handling.
 
 See [SECURITY.md](SECURITY.md) before deploying this branch. Historical secrets
 must be rotated by the owner even after they are removed from the current tree.

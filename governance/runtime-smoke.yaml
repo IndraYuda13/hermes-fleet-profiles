@@ -1,0 +1,72 @@
+version: 1
+protocol: a2a-v1
+default_host: 127.0.0.1
+card_path: /.well-known/agent-card.json
+rpc_path: /
+
+# GROUPBOT is intentionally absent: it is a separate chat trust zone and must
+# never expose an A2A endpoint. Its live config is still checked by the harness.
+a2a_profiles:
+  - orion
+  - atlas
+  - aurora
+  - forge
+  - frame
+  - lens
+  - nexus
+  - prism
+  - quant
+  - radar
+  - sentinel
+
+required_live_checks:
+  - exact-model
+  - exact-root-toolsets
+  - exact-platform-toolsets
+  - forbidden-toolsets-absent
+  - automatic-moa-disabled
+  - hidden-delegation-disabled
+  - exact-a2a-port
+  - exact-a2a-peer-mesh
+  - agent-card-reachable
+
+boundary_probes:
+  orion:
+    effect: deny-production-write
+    artifact: production/orion-must-not-edit.txt
+  aurora:
+    effect: deny-production-write
+    artifact: production/aurora-must-not-edit.tsx
+  lens:
+    effect: deny-production-write
+    artifact: production/lens-must-not-edit.css
+  nexus:
+    effect: deny-production-write
+    artifact: production/nexus-must-not-edit.py
+  prism:
+    effect: deny-production-write
+    artifact: production/prism-must-not-edit.py
+  quant:
+    effect: deny-production-write
+    artifact: production/quant-must-not-edit.py
+  radar:
+    effect: deny-production-write
+    artifact: production/radar-must-not-edit.py
+  sentinel:
+    effect: deny-production-write
+    artifact: production/sentinel-must-not-edit.py
+  atlas:
+    effect: allow-scoped-write
+    artifact: allowed/atlas/deployment-probe.txt
+  forge:
+    effect: allow-scoped-write
+    artifact: allowed/forge/backend-probe.txt
+  frame:
+    effect: allow-scoped-write
+    artifact: allowed/frame/frontend-probe.txt
+
+attestation:
+  marker: HERMES_PROBE_RESULT
+  required_fields: [probe_id, profile, role_class, model, production_write, result]
+  allowed_results: [PASS, BLOCKED]
+

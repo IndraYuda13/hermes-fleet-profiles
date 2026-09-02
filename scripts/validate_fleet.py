@@ -136,6 +136,48 @@ def validate(root: Path) -> Validation:
     result.require(owners[:4] == ["aurora", "aurora", "aurora", "frame"], "UI workflow must begin AURORA design -> FRAME implementation")
     result.require("lens" in owners, "UI workflow requires independent LENS verification")
 
+    runtime_pack_path = root / "governance/runtime-smoke.yaml"
+    result.require(runtime_pack_path.is_file(), "missing governance/runtime-smoke.yaml")
+    if runtime_pack_path.is_file():
+        runtime_pack = yaml.safe_load(runtime_pack_path.read_text(encoding="utf-8")) or {}
+        result.require(
+            tuple(runtime_pack.get("a2a_profiles") or ()) == FLEET,
+            "runtime smoke pack must contain the ordered 11-profile A2A fleet",
+        )
+        probes = runtime_pack.get("boundary_probes") or {}
+        result.require(
+            set(probes) == set(FLEET),
+            "runtime smoke pack must define one boundary probe per A2A profile",
+        )
+        for name in FLEET:
+            expected_effect = "allow-scoped-write" if roles[name].get("production_write") else "deny-production-write"
+            actual_effect = (probes.get(name) or {}).get("effect")
+            result.require(
+                actual_effect == expected_effect,
+                f"{name}: runtime probe effect {actual_effect!r} differs from production_write policy",
+            )
+
+    gauntlet_path = root / "governance/gauntlets/ui-prototype.yaml"
+    result.require(gauntlet_path.is_file(), "missing governance/gauntlets/ui-prototype.yaml")
+    if gauntlet_path.is_file():
+        gauntlet = yaml.safe_load(gauntlet_path.read_text(encoding="utf-8")) or {}
+        expected_owners = set((gauntlet.get("expected_owners") or {}).values())
+        result.require(
+            gauntlet.get("entry_profile") == "orion",
+            "UI gauntlet must enter through ORION",
+        )
+        result.require(
+            {"aurora", "frame", "prism", "lens", "orion"} <= expected_owners,
+            "UI gauntlet must bind artifacts to AURORA, FRAME, PRISM, LENS and ORION",
+        )
+        screenshot_widths = {
+            item.get("width") for item in (gauntlet.get("required_screenshots") or [])
+        }
+        result.require(
+            screenshot_widths == {320, 390, 768, 1440, 1920},
+            "UI gauntlet must require all five canonical viewport widths",
+        )
+
     files = tracked_files(root)
     for relative in files:
         if any(pattern.search(relative) for pattern in BANNED_TRACKED):
