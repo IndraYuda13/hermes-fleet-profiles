@@ -90,6 +90,24 @@ This mode uses model calls. Review provider limits before starting it. Any
 unreachable peer, malformed evidence marker, role mismatch, forbidden edit, or
 missing allowed artifact fails the run.
 
+After correcting a bounded subset of failures, rerun only those profiles rather
+than paying for the whole fleet again:
+
+```bash
+python3 scripts/runtime_smoke.py \
+  --mode full \
+  --profiles sentinel,atlas,forge \
+  --execute \
+  --timeout 600 \
+  --hermes-home "$HOME/.hermes" \
+  --workspace /srv/hermes-fleet-staging/targeted-rerun
+```
+
+ATLAS is intentionally different from FRAME/FORGE: a direct A2A request without
+a kanban card and assigned workspace must be rejected. The probe verifies that
+authorization gate; an actual ATLAS write belongs to a tracked deployment
+mission with rollback context.
+
 ## 5. UI fleet gauntlet
 
 The UI gauntlet enters through ORION and requires live collaboration:
@@ -136,4 +154,3 @@ and must not be synced into Git.
 
 Only after all four modes pass should the Phase 0–1 PR be considered ready for
 owner review. Credential rotation and production rollout remain separate gates.
-

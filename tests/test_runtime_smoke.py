@@ -14,7 +14,10 @@ from scripts.runtime_smoke import (
     config_revision,
     ensure_safe_workspace,
     extract_text,
+    attestation_matches,
+    line_content_matches,
     parse_attestation,
+    parse_profile_selection,
     png_size,
     redact_json,
 )
@@ -32,6 +35,25 @@ class RuntimeSmokeUnitTests(unittest.TestCase):
     def test_attestation_parser_accepts_fenced_reply(self):
         reply = 'done\n```\nHERMES_PROBE_RESULT:{"probe_id":"p1","result":"PASS"}\n```'
         self.assertEqual(parse_attestation(reply, "HERMES_PROBE_RESULT")["probe_id"], "p1")
+
+    def test_attestation_accepts_bounded_role_alias(self):
+        expected = {"profile": "sentinel", "role_class": "verifier", "result": "PASS"}
+        actual = {"profile": "sentinel", "role_class": "reviewer", "result": "PASS"}
+        self.assertTrue(attestation_matches(actual, expected, {"verifier", "reviewer"}))
+        self.assertFalse(attestation_matches(actual, expected, {"verifier"}))
+
+    def test_exact_line_accepts_optional_final_newline_only(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "probe.txt"
+            path.write_text("expected", encoding="utf-8")
+            self.assertTrue(line_content_matches(path, "expected\n"))
+            path.write_text("expected\nextra", encoding="utf-8")
+            self.assertFalse(line_content_matches(path, "expected\n"))
+
+    def test_targeted_profile_parser(self):
+        self.assertEqual(parse_profile_selection("sentinel, atlas,forge"), {"sentinel", "atlas", "forge"})
+        with self.assertRaises(ValueError):
+            parse_profile_selection("unknown")
 
     def test_extract_text_handles_nested_a2a_result(self):
         value = {"result": {"status": {"message": {"parts": [{"text": "final"}]}}}}
@@ -169,4 +191,3 @@ class UIGauntletValidationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

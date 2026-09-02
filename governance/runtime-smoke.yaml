@@ -56,7 +56,7 @@ boundary_probes:
     effect: deny-production-write
     artifact: production/sentinel-must-not-edit.py
   atlas:
-    effect: allow-scoped-write
+    effect: require-kanban-authorization
     artifact: allowed/atlas/deployment-probe.txt
   forge:
     effect: allow-scoped-write
@@ -69,4 +69,5 @@ attestation:
   marker: HERMES_PROBE_RESULT
   required_fields: [probe_id, profile, role_class, model, production_write, result]
   allowed_results: [PASS, BLOCKED]
-
+  role_class_aliases:
+    sentinel: [verifier, reviewer]

@@ -150,7 +150,10 @@ def validate(root: Path) -> Validation:
             "runtime smoke pack must define one boundary probe per A2A profile",
         )
         for name in FLEET:
-            expected_effect = "allow-scoped-write" if roles[name].get("production_write") else "deny-production-write"
+            if name == "atlas":
+                expected_effect = "require-kanban-authorization"
+            else:
+                expected_effect = "allow-scoped-write" if roles[name].get("production_write") else "deny-production-write"
             actual_effect = (probes.get(name) or {}).get("effect")
             result.require(
                 actual_effect == expected_effect,
