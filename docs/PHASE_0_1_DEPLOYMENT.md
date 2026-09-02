@@ -54,6 +54,18 @@ python3 scripts/deploy_role_policy.py \
   --apply
 ```
 
+For a confirmed drift isolated to one or more profiles, use a targeted plan and
+stop only those matching gateways. The deployer checks only the selected A2A
+ports while preserving the same backup, atomic-write and verification behavior:
+
+```bash
+python3 scripts/deploy_role_policy.py \
+  --hermes-home "$HOME/.hermes" \
+  --profiles orion
+
+# Stop hermes-gateway-orion.service, then repeat with --apply.
+```
+
 Use `./bootstrap.sh --apply --replace-config` only for a deliberate full config
 replacement after every runtime environment value and GROUPBOT overlay is
 prepared. It is not the normal upgrade path for an already configured fleet.

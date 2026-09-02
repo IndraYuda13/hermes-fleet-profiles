@@ -164,6 +164,18 @@ def restore_backup(rendered: dict[str, tuple[Path, str, str]], backup: Path) -> 
         shutil.copy2(source, path)
 
 
+def parse_profile_selection(value: str | None, expected: set[str]) -> set[str]:
+    if value is None:
+        return set(expected)
+    selected = {item.strip().lower() for item in value.split(",") if item.strip()}
+    if not selected:
+        raise ValueError("profile selection is empty")
+    invalid = selected - expected
+    if invalid:
+        raise ValueError(f"unknown profiles: {sorted(invalid)}")
+    return selected
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -175,6 +187,10 @@ def main() -> int:
         default=Path(os.environ.get("HERMES_HOME", Path.home() / ".hermes")),
     )
     parser.add_argument("--backup-root", type=Path)
+    parser.add_argument(
+        "--profiles",
+        help="Comma-separated profiles for a targeted surgical deployment",
+    )
     parser.add_argument("--apply", action="store_true")
     args = parser.parse_args()
 
@@ -193,9 +209,14 @@ def main() -> int:
     if set(roles) != expected:
         print("ERROR: manifest does not contain the exact fleet")
         return 1
+    try:
+        selected = parse_profile_selection(args.profiles, expected)
+    except ValueError as exc:
+        print(f"ERROR: {exc}")
+        return 1
 
     rendered: dict[str, tuple[Path, str, str]] = {}
-    for profile in sorted(expected):
+    for profile in sorted(selected):
         path = hermes_home / "profiles" / profile / "config.yaml"
         if not path.is_file():
             print(f"ERROR: missing live config for {profile}: {path}")
@@ -210,7 +231,7 @@ def main() -> int:
         if before != after
     }
     print("Fleet role-policy plan:")
-    for profile in sorted(expected):
+    for profile in sorted(selected):
         fields = changed.get(profile, [])
         print(f"- {profile}: {'change ' + ', '.join(fields) if fields else 'no change'}")
     print("Runtime-owned providers, credentials, platform identities, plugins, and skills: PRESERVED")
@@ -219,10 +240,10 @@ def main() -> int:
         print("No policy drift detected.")
         return 0
     if not args.apply:
-        print("Dry-run complete. Stop every Hermes gateway, then rerun with --apply.")
+        print("Dry-run complete. Stop the selected Hermes gateways, then rerun with --apply.")
         return 0
 
-    open_ports = listening_ports(roles)
+    open_ports = listening_ports({profile: roles[profile] for profile in selected})
     if open_ports:
         print(f"ERROR: refusing apply while A2A ports are listening: {open_ports}")
         return 1

@@ -10,6 +10,7 @@ from scripts.deploy_role_policy import (
     backup_configs,
     changed_policy_fields,
     listening_ports,
+    parse_profile_selection,
     restore_backup,
     verify_policy,
 )
@@ -124,6 +125,16 @@ approvals: {mode: off}
         }
         errors = verify_policy(config, self.role, "orion")
         self.assertGreaterEqual(len(errors), 5)
+
+    def test_targeted_profile_selection(self):
+        expected = {"orion", "frame", "lens"}
+        self.assertEqual(
+            parse_profile_selection("orion, lens", expected),
+            {"orion", "lens"},
+        )
+        self.assertEqual(parse_profile_selection(None, expected), expected)
+        with self.assertRaises(ValueError):
+            parse_profile_selection("unknown", expected)
 
 
 if __name__ == "__main__":
