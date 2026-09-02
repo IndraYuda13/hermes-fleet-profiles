@@ -7,6 +7,7 @@ import threading
 import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from unittest.mock import patch
 
 from scripts.runtime_smoke import (
     A2AClient,
@@ -188,6 +189,43 @@ class UIGauntletValidationTests(unittest.TestCase):
     def write_png(path: Path, width: int, height: int = 800):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00\x00\x00\x0dIHDR" + struct.pack(">II", width, height))
+
+    def test_ui_prompt_pins_manifest_contract_and_worker_budget(self):
+        prompt = self.smoke.gauntlet_prompt("UI-TEST-prompt", self.base, "abc1234")
+        self.assertIn("goal_max_turns=40", prompt)
+        self.assertIn("max_retries=2", prompt)
+        self.assertEqual(prompt.count("every required key exactly"), 4)
+
+    def test_ui_model_preflight_passes_only_when_every_worker_answers(self):
+        class ReadyClient:
+            def __init__(self, _host, _timeout):
+                pass
+
+            def send(self, _profile, _port, _path, prompt):
+                token = prompt.rsplit(" ", 1)[-1]
+                return {"result": {"message": {"parts": [{"text": token}]}}}
+
+        with patch("scripts.runtime_smoke.A2AClient", ReadyClient):
+            self.assertTrue(self.smoke.ui_model_preflight("UI-TEST-ready"))
+        self.assertEqual(self.smoke.records[-1].check, "ui-model-preflight")
+        self.assertEqual(self.smoke.records[-1].result, "PASS")
+
+    def test_ui_model_preflight_fails_closed_on_terminal_reply(self):
+        class UnavailableClient:
+            def __init__(self, _host, _timeout):
+                pass
+
+            def send(self, profile, _port, _path, prompt):
+                if profile == "lens":
+                    text = "[agent did not reply in time]"
+                else:
+                    text = prompt.rsplit(" ", 1)[-1]
+                return {"result": {"message": {"parts": [{"text": text}]}}}
+
+        with patch("scripts.runtime_smoke.A2AClient", UnavailableClient):
+            self.assertFalse(self.smoke.ui_model_preflight("UI-TEST-down"))
+        self.assertEqual(self.smoke.records[-1].result, "FAIL")
+        self.assertIn("lens", self.smoke.records[-1].evidence["failures"])
 
     def test_complete_ui_evidence_passes(self):
         root = self.base / "gauntlet"

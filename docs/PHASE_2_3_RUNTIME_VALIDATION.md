@@ -125,7 +125,10 @@ ORION root card with a shared `dir:` workspace. ORION must create the linked
 AURORA, FRAME, PRISM, LENS and closure cards. The embedded gateway dispatcher
 injects `HERMES_KANBAN_TASK` and `HERMES_KANBAN_WORKSPACE` into every worker.
 The harness polls JSON task state and fails on blocked, incomplete, unexpected
-or timed-out graphs.
+or timed-out graphs. Before creating the workspace mission, it concurrently
+probes ORION, AURORA, FRAME, PRISM and LENS with a bounded 90-second live-model
+readiness check. A provider outage therefore fails fast instead of consuming a
+full gauntlet run and leaving an orphaned partial graph.
 
 This is intentionally not one long synchronous A2A call. Hermes' inbound A2A
 reply deadline is independent of the harness HTTP timeout and is unsuitable as
@@ -147,6 +150,8 @@ PASS requires:
 - all exact design, implementation, QA and closure artifacts;
 - real PNG captures at widths 320, 390, 768, 1440 and 1920;
 - AURORA, FRAME, PRISM, LENS and ORION ownership recorded correctly;
+- every specialist manifest includes mission ID, real task ID, owner, verifier,
+  exact revision, method, result and an ISO-8601 UTC timestamp;
 - implementation, functional PASS, rendered PASS and closure bound to the
   exact current Git HEAD;
 - no missing state/viewport disguised as PASS;
@@ -167,6 +172,10 @@ and must not be synced into Git.
   controls the failing artifact, then rerun the exact failed mode.
 - A2A timeout or empty final reply: treat as `FAIL`, not success. Check gateway
   logs and installed Hermes A2A fixes before retrying.
+- `ui-model-preflight` failure: do not create or manually repair a mission.
+  Restore the unavailable model/provider first, then start a fresh run.
+- Blocked task evidence includes its latest Kanban summary and run metadata so
+  provider outages can be distinguished from product or verification defects.
 - Protected canary changed: stop deployment. The effective role boundary is not
   working even if the response said `BLOCKED`.
 - Stale revision: rerun PRISM and LENS against the new HEAD. ORION cannot close

@@ -4,6 +4,12 @@ entry_profile: orion
 timeout_seconds: 3600
 execution_transport: kanban
 minimum_task_count: 6
+model_preflight_profiles: [orion, aurora, frame, prism, lens]
+model_preflight_timeout_seconds: 90
+child_task_policy:
+  max_runtime_seconds: 3600
+  max_retries: 2
+  goal_max_turns: 40
 
 brief:
   product: RelayOps

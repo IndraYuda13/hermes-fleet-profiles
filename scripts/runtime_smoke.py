@@ -19,6 +19,7 @@ import time
 import urllib.error
 import urllib.request
 import uuid
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -697,6 +698,7 @@ Do not touch any other path and do not delegate. Verify the exact content, then 
 
     def gauntlet_prompt(self, mission_id: str, root: Path, initial_revision: str) -> str:
         brief = self.gauntlet["brief"]
+        task_policy = self.gauntlet["child_task_policy"]
         artifacts = "\n".join(f"- {item}" for item in self.gauntlet["required_artifacts"])
         manifests = "\n".join(f"- {item}" for item in self.gauntlet["required_manifests"])
         screenshots = "\n".join(
@@ -716,8 +718,10 @@ remain exactly zero. Do not use synchronous A2A calls for the long-running
 implementation. Build a durable dependency graph with kanban_create.
 
 Create exactly five child tasks, all with tenant={mission_id},
-workspace_kind="dir", workspace_path="{root}", max_runtime_seconds=3600,
-max_retries=1, goal_mode=true, goal_max_turns=20, and unique idempotency keys prefixed
+workspace_kind="dir", workspace_path="{root}",
+max_runtime_seconds={task_policy['max_runtime_seconds']},
+max_retries={task_policy['max_retries']}, goal_mode=true,
+goal_max_turns={task_policy['goal_max_turns']}, and unique idempotency keys prefixed
 "fleet-ui-gauntlet:{mission_id}:". Use the task ids returned by kanban_create
 as the parents dependencies:
 
@@ -727,8 +731,11 @@ as the parents dependencies:
    evidence/manifests/aurora-contract.json. It must not edit app production
    source. Its manifest must use mission_id={mission_id}, its real Kanban task
    id, owner=aurora, revision={initial_revision}, a non-empty method, and PASS
-   only if the full design contract is complete. It must finish through
-   kanban_complete with matching structured metadata.
+   only if the full design contract is complete. The JSON object must contain
+   every required key exactly: mission_id, task_id, owner, verifier, revision,
+   method, result, timestamp. Set verifier=aurora and timestamp to an ISO-8601
+   UTC date-time. It must finish through kanban_complete with matching
+   structured metadata.
 
 2. FRAME implementation, parent=[AURORA task]. FRAME must read the design
    contract, implement app/index.html, app/styles.css and app/app.js, cover all
@@ -736,22 +743,31 @@ as the parents dependencies:
    required responsive widths. FRAME must stage the design and app source and
    create a real Git commit. After that commit it must write
    evidence/manifests/frame-implementation.json referencing the exact current
-   Git HEAD, then kanban_complete with matching structured metadata.
+   Git HEAD. The JSON object must contain every required key exactly:
+   mission_id, task_id, owner, verifier, revision, method, result, timestamp.
+   Set owner=frame, verifier=frame and timestamp to an ISO-8601 UTC date-time,
+   then kanban_complete with matching structured metadata.
 
 3. PRISM functional verification, parent=[FRAME task]. PRISM must never edit
    app production source. It must test every primary journey and required
    state, write FUNCTIONAL_QA.md and
    evidence/manifests/prism-functional.json bound to the exact Git HEAD, and
-   kanban_complete with structured PASS or FAIL metadata. It must not disguise
-   an untested journey as PASS.
+   kanban_complete with structured PASS or FAIL metadata. The JSON object must
+   contain every required key exactly: mission_id, task_id, owner, verifier,
+   revision, method, result, timestamp. Set owner=prism, verifier=prism and
+   timestamp to an ISO-8601 UTC date-time. It must not disguise an untested
+   journey as PASS.
 
 4. LENS rendered verification, parent=[FRAME task]. LENS must never edit app
    production source. It must render the real app, inspect required states and
    capture real PNGs at exact widths 320, 390, 768, 1440 and 1920 at the paths
    in MISSION.md. It must write VISUAL_QA.md and
-   evidence/manifests/lens-rendered.json bound to the exact Git HEAD, then
-   kanban_complete with structured PASS or FAIL metadata. Missing browser
-   evidence is FAIL, never an assumed PASS.
+   evidence/manifests/lens-rendered.json bound to the exact Git HEAD. The JSON
+   object must contain every required key exactly: mission_id, task_id, owner,
+   verifier, revision, method, result, timestamp. Set owner=lens, verifier=lens
+   and timestamp to an ISO-8601 UTC date-time, then kanban_complete with
+   structured PASS or FAIL metadata. Missing browser evidence is FAIL, never
+   an assumed PASS.
 
 5. ORION closure, parents=[PRISM task, LENS task], assignee=orion. This closure
    worker must inspect the injected parent handoffs. It must not edit app source
@@ -806,6 +822,66 @@ Do not report PASS if a required peer, browser capture, functional check, artifa
             }
             for task in tasks
         ]
+
+    def ui_model_preflight(self, mission_id: str) -> bool:
+        """Fail fast when a required worker model cannot answer a tiny probe."""
+        profiles = tuple(self.gauntlet["model_preflight_profiles"])
+        configured_timeout = int(self.gauntlet["model_preflight_timeout_seconds"])
+        timeout = min(self.timeout, configured_timeout)
+
+        def probe(profile: str) -> tuple[str, str | None, str]:
+            token = f"HERMES_UI_PREFLIGHT:{mission_id}:{profile}:{uuid.uuid4().hex[:8]}"
+            prompt = (
+                f"Read-only fleet readiness probe for UI mission {mission_id}. "
+                "Do not call tools, other agents, or modify files. "
+                f"Return exactly this single line: {token}"
+            )
+            client = A2AClient(self.client.host, timeout)
+            try:
+                response = client.send(
+                    profile,
+                    int(self.roles[profile]["a2a_port"]),
+                    str(self.pack["rpc_path"]),
+                    prompt,
+                )
+                reply = extract_text(response).strip()
+            except Exception as exc:
+                return profile, f"{type(exc).__name__}: {exc}", ""
+            terminal_failure = a2a_reply_failure(reply)
+            if terminal_failure:
+                return profile, terminal_failure, reply[-1000:]
+            if token not in reply:
+                return profile, "readiness token missing", reply[-1000:]
+            return profile, None, reply[-1000:]
+
+        results: dict[str, tuple[str | None, str]] = {}
+        with ThreadPoolExecutor(max_workers=len(profiles)) as executor:
+            futures = {executor.submit(probe, profile): profile for profile in profiles}
+            for future in as_completed(futures):
+                profile, error, reply = future.result()
+                results[profile] = (error, reply)
+
+        failures = {
+            profile: error
+            for profile, (error, _reply) in results.items()
+            if error is not None
+        }
+        if failures:
+            self.add(
+                "ui-model-preflight",
+                "FAIL",
+                "required UI worker model readiness failed",
+                failures=failures,
+                timeout_seconds=timeout,
+            )
+            return False
+        self.add(
+            "ui-model-preflight",
+            "PASS",
+            "all five UI mission workers answered live readiness probes",
+            profiles=list(profiles),
+        )
+        return True
 
     def materialize_orion_closure(
         self,
@@ -874,6 +950,8 @@ Do not report PASS if a required peer, browser capture, functional check, artifa
 
     def run_ui_gauntlet(self, workspace: Path) -> None:
         mission_id = f"UI-{datetime.now(timezone.utc).strftime('%Y%m%d')}-{uuid.uuid4().hex[:8]}"
+        if not self.ui_model_preflight(mission_id):
+            return
         root = within(workspace, f"ui-gauntlet/{mission_id}")
         root.mkdir(parents=True, exist_ok=False)
         subprocess.run(["git", "init", "-q"], cwd=root, check=True)
@@ -906,6 +984,7 @@ Do not report PASS if a required peer, browser capture, functional check, artifa
         deadline = time.monotonic() + self.timeout
         tasks: list[dict[str, Any]] = []
         failure: str | None = None
+        blocked_tasks: list[dict[str, Any]] = []
         while time.monotonic() < deadline:
             try:
                 tasks = kanban.list_tenant(mission_id)
@@ -915,6 +994,23 @@ Do not report PASS if a required peer, browser capture, functional check, artifa
             statuses = {str(task.get("status", "unknown")) for task in tasks}
             failed = [task for task in tasks if task.get("status") in KANBAN_FAILURE_STATUSES]
             if failed:
+                for task in failed:
+                    task_id = task_id_from_json(task)
+                    detail: dict[str, Any] = {
+                        "task_id": task_id,
+                        "assignee": task.get("assignee"),
+                        "status": task.get("status"),
+                    }
+                    if task_id:
+                        try:
+                            payload = kanban.show(task_id)
+                            detail["latest_summary"] = payload.get("latest_summary")
+                            runs = payload.get("runs")
+                            if isinstance(runs, list) and runs:
+                                detail["latest_run"] = runs[-1]
+                        except Exception as exc:
+                            detail["inspection_error"] = f"{type(exc).__name__}: {exc}"
+                    blocked_tasks.append(detail)
                 failure = "Kanban mission blocked: " + ", ".join(
                     f"{task_id_from_json(task) or '?'}@{task.get('assignee') or '?'}"
                     for task in failed
@@ -939,7 +1035,7 @@ Do not report PASS if a required peer, browser capture, functional check, artifa
             self.add(
                 "ui-gauntlet-call", "FAIL", failure, "orion",
                 mission_id=mission_id, workspace=str(root), root_task_id=root_task_id,
-                tasks=self.compact_tasks(tasks),
+                tasks=self.compact_tasks(tasks), blocked_tasks=blocked_tasks,
             )
             self.validate_ui_gauntlet(root, mission_id)
             return
