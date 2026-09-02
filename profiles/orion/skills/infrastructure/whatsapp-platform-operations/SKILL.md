@@ -30,16 +30,16 @@ platforms:
     extra:
       group_policy: "allowlist" # "open" | "allowlist" | "disabled" | "pairing"
       group_allow_from:
-        - "120363412526671277@g.us"
+        - "<WHATSAPP_JID>"
       require_mention: true
       mention_patterns:
-        - "@6283121795912"
+        - "@<WHATSAPP_ID>"
         - "Akun Wa Gpt"
         - "\\bOrion\\b"
         - "\\bbot\\b"
       allow_from:
-        - "6282235126065"
-        - "6281110001411"
+        - "<WHATSAPP_ID>"
+        - "<WHATSAPP_ID>"
 ```
 
 In `.env`:
@@ -47,11 +47,11 @@ In `.env`:
 WHATSAPP_ENABLED=true
 WHATSAPP_MODE=bot # "bot" | "self-chat"
 WHATSAPP_DM_POLICY=pairing # "pairing" | "allowlist" | "open" | "disabled"
-WHATSAPP_ALLOWED_USERS=6282235126065,6281110001411
+WHATSAPP_ALLOWED_USERS=<WHATSAPP_ID>,<WHATSAPP_ID>
 WHATSAPP_GROUP_POLICY=allowlist
-WHATSAPP_GROUP_ALLOW_FROM=120363412526671277@g.us,...
+WHATSAPP_GROUP_ALLOW_FROM=<WHATSAPP_JID>,...
 WHATSAPP_REQUIRE_MENTION=true
-WHATSAPP_MENTION_PATTERNS=["@6283121795912", "Akun Wa Gpt", "\\bOrion\\b", "\\bbot\\b"]
+WHATSAPP_MENTION_PATTERNS=["@<WHATSAPP_ID>", "Akun Wa Gpt", "\\bOrion\\b", "\\bbot\\b"]
 WHATSAPP_DEBUG=true
 ```
 
@@ -71,14 +71,14 @@ WHATSAPP_DEBUG=true
   2. **Query the Bridge `/chat/:id` endpoint** to resolve real-time group subject titles without guessing:
      ```python
      import urllib.request, json
-     for jid in ["120363412526671277@g.us", "120363424942534738@g.us"]:
+     for jid in ["<WHATSAPP_JID>", "<WHATSAPP_JID>"]:
          try:
              res = json.loads(urllib.request.urlopen(f"http://127.0.0.1:3000/chat/{jid}").read())
              print(f"JID: {jid} -> Group Name: '{res.get('name')}'")
          except Exception as e:
              print(f"JID: {jid} -> Error: {e}")
      ```
-     *(Example: `120363424942534738@g.us` is "Afterhours (AOC)", while `120363412526671277@g.us` is "Test").*
+     *(Example: `<WHATSAPP_JID>` is "Afterhours (AOC)", while `<WHATSAPP_JID>` is "Test").*
   3. This prevents sending messages or configuring allowlists on the wrong group (e.g. distinguishing `"Afterhours (AOC)"` from a `"Test"` group sharing similar activity timestamps).
   4. Append the confirmed JID to `platforms.whatsapp.extra.group_allow_from` in `config.yaml` and `WHATSAPP_GROUP_ALLOW_FROM` in `.env`.
   5. Restart gateway (`/restart` command via chat or kill bridge to reload cleanly).
@@ -88,17 +88,17 @@ WHATSAPP_DEBUG=true
 - **Root Cause & Fix Patterns:**
   1. **Option A (All Members in Allowed Groups):** Add the group JID to `platforms.whatsapp.extra.group_allowed_chats: ["<group_jid>@g.us", ...]` in `config.yaml`.
   2. **Option B (Open Group Policy with Allow-All):** When setting `group_policy: "open"`, ensure `platforms.whatsapp.extra.allow_all_users = True` or set `WHATSAPP_ALLOW_ALL_USERS=true` in `.env` so group members aren't silently dropped by the default-deny user allowlist.
-  3. **LID Device Normalization:** Baileys returns bot IDs formatted like `280595213078677:2@lid` or `6283121795912:2@s.whatsapp.net`. Ensure ID normalizers strip the `:device` segment before `@` so autocomplete mentions (`@280595213078677`) match `botIds` reliably.
+  3. **LID Device Normalization:** Baileys returns bot IDs formatted like `<WHATSAPP_JID>` or `<WHATSAPP_JID>`. Ensure ID normalizers strip the `:device` segment before `@` so autocomplete mentions (`@<WHATSAPP_ID>`) match `botIds` reliably.
   4. **Long-Polling Buffer Desync on Bridge Restarts:** When restarting or killing the Node.js bridge (`kill -9 <pid>`), the gateway re-establishes TCP connection to port 3000. If messages arrived during restart, verify `/messages` long-polling queue is actively flushing (`GET http://127.0.0.1:3000/messages`) and confirming `200 OK` deliveries.
 
 ### 4. Mention Patterns, LID Mentions & Group Policy Discipline
-- In WhatsApp groups, mentioning a bot often inserts the contact LID and display name (e.g. `@280595213078677AW.ai` or `@AW.ai`) rather than raw phone numbers.
+- In WhatsApp groups, mentioning a bot often inserts the contact LID and display name (e.g. `@<WHATSAPP_ID>AW.ai` or `@AW.ai`) rather than raw phone numbers.
 - Configure `mention_patterns` in `config.yaml` and `WHATSAPP_MENTION_PATTERNS` in `.env` with regex matching:
   - Phone number (`@628...`)
-  - LID prefix (`@280595213078677`)
+  - LID prefix (`@<WHATSAPP_ID>`)
   - Display name (`AW.ai`, `@AW.ai`, `Akun Wa Gpt`)
   - Profile alias and generic handles (`\\bOrion\\b`, `\\bbot\\b`)
-- **Important Pitfall:** When a user tags the bot using UI autocomplete, the rendered text in WhatsApp often prefixes an `@` before the custom contact name (e.g. `@AW.ai` or `@280595213078677AW.ai`). If `mention_patterns` only contains `AW.ai` or phone numbers, strict word-boundary matching or regex may fail to trigger. Always include `@<DisplayName>`, `<DisplayName>`, and the LID identifier `@<LID>`.
+- **Important Pitfall:** When a user tags the bot using UI autocomplete, the rendered text in WhatsApp often prefixes an `@` before the custom contact name (e.g. `@AW.ai` or `@<WHATSAPP_ID>AW.ai`). If `mention_patterns` only contains `AW.ai` or phone numbers, strict word-boundary matching or regex may fail to trigger. Always include `@<DisplayName>`, `<DisplayName>`, and the LID identifier `@<LID>`.
 - **Group Self-Sent Message Drop (`from_me_group`):** When the owner/operator tests the bot in a group chat from the *same phone/number* that is linked to the bot session, Baileys emits `msg.key.fromMe = true`. By default, `bridge.js` ignores `fromMe` group messages to prevent infinite self-echo loops. To test group bot responsiveness, always instruct another group member to mention the bot or use a secondary WhatsApp account.
 - **Group Policy & Inbound Mention Optimization:**
   - Keep `platforms.whatsapp.extra.group_policy: "allowlist"` and `require_mention: true` when operating in shared groups.
@@ -155,7 +155,7 @@ WHATSAPP_DEBUG=true
   When mobile WhatsApp clients insert contact tags (like `@Akun Wa Gpt`), they often append invisible Unicode isolates such as `\u2069` (POP DIRECTIONAL ISOLATE) at the end of the handle: `@Akun Wa Gpt\u2069`.
 - **Regex Boundary Failure:**
   Standard word-boundary patterns like `\bAkun Wa Gpt\b` or strict string comparisons will FAIL against text containing directional marks unless non-boundary substrings or cleaned patterns are included.
-- **Rule:** Always register plain substring matches without strict boundary anchors (e.g. `'Akun Wa Gpt'`, `'AW.ai'`, `'@280595213078677'`) in `mention_patterns` to guarantee regex capture regardless of client-injected directional formatting.
+- **Rule:** Always register plain substring matches without strict boundary anchors (e.g. `'Akun Wa Gpt'`, `'AW.ai'`, `'@<WHATSAPP_ID>'`) in `mention_patterns` to guarantee regex capture regardless of client-injected directional formatting.
 
 ### 7. Group Self-Mention Anti-Loop Behavior (`from_me_group`) & Testing Protocol
 - **The Self-Mention Pitfall:** If an operator tests a group mention by typing `@bot` from the **exact same phone device/number paired to the bot session**, Baileys flags the inbound message as `fromMe: true`.
@@ -212,7 +212,7 @@ WHATSAPP_DEBUG=true
          text = f.read().strip()
 
      url = "http://localhost:20128/v1/audio/speech"
-     headers = {"Content-Type": "application/json", "Authorization": "Bearer sk-9router-local-key-2026"}
+     headers = {"Content-Type": "application/json", "Authorization": "Bearer sk-REDACTED-EXAMPLE"}
      payload = json.dumps({"model": model, "input": text}).encode("utf-8")
 
      req = urllib.request.Request(url, data=payload, headers=headers, method="POST")

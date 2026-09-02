@@ -3,17 +3,15 @@ model:
   default: ag-opus-pool
   provider: custom:local-(localhost:20128)
 toolsets:
-  - file
-  - terminal
-  - code_execution
-  - web
-  - delegation
-  - kanban
+- file
+- terminal
+- code_execution
+- web
+- kanban
 web:
   backend: firecrawl
   search_backend: firecrawl
   extract_backend: firecrawl
-  firecrawl_api_key: REDACTED
   firecrawl_api_url: https://firecrawl.indrayuda.my.id
   firecrawl_url: https://firecrawl.indrayuda.my.id
   use_gateway: false
@@ -25,58 +23,13 @@ display:
       show_reasoning: false
   tool_progress: all
 dashboard:
-  basic_auth:
-    username: admin
-    password_hash: scrypt$16384$8$1$0eXJEdFBdYSqYlK2x+jPqA==$UG3TB3MSll45aeoj28VCfPh9QoDoVOON3/NwovBuTgU=
-    secret: _ySyQFpxxVw-ccBcHSWjxIlI4BLMLlCO12NGNHMt1Vo
-  auth: password:Yuda&4321
   cors_origins: '[''https://hermes.indrayuda.my.id'']'
   host: 0.0.0.0
 delegation:
-  model: ag-opus-pool
-  provider: LocalAPI
-  base_url: http://localhost:20128/v1
-  api_key: REDACTED
-  reasoning_effort: high
-  max_concurrent_children: 6
-  max_spawn_depth: 2
-  orchestrator_enabled: true
-  subagent_auto_approve: true
-  worktree_isolation: false
+  orchestrator_enabled: false
+  subagent_auto_approve: false
 moa:
-  default_preset: default
-  privacy_filter: display
-  presets:
-    default:
-      reference_models:
-        - model: ag/claude-sonnet-4-6
-          provider: custom:local-(localhost:20128)
-        - model: ag/claude-opus-4-6-thinking
-          provider: custom:local-(localhost:20128)
-        - model: ag/gemini-3-flash-agent
-          provider: custom:local-(localhost:20128)
-        - model: ag/gemini-pro-agent
-          provider: custom:local-(localhost:20128)
-      aggregator:
-        provider: custom:local-(localhost:20128)
-        model: ag/claude-opus-4-6-thinking
-      fanout: user_turn
-      reference_max_tokens: 600
-  aggregator:
-    model: ag/claude-opus-4-6-thinking
-    provider: custom:local-(localhost:20128)
-  enabled: true
-  fanout: user_turn
-  max_tokens: 4096
-  reference_models:
-    - model: ag/claude-sonnet-4-6
-      provider: custom:local-(localhost:20128)
-    - model: ag/claude-opus-4-6-thinking
-      provider: custom:local-(localhost:20128)
-    - model: ag/gemini-3-flash-agent
-      provider: custom:local-(localhost:20128)
-    - model: ag/gemini-pro-agent
-      provider: custom:local-(localhost:20128)
+  enabled: false
 skills:
   write_approval: false
   disabled:
@@ -297,19 +250,11 @@ skills:
 curator:
   consolidate: true
 approvals:
-  mode: 'off'
-  denial_breaker_threshold: 3
-  mcp_reload_confirm: false
-  destructive_slash_confirm: false
-command_allowlist:
-  - overwrite system config
-  - copy/move file into system config path
-  - delete in root path
-  - in-place edit of system config
-  - stop/restart system service
-  - script execution via -e/-c flag
-  - in-place edit of Hermes config/env
-  - execute_code
+  mode: smart
+  denial_breaker_threshold: 2
+  mcp_reload_confirm: true
+  destructive_slash_confirm: true
+command_allowlist: []
 kanban:
   dispatch_in_gateway: false
 network:
@@ -388,44 +333,27 @@ a2a_agents:
     timeout: 300
 platform_toolsets:
   a2a:
-    - a2a
-    - browser
-    - clarify
-    - code_execution
-    - computer_use
-    - cronjob
-    - delegation
-    - file
-    - hermes-a2a
-    - image_gen
-    - kanban
-    - memory
-    - session_search
-    - skills
-    - terminal
-    - todo
-    - tts
-    - vision
-    - web
+  - a2a
+  - clarify
+  - code_execution
+  - file
+  - hermes-a2a
+  - kanban
+  - session_search
+  - skills
+  - terminal
+  - web
   cli:
-    - a2a
-    - browser
-    - clarify
-    - code_execution
-    - computer_use
-    - cronjob
-    - delegation
-    - file
-    - image_gen
-    - kanban
-    - memory
-    - session_search
-    - skills
-    - terminal
-    - todo
-    - tts
-    - vision
-    - web
+  - a2a
+  - clarify
+  - code_execution
+  - file
+  - hermes-a2a
+  - kanban
+  - session_search
+  - skills
+  - terminal
+  - web
 known_plugin_toolsets:
   a2a:
     - a2a

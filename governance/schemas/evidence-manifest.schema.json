@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://indrayuda.local/hermes/evidence-manifest.schema.json",
+  "title": "Hermes Fleet Evidence Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["mission_id", "task_id", "owner", "verifier", "revision", "method", "result", "timestamp"],
+  "properties": {
+    "mission_id": {"type": "string", "minLength": 1},
+    "task_id": {"type": "string", "minLength": 1},
+    "owner": {"type": "string", "minLength": 1},
+    "verifier": {"type": ["string", "null"]},
+    "artifact": {"type": ["string", "null"]},
+    "revision": {"type": "string", "minLength": 7},
+    "method": {"type": "string", "minLength": 1},
+    "materialized_by": {"type": "string", "minLength": 1},
+    "environment": {"type": ["string", "null"]},
+    "route": {"type": ["string", "null"]},
+    "state": {"type": ["string", "null"]},
+    "viewport": {"type": ["string", "null"]},
+    "result": {"enum": ["PASS", "FAIL", "BLOCKED"]},
+    "defect_ids": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "limitations": {"type": "array", "items": {"type": "string"}},
+    "source_anti_slop_zero_matches": {"type": "boolean"},
+    "timestamp": {"type": "string", "format": "date-time"}
+  }
+}

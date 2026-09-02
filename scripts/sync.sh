@@ -1,88 +1,99 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Hermes Fleet Profiles Sync & Export Script
-# Exports clean declarative configs from ~/.hermes/profiles to the repository
+# Export live Hermes profile declarations through a staged, validated snapshot.
+# Default mode is read-only. Pass --apply only from a clean Git worktree.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-PROFILES_SRC="/root/.hermes/profiles"
-GLOBAL_SRC="/root/.hermes"
+HERMES_ROOT="${HERMES_HOME:-${HOME}/.hermes}"
+APPLY=false
 
-echo "==> Syncing Hermes Fleet declarative configs to ${REPO_DIR}..."
+case "${1:-}" in
+  "") ;;
+  --apply) APPLY=true ;;
+  *) echo "Usage: $0 [--apply]" >&2; exit 2 ;;
+esac
 
-PROFILES=(
-  "atlas"
-  "aurora"
-  "default"
-  "forge"
-  "frame"
-  "groupbot"
-  "lens"
-  "nexus"
-  "orion"
-  "prism"
-  "quant"
-  "radar"
-  "sentinel"
-)
-
-mkdir -p "${REPO_DIR}/profiles"
-mkdir -p "${REPO_DIR}/global/skills"
-
-# 1. Sync global skills (declarative SKILL.md and references only)
-if [ -d "${GLOBAL_SRC}/skills" ]; then
-  rsync -av --delete \
-    --exclude='*.pyc' \
-    --exclude='__pycache__' \
-    "${GLOBAL_SRC}/skills/" "${REPO_DIR}/global/skills/"
-fi
-
-# 2. Sync each profile
-for p in "${PROFILES[@]}"; do
-  SRC="${PROFILES_SRC}/${p}"
-  DEST="${REPO_DIR}/profiles/${p}"
-  
-  if [ -d "${SRC}" ]; then
-    echo " -> Syncing profile: ${p}"
-    mkdir -p "${DEST}"
-    
-    # Sync SOUL.md and custom markdown docs
-    if [ -f "${SRC}/SOUL.md" ]; then
-      cp -f "${SRC}/SOUL.md" "${DEST}/"
-    fi
-    if [ -f "${SRC}/profile.yaml" ]; then
-      cp -f "${SRC}/profile.yaml" "${DEST}/"
-    fi
-    
-    # Sanitize config.yaml (strip sensitive keys if any before copying)
-    if [ -f "${SRC}/config.yaml" ]; then
-      python3 -c "
-import re
-src_path = '${SRC}/config.yaml'
-dst_path = '${DEST}/config.yaml'
-try:
-    with open(src_path, 'r') as f:
-        content = f.read()
-    # Mask common api key patterns just in case
-    content_clean = re.sub(r'(api_key:\s*[\'\"]?)[^\'\s\"]+([\'\"]?)', r'\1REDACTED\2', content)
-    content_clean = re.sub(r'(token:\s*[\'\"]?)[^\'\s\"]+([\'\"]?)', r'\1REDACTED\2', content_clean)
-    with open(dst_path, 'w') as f:
-        f.write(content_clean)
-except Exception as e:
-    print('Failed to process config for ${p}:', e)
-"
-    fi
-    
-    # Sync profile-specific skills if any
-    if [ -d "${SRC}/skills" ]; then
-      mkdir -p "${DEST}/skills"
-      rsync -av --delete \
-        --exclude='*.pyc' \
-        --exclude='__pycache__' \
-        "${SRC}/skills/" "${DEST}/skills/"
-    fi
-  fi
+for command_name in git python3 rsync; do
+  command -v "${command_name}" >/dev/null || {
+    echo "Missing required command: ${command_name}" >&2
+    exit 1
+  }
 done
 
-echo "==> Sync complete!"
+PROFILES=(atlas aurora forge frame groupbot lens nexus orion prism quant radar sentinel)
+STAGE_PARENT="$(mktemp -d)"
+STAGE_REPO="${STAGE_PARENT}/repo"
+trap 'rm -rf -- "${STAGE_PARENT}"' EXIT
+
+rsync -a \
+  --exclude='.git/' \
+  --exclude='.archive/' \
+  --exclude='.hub/' \
+  --exclude='*.db*' \
+  --exclude='*.log' \
+  --exclude='*.jsonl' \
+  --exclude='__pycache__/' \
+  "${REPO_DIR}/" "${STAGE_REPO}/"
+
+sync_skills() {
+  local source_dir="$1"
+  local destination_dir="$2"
+  if [[ -d "${source_dir}" ]]; then
+    mkdir -p "${destination_dir}"
+    rsync -a --delete \
+      --exclude='.archive/' \
+      --exclude='.hub/' \
+      --exclude='*.db*' \
+      --exclude='*.log' \
+      --exclude='*.jsonl' \
+      --exclude='__pycache__/' \
+      "${source_dir}/" "${destination_dir}/"
+  fi
+}
+
+sync_skills "${HERMES_ROOT}/skills" "${STAGE_REPO}/global/skills"
+
+for profile_name in "${PROFILES[@]}"; do
+  source_dir="${HERMES_ROOT}/profiles/${profile_name}"
+  destination_dir="${STAGE_REPO}/profiles/${profile_name}"
+  [[ -d "${source_dir}" ]] || {
+    echo "Missing live profile: ${source_dir}" >&2
+    exit 1
+  }
+  mkdir -p "${destination_dir}"
+  for declaration in SOUL.md profile.yaml config.yaml; do
+    [[ -f "${source_dir}/${declaration}" ]] && cp "${source_dir}/${declaration}" "${destination_dir}/${declaration}"
+  done
+  sync_skills "${source_dir}/skills" "${destination_dir}/skills"
+done
+
+python3 "${STAGE_REPO}/scripts/sanitize_config.py" "${STAGE_REPO}"/profiles/*/config.yaml
+python3 "${STAGE_REPO}/scripts/sanitize_skill_examples.py" "${STAGE_REPO}/global/skills" "${STAGE_REPO}/profiles"
+python3 "${STAGE_REPO}/scripts/apply_role_policy.py" --repo-root "${STAGE_REPO}"
+python3 "${STAGE_REPO}/scripts/validate_fleet.py" --repo-root "${STAGE_REPO}"
+
+echo "Proposed declarative changes:"
+rsync -ain --delete --exclude='.git/' "${STAGE_REPO}/global/" "${REPO_DIR}/global/"
+rsync -ain --delete --exclude='.git/' "${STAGE_REPO}/profiles/" "${REPO_DIR}/profiles/"
+
+if [[ "${APPLY}" != true ]]; then
+  echo "Dry-run complete. Re-run with --apply after reviewing the itemized diff."
+  exit 0
+fi
+
+if [[ -n "$(git -C "${REPO_DIR}" status --porcelain)" ]]; then
+  echo "Refusing --apply: Git worktree is not clean." >&2
+  exit 1
+fi
+
+backup_dir="${REPO_DIR}/../hermes-fleet-backups/$(date -u +%Y%m%dT%H%M%SZ)"
+mkdir -p "${backup_dir}"
+cp -a "${REPO_DIR}/global" "${REPO_DIR}/profiles" "${backup_dir}/"
+
+rsync -a --delete "${STAGE_REPO}/global/" "${REPO_DIR}/global/"
+rsync -a --delete "${STAGE_REPO}/profiles/" "${REPO_DIR}/profiles/"
+
+python3 "${REPO_DIR}/scripts/validate_fleet.py" --repo-root "${REPO_DIR}"
+echo "Sync applied. Recovery copy: ${backup_dir}"

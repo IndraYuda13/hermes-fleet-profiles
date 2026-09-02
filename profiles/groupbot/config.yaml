@@ -3,19 +3,18 @@ agent:
   reasoning_effort: low
   system_prompt: '# ABSOLUTE PRIORITY OVERRIDE RULE (PERCINTAAN GEN Z / ASMARA):
 
-    JIKA user/member bertanya, curhat, membahas, atau minta saran seputar topik percintaan
-    Gen Z (contoh: LDR / rasa ldr, just friend / temenan biasa tapi cemburu / friendzone,
-    love bombing, ghosting, red flag, situationship / HTS, baper, galau, overthinking
-    asmara anak muda, dll):
+    JIKA user/member bertanya, curhat, membahas, atau minta saran seputar topik percintaan Gen Z (contoh: LDR / rasa ldr, just friend / temenan biasa tapi cemburu / friendzone, love bombing, ghosting, red flag, situationship / HTS, baper, galau, overthinking asmara anak muda, dll):
 
     KAMU WAJIB HANYA MEMBALAS SECARA SINGKAT DAN TEGAS:
 
     "MANDI lu MANDI"
 
-    DILARANG KERAS memberikan analisa, poin-poin, saran bijak, atau penjelasan apapun
-    selain "MANDI lu MANDI".'
+    DILARANG KERAS memberikan analisa, poin-poin, saran bijak, atau penjelasan apapun selain "MANDI lu MANDI".'
 approvals:
   mode: smart
+  denial_breaker_threshold: 2
+  mcp_reload_confirm: true
+  destructive_slash_confirm: true
 custom_providers:
 - api_key: REDACTED
   base_url: http://localhost:20128/v1
@@ -43,26 +42,17 @@ platform_toolsets:
   - web
   - vision
   - tts
-  - terminal
 platforms:
   telegram:
     enabled: false
   whatsapp:
     enabled: true
     extra:
-      allow_from:
-      - '6282235126065'
-      - '6281110001411'
-      group_allow_from:
-      - 120363412526671277@g.us
-      - 120363424942534738@g.us
-      group_allowed_chats:
-      - 120363412526671277@g.us
-      - 120363424942534738@g.us
+      allow_from: []
+      group_allow_from: []
+      group_allowed_chats: []
       group_policy: allowlist
       mention_patterns:
-      - '@6283121795912'
-      - '@280595213078677'
       - Akun Wa Gpt
       - AW.ai
       - '@AW.ai'
@@ -73,34 +63,24 @@ security:
   redact_secrets: true
 system_prompt: '# ABSOLUTE PRIORITY OVERRIDE RULE (PERCINTAAN GEN Z / ASMARA):
 
-  JIKA user/member bertanya, curhat, membahas, atau minta saran seputar topik percintaan
-  Gen Z (contoh: LDR / rasa ldr, just friend / temenan biasa tapi cemburu / friendzone,
-  love bombing, ghosting, red flag, situationship / HTS, baper, galau, overthinking
-  asmara anak muda, dll):
+  JIKA user/member bertanya, curhat, membahas, atau minta saran seputar topik percintaan Gen Z (contoh: LDR / rasa ldr, just friend / temenan biasa tapi cemburu / friendzone, love bombing, ghosting, red flag, situationship / HTS, baper, galau, overthinking asmara anak muda, dll):
 
   KAMU WAJIB HANYA MEMBALAS SECARA SINGKAT DAN TEGAS:
 
   "MANDI lu MANDI"
 
-  DILARANG KERAS memberikan analisa, poin-poin, saran bijak, atau penjelasan apapun
-  selain "MANDI lu MANDI".'
-terminal:
-  backend: local
-  cwd: /root/.hermes/profiles/groupbot/workspace
-  timeout: 30
+  DILARANG KERAS memberikan analisa, poin-poin, saran bijak, atau penjelasan apapun selain "MANDI lu MANDI".'
 toolsets:
 - web
 - vision
 - tts
-- terminal
 tts:
   edge:
     voice: id-ID-ArdiNeural
   provider: gemini-9router
   providers:
     gemini-9router:
-      command: python3 /root/.hermes/profiles/groupbot/scripts/tts_gemini_9router.py
-        {input_path} {output_path} {model}
+      command: python3 /root/.hermes/profiles/groupbot/scripts/tts_gemini_9router.py {input_path} {output_path} {model}
       model: gemini/gemini-3.1-flash-tts-preview/Kore
       output_format: mp3
       type: command
@@ -108,8 +88,8 @@ tts:
 web:
   backend: firecrawl
   extract_backend: firecrawl
-  firecrawl_api_key: REDACTED
   firecrawl_api_url: https://firecrawl.indrayuda.my.id
   firecrawl_url: https://firecrawl.indrayuda.my.id
   search_backend: firecrawl
   use_gateway: false
+command_allowlist: []

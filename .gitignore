@@ -47,13 +47,29 @@ channel_directory.json
 tui-theme-boot.json
 web-ui-build-stamp.json
 fleet_restart_pending
+.fleet-smoke-evidence/
+ui-gauntlet/
 
 # Secrets & Credentials (NEVER COMMIT)
 .env
 .env*
+!.env.example
 auth.json
 google_token.json
 google_client_secret.json
+
+# Hermes skill indexes, curator history and generated runtime artifacts
+skills/.hub/
+**/skills/.hub/
+hermes-index.json
+**/hermes-index.json
+.archive/
+**/.archive/
+*.log
+*.jsonl
+*.tmp
+*.bak
+*.swp
 
 # Local OS metadata
 .DS_Store

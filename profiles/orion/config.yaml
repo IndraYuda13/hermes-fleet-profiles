@@ -33,10 +33,10 @@ a2a_agents:
 agent:
   reasoning_effort: xhigh
 approvals:
-  denial_breaker_threshold: 3
-  destructive_slash_confirm: false
-  mcp_reload_confirm: false
-  mode: 'off'
+  denial_breaker_threshold: 2
+  destructive_slash_confirm: true
+  mcp_reload_confirm: true
+  mode: smart
 auxiliary:
   background_review:
     base_url: http://localhost:20128/v1
@@ -54,17 +54,7 @@ browser:
   cdp_url: http://127.0.0.1:9222
   real_profile_autoclose: true
   use_real_profile: true
-command_allowlist:
-- in-place edit of system config
-- overwrite system config
-- SQL DROP
-- in-place edit of Hermes config/env
-- script execution via -e/-c flag
-- execute_code
-- command parser limit or malformed executable payload
-- copy/move file into system config path
-- delete in root path
-- stop/restart system service
+command_allowlist: []
 context_file_max_chars: 150000
 curator:
   consolidate: true
@@ -89,24 +79,11 @@ custom_providers:
       context_length: 500000
   name: Local (localhost:20128)
 dashboard:
-  auth: password:Yuda&4321
-  basic_auth:
-    password_hash: scrypt$16384$8$1$0eXJEdFBdYSqYlK2x+jPqA==$UG3TB3MSll45aeoj28VCfPh9QoDoVOON3/NwovBuTgU=
-    secret: _ySyQFpxxVw-ccBcHSWjxIlI4BLMLlCO12NGNHMt1Vo
-    username: admin
   cors_origins: '[''https://hermes.indrayuda.my.id'']'
   host: 0.0.0.0
 delegation:
-  api_key: REDACTED
-  base_url: http://localhost:20128/v1
-  max_concurrent_children: 3
-  max_spawn_depth: 1
-  model: ag-opus-pool
   orchestrator_enabled: false
-  provider: LocalAPI
-  reasoning_effort: high
-  subagent_auto_approve: true
-  worktree_isolation: false
+  subagent_auto_approve: false
 display:
   platforms:
     telegram:
@@ -129,7 +106,7 @@ kanban:
   max_in_progress: 6
   max_in_progress_per_profile: 1
   orchestrator_profile: orion
-  review_dispatch: false
+  review_dispatch: true
 known_builtin_toolsets:
   a2a:
   - browser
@@ -228,39 +205,7 @@ memory:
   nudge_interval: 4
   write_approval: false
 moa:
-  aggregator:
-    model: ag/claude-opus-4-6-thinking
-    provider: custom:local-(localhost:20128)
-  default_preset: default
-  enabled: true
-  fanout: user_turn
-  max_tokens: 4096
-  presets:
-    default:
-      aggregator:
-        model: ag/claude-opus-4-6-thinking
-        provider: custom:local-(localhost:20128)
-      fanout: user_turn
-      reference_max_tokens: 600
-      reference_models:
-      - model: ag/claude-sonnet-4-6
-        provider: custom:local-(localhost:20128)
-      - model: ag/claude-opus-4-6-thinking
-        provider: custom:local-(localhost:20128)
-      - model: ag/gemini-3-flash-agent
-        provider: custom:local-(localhost:20128)
-      - model: ag/gemini-pro-agent
-        provider: custom:local-(localhost:20128)
-  privacy_filter: display
-  reference_models:
-  - model: ag/claude-sonnet-4-6
-    provider: custom:local-(localhost:20128)
-  - model: ag/claude-opus-4-6-thinking
-    provider: custom:local-(localhost:20128)
-  - model: ag/gemini-3-flash-agent
-    provider: custom:local-(localhost:20128)
-  - model: ag/gemini-pro-agent
-    provider: custom:local-(localhost:20128)
+  enabled: false
 model:
   context_length: 950000
   default: ag-opus-pool
@@ -274,82 +219,36 @@ onboarding:
 platform_toolsets:
   a2a:
   - a2a
-  - browser
   - clarify
-  - code_execution
-  - computer_use
-  - cronjob
-  - delegation
-  - file
   - hermes-a2a
-  - image_gen
   - kanban
   - memory
   - session_search
   - skills
-  - terminal
   - todo
-  - tts
-  - vision
-  - web
   cli:
   - a2a
-  - browser
   - clarify
-  - code_execution
-  - computer_use
-  - cronjob
-  - delegation
-  - file
-  - image_gen
+  - hermes-a2a
   - kanban
   - memory
   - session_search
   - skills
-  - terminal
   - todo
-  - tts
-  - video
-  - vision
-  - web
   telegram:
   - a2a
-  - browser
   - clarify
-  - code_execution
-  - computer_use
-  - cronjob
-  - delegation
-  - file
-  - image_gen
+  - hermes-a2a
   - kanban
   - memory
   - session_search
   - skills
-  - terminal
   - todo
-  - tts
-  - vision
-  - web
 platforms:
   telegram:
     enabled: true
   whatsapp:
     enabled: false
-    extra:
-      allow_all_users: true
-      allow_from:
-      - '6282235126065'
-      - '6281110001411'
-      group_allow_from: []
-      group_allowed_chats: []
-      group_policy: open
-      require_mention: false
-    home_channel:
-      chat_id: 11574970449943@lid
-      name: IndraYuda
-      platform: whatsapp
-      user_id: 11574970449943@lid
 plugins:
   disabled: []
   enabled:
@@ -376,7 +275,6 @@ tts:
 web:
   backend: firecrawl
   extract_backend: firecrawl
-  firecrawl_api_key: REDACTED
   firecrawl_api_url: https://firecrawl.indrayuda.my.id
   firecrawl_url: https://firecrawl.indrayuda.my.id
   search_backend: firecrawl

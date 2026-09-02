@@ -1,0 +1,86 @@
+version: 1
+name: ui-prototype-gauntlet
+entry_profile: orion
+timeout_seconds: 3600
+execution_transport: kanban
+minimum_task_count: 6
+model_preflight_profiles: [orion, aurora, frame, prism, lens]
+model_preflight_timeout_seconds: 90
+child_task_policy:
+  max_runtime_seconds: 3600
+  max_retries: 2
+  goal_max_turns: 40
+
+brief:
+  product: RelayOps
+  objective: Build a production-shaped incident and service-operations dashboard prototype.
+  users: [incident commander, service owner, support lead]
+  primary_journeys:
+    - assess current service health
+    - open an incident and assign an owner
+    - inspect the event timeline and affected services
+    - close the incident with an auditable summary
+  constraints:
+    - static local prototype; no external API, account or secret
+    - responsive at all required fleet viewports
+    - keyboard operable with visible focus
+    - loading, empty, error, active and resolved states
+    - no gradients, glassmorphism, neon-purple convergence or generic AI copy
+    - use realistic product-specific data; no lorem ipsum or placeholder leakage
+
+required_artifacts:
+  - PRODUCT_CONTEXT.md
+  - REFERENCE_LEDGER.md
+  - DESIGN_DIRECTIONS.md
+  - DESIGN_DNA.md
+  - DESIGN_CONTRACT.md
+  - FUNCTIONAL_QA.md
+  - VISUAL_QA.md
+  - CLOSURE_REPORT.md
+  - app/index.html
+  - app/styles.css
+  - app/app.js
+
+required_manifests:
+  - evidence/manifests/aurora-contract.json
+  - evidence/manifests/frame-implementation.json
+  - evidence/manifests/prism-functional.json
+  - evidence/manifests/lens-rendered.json
+  - evidence/manifests/orion-closure.json
+
+revision_parity_manifests:
+  - evidence/manifests/frame-implementation.json
+  - evidence/manifests/prism-functional.json
+  - evidence/manifests/lens-rendered.json
+  - evidence/manifests/orion-closure.json
+
+required_screenshots:
+  - {path: evidence/screenshots/home-mobile-small.png, width: 320}
+  - {path: evidence/screenshots/home-mobile.png, width: 390}
+  - {path: evidence/screenshots/home-tablet.png, width: 768}
+  - {path: evidence/screenshots/home-desktop.png, width: 1440}
+  - {path: evidence/screenshots/home-desktop-wide.png, width: 1920}
+
+expected_owners:
+  evidence/manifests/aurora-contract.json: aurora
+  evidence/manifests/frame-implementation.json: frame
+  evidence/manifests/prism-functional.json: prism
+  evidence/manifests/lens-rendered.json: lens
+  evidence/manifests/orion-closure.json: orion
+
+manifest_required_true_fields:
+  evidence/manifests/frame-implementation.json: [source_anti_slop_zero_matches]
+  evidence/manifests/prism-functional.json: [source_anti_slop_zero_matches]
+  evidence/manifests/lens-rendered.json: [source_anti_slop_zero_matches]
+
+manifest_reconcilable_fields:
+  - verifier
+  - timestamp
+  - source_anti_slop_zero_matches
+
+forbidden_source_patterns:
+  - linear-gradient
+  - radial-gradient
+  - backdrop-filter
+  - lorem ipsum
+  - ai-powered
