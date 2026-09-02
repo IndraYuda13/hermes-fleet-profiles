@@ -11,6 +11,7 @@ from pathlib import Path
 from scripts.runtime_smoke import (
     A2AClient,
     RuntimeSmoke,
+    a2a_reply_failure,
     authorization_refusal_matches,
     config_revision,
     ensure_safe_workspace,
@@ -28,6 +29,17 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class RuntimeSmokeUnitTests(unittest.TestCase):
+    def test_a2a_timeout_and_empty_reply_are_terminal_failures(self):
+        self.assertEqual(
+            a2a_reply_failure("[agent did not reply in time]"),
+            "agent did not reply in time",
+        )
+        self.assertEqual(
+            a2a_reply_failure("  "),
+            "agent returned an empty final reply",
+        )
+        self.assertIsNone(a2a_reply_failure("Mission completed with evidence."))
+
     def test_redacts_nested_secret_evidence(self):
         value = redact_json({"Authorization": "Bearer abc", "reply": "token=very-secret-value"})
         self.assertEqual(value["Authorization"], "REDACTED")
