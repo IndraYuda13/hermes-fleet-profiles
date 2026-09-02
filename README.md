@@ -35,6 +35,7 @@ hermes-fleet-profiles/
 ├── scripts/
 │   ├── apply_role_policy.py     # Render role boundaries into configs
 │   ├── sanitize_config.py       # Remove committed runtime secrets
+│   ├── sanitize_skill_examples.py # Remove credential-shaped doc samples
 │   ├── validate_fleet.py        # Policy, A2A and evidence checks
 │   └── sync.sh                  # Staged export from live Hermes
 ├── global/
@@ -77,6 +78,7 @@ Before exporting live changes back into Git:
 ```bash
 python3 -m pip install -r requirements-policy.txt
 python3 scripts/sanitize_config.py --check profiles/*/config.yaml
+python3 scripts/sanitize_skill_examples.py --check global/skills profiles
 python3 scripts/validate_fleet.py
 python3 -m unittest discover -s tests -p 'test_*.py'
 ```

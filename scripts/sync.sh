@@ -70,6 +70,7 @@ for profile_name in "${PROFILES[@]}"; do
 done
 
 python3 "${STAGE_REPO}/scripts/sanitize_config.py" "${STAGE_REPO}"/profiles/*/config.yaml
+python3 "${STAGE_REPO}/scripts/sanitize_skill_examples.py" "${STAGE_REPO}/global/skills" "${STAGE_REPO}/profiles"
 python3 "${STAGE_REPO}/scripts/apply_role_policy.py" --repo-root "${STAGE_REPO}"
 python3 "${STAGE_REPO}/scripts/validate_fleet.py" --repo-root "${STAGE_REPO}"
 
@@ -96,4 +97,3 @@ rsync -a --delete "${STAGE_REPO}/profiles/" "${REPO_DIR}/profiles/"
 
 python3 "${REPO_DIR}/scripts/validate_fleet.py" --repo-root "${REPO_DIR}"
 echo "Sync applied. Recovery copy: ${backup_dir}"
-

@@ -23,7 +23,7 @@ from tradingagents.default_config import DEFAULT_CONFIG
 config = DEFAULT_CONFIG.copy()
 config["llm_provider"] = "openai_compatible"
 config["backend_url"] = "http://localhost:20128/v1"
-config["api_key"] = "sk-9router-local-key-2026"
+config["api_key"] = "sk-REDACTED-EXAMPLE"
 config["model"] = "nofx"
 
 ta = TradingAgentsGraph(config=config)

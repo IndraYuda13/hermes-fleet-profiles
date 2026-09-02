@@ -21,49 +21,12 @@ NOFX encrypts `api_key` values in the `ai_models` SQLite table using AES-GCM for
 
 The encryption key is passed via container environment variable `DATA_ENCRYPTION_KEY`.
 
-### Adding/Modifying AI Models (e.g. 9router / Custom OpenAI Proxy)
-When adding custom OpenAI-compatible endpoints or models (such as local 9router at `https://9router.indrayuda.my.id/v1`), inject entries directly into the `ai_models` table if UI selectors are locked or restricted.
-
-```python
-import base64, os, sqlite3
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-from datetime import datetime
-
-# Read DATA_ENCRYPTION_KEY from container env (docker exec nofx-trading env)
-dek = "tauI2+67t/ZaoMSK4MGA43CnOvctrApfMTUS5LAsYEc="
-key_bytes = base64.b64decode(dek)
-
-def encrypt(plain_text):
-    aesgcm = AESGCM(key_bytes)
-    nonce = os.urandom(12)
-    ciphertext = aesgcm.encrypt(nonce, plain_text.encode('utf-8'), None)
-    return f"ENC:v1:{base64.b64encode(nonce).decode()}:{base64.b64encode(ciphertext).decode()}"
-
-user_id = "9b57d526-0272-4131-a89e-17ab0055245d"
-model_id = f"{user_id}_openai_9router"
-name = "OpenAI (9router)"
-provider = "openai"
-enabled = 1
-api_key = encrypt("sk-9router-local-key-2026")
-custom_api_url = "https://9router.indrayuda.my.id/v1"
-custom_model_name = "nofx"
-now = datetime.utcnow().isoformat() + "Z"
-
-conn = sqlite3.connect("/mnt/nofx/data/data.db")
-cursor = conn.cursor()
-cursor.execute("""
-    INSERT OR REPLACE INTO ai_models 
-    (id, user_id, name, provider, enabled, api_key, custom_api_url, custom_model_name, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-""", (model_id, user_id, name, provider, enabled, api_key, custom_api_url, custom_model_name, now, now))
-conn.commit()
-conn.close()
-```
-
-After updating the database, restart the backend container to reload models:
-```bash
-docker restart nofx-trading
-```
+### Adding/Modifying AI Models
+Use the supported NOFX UI or API. Supply provider credentials through the
+container secret environment and never paste `DATA_ENCRYPTION_KEY`, API keys,
+wallet addresses, user IDs, or encrypted credential blobs into documentation.
+If the UI/API cannot perform the change, stop and repair that control path
+instead of writing credential rows directly in SQLite.
 
 ## Known Troubleshooting Pitfalls
 
@@ -95,11 +58,7 @@ To route NOFX outbound exchange traffic through a proxy (e.g. Surfshark proxy st
 When approving Hyperliquid trade-only access via MetaMask frontend modal (`/api/hyperliquid/submit-exchange`):
 - **Cloudflare / HTTPS SSL Mismatch**: Ensure `TRANSPORT_ENCRYPTION=true` is set in `/mnt/nofx/.env` when behind Cloudflare HTTPS tunnel so EIP-712 domain & scheme are preserved.
 - **Wrong Chain ID in MetaMask**: MetaMask must be connected to **Arbitrum One (Chain ID 42161 / 0xa4b1)**. If wallet is on Ethereum/BSC/Polygon, Hyperliquid node rejects EIP-712 signer recovery with `{"response":"Unable to recover signer.","status":"err"}` which NOFX surfaces as `502 Bad Gateway`.
-- **Direct Database Bypass**: If MetaMask EIP-712 flow fails, insert Hyperliquid exchange credentials directly into `exchanges` table in `/mnt/nofx/data/data.db` using `DATA_ENCRYPTION_KEY`:
-  - `exchange_type`: `hyperliquid`
-  - `hyperliquid_wallet_addr`: `<main_wallet_address>`
-  - `api_key`: `ENC:v1:...` (encrypted Agent private key)
-  - `hyperliquid_builder_approved`: `1`
+- **Credential safety**: do not bypass the signed authorization flow or insert exchange credentials directly into SQLite. Repair TLS/chain configuration, then retry the supported flow.
 
 ### AI500 Coin Source Failure
 If `use_ai500` is active and fails with legacy API error (`Failed to fetch AI500 list`):

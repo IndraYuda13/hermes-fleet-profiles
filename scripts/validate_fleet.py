@@ -17,7 +17,7 @@ ALL_PROFILES = set(FLEET) | {"groupbot"}
 PLACEHOLDERS = {"", "REDACTED", "CHANGEME", "NOT_COMMITTED"}
 SECRET_KEY = re.compile(r"(?:^|_)(?:api_key|token|secret|password|password_hash|client_secret)$", re.I)
 SECRET_PATTERNS = (
-    re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),
+    re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----[\s\S]*?-----END (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),
     re.compile(r"\bgh[pousr]_[A-Za-z0-9_]{30,}\b"),
     re.compile(r"\bPMAK-[A-Za-z0-9-]{30,}\b"),
     re.compile(r"\bsk-[A-Za-z0-9_-]{20,}\b"),
