@@ -198,6 +198,8 @@ class UIGauntletValidationTests(unittest.TestCase):
         self.assertIn('artifact_kind="orion-remediation-dispatch"', prompt)
         self.assertIn("FRAME remediation, parent=[this first closure task]", prompt)
         self.assertIn("ORION final closure", prompt)
+        self.assertIn("source_anti_slop_zero_matches=true", prompt)
+        self.assertIn("linear-gradient|radial-gradient|backdrop-filter", prompt)
 
     def test_ui_model_preflight_passes_only_when_every_worker_answers(self):
         class ReadyClient:
@@ -252,7 +254,7 @@ class UIGauntletValidationTests(unittest.TestCase):
         for relative, owner in self.smoke.gauntlet["expected_owners"].items():
             path = root / relative
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(json.dumps({
+            manifest = {
                 "mission_id": mission_id,
                 "task_id": f"task-{owner}",
                 "owner": owner,
@@ -261,7 +263,10 @@ class UIGauntletValidationTests(unittest.TestCase):
                 "method": "deterministic fixture",
                 "result": "PASS",
                 "timestamp": "2026-09-02T00:00:00Z",
-            }), encoding="utf-8")
+            }
+            if owner in {"frame", "prism", "lens"}:
+                manifest["source_anti_slop_zero_matches"] = True
+            path.write_text(json.dumps(manifest), encoding="utf-8")
         for item in self.smoke.gauntlet["required_screenshots"]:
             self.write_png(root / item["path"], item["width"])
 

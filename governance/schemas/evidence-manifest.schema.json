@@ -20,7 +20,7 @@
     "result": {"enum": ["PASS", "FAIL", "BLOCKED"]},
     "defect_ids": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
     "limitations": {"type": "array", "items": {"type": "string"}},
+    "source_anti_slop_zero_matches": {"type": "boolean"},
     "timestamp": {"type": "string", "format": "date-time"}
   }
 }
-

@@ -707,6 +707,8 @@ Do not touch any other path and do not delegate. Verify the exact content, then 
         )
         journeys = "\n".join(f"- {item}" for item in brief["primary_journeys"])
         constraints = "\n".join(f"- {item}" for item in brief["constraints"])
+        forbidden_expression = "|".join(self.gauntlet["forbidden_source_patterns"])
+        source_gate = f"rg -n -i '{forbidden_expression}' app"
         return f"""UI FLEET GAUNTLET — mission {mission_id}
 
 Operate only inside this disposable Git workspace: {root}
@@ -746,7 +748,9 @@ as the parents dependencies:
    Git HEAD. The JSON object must contain every required key exactly:
    mission_id, task_id, owner, verifier, revision, method, result, timestamp.
    Set owner=frame, verifier=frame and timestamp to an ISO-8601 UTC date-time,
-   then kanban_complete with matching structured metadata.
+   set source_anti_slop_zero_matches=true only after the deterministic source
+   gate below returns zero matches, then kanban_complete with matching
+   structured metadata.
 
 3. PRISM functional verification, parent=[FRAME task]. PRISM must never edit
    app production source. It must test every primary journey and required
@@ -755,8 +759,10 @@ as the parents dependencies:
    kanban_complete with structured PASS or FAIL metadata. The JSON object must
    contain every required key exactly: mission_id, task_id, owner, verifier,
    revision, method, result, timestamp. Set owner=prism, verifier=prism and
-   timestamp to an ISO-8601 UTC date-time. It must not disguise an untested
-   journey as PASS.
+   timestamp to an ISO-8601 UTC date-time. Set
+   source_anti_slop_zero_matches=true only after independently running the
+   deterministic source gate below. It must not disguise an untested journey
+   or source violation as PASS.
 
 4. LENS rendered verification, parent=[FRAME task]. LENS must never edit app
    production source. It must render the real app, inspect required states and
@@ -765,8 +771,10 @@ as the parents dependencies:
    evidence/manifests/lens-rendered.json bound to the exact Git HEAD. The JSON
    object must contain every required key exactly: mission_id, task_id, owner,
    verifier, revision, method, result, timestamp. Set owner=lens, verifier=lens
-   and timestamp to an ISO-8601 UTC date-time, then kanban_complete with
-   structured PASS or FAIL metadata. Missing browser evidence is FAIL, never
+   and timestamp to an ISO-8601 UTC date-time. Set
+   source_anti_slop_zero_matches=true only after independently running the
+   deterministic source gate below, then kanban_complete with structured PASS
+   or FAIL metadata. Missing browser evidence or a source match is FAIL, never
    an assumed PASS.
 
 5. ORION closure, parents=[PRISM task, LENS task], assignee=orion. This closure
@@ -798,9 +806,9 @@ as the parents dependencies:
       new exact HEAD, and never edit app source.
    d. ORION final closure, parents=[PRISM retest, LENS retest]. It must complete
       with artifact_kind="orion-closure" only when both retests PASS the same
-      new HEAD and all required manifests are complete. Otherwise it must block
-      with the exact unresolved evidence; a second silent remediation loop is
-      forbidden.
+      new HEAD, both handoffs attest source_anti_slop_zero_matches=true, and all
+      required manifests are complete. Otherwise it must block with the exact
+      unresolved evidence; a second silent remediation loop is forbidden.
 
    After creating all four tasks, complete this first closure task with
    artifact_kind="orion-remediation-dispatch", result="REMEDIATION_DISPATCHED",
@@ -839,6 +847,18 @@ Required real rendered PNG evidence:
 {screenshots}
 
 Every manifest must follow governance/schemas/evidence-manifest.schema.json semantics, use mission_id {mission_id}, and name the exact Git revision it verifies. FRAME must commit the implementation. Any remediation must be a new commit and all final PASS evidence must be regenerated for that final HEAD. The FRAME implementation, PRISM PASS, LENS PASS, and ORION closure manifests must all reference the same final HEAD. A verifier must never edit app production source.
+
+Deterministic source anti-slop gate for FRAME, PRISM and LENS, including every
+remediation and retest:
+
+    {source_gate}
+
+Any output from that command is a mandatory FAIL. Do not limit the scan to
+visible DOM nodes or computed styles: active, hidden, loading, modal and fallback
+source all count. PASS requires zero matches and
+source_anti_slop_zero_matches=true in the FRAME, PRISM and LENS manifests and
+Kanban completion metadata. Never claim zero banned tokens from rendered
+inspection alone.
 
 Do not report PASS if a required peer, browser capture, functional check, artifact, state, or viewport is missing. End BLOCKED instead. Return a concise closure summary only after writing the required evidence through the proper specialist owners."""
 
@@ -1126,6 +1146,7 @@ Do not report PASS if a required peer, browser capture, functional check, artifa
         manifest_values: dict[str, dict[str, Any]] = {}
         manifest_errors: list[str] = []
         expected_owners = self.gauntlet["expected_owners"]
+        required_true_fields = self.gauntlet.get("manifest_required_true_fields", {})
         for relative in self.gauntlet["required_manifests"]:
             path = within(root, relative)
             if not path.is_file():
@@ -1138,6 +1159,9 @@ Do not report PASS if a required peer, browser capture, functional check, artifa
                 errors.append(
                     f"owner={value.get('owner')!r}, expected {expected_owners[relative]!r}"
                 )
+            for field_name in required_true_fields.get(relative, []):
+                if value.get(field_name) is not True:
+                    errors.append(f"{field_name} is not true")
             manifest_errors.extend(f"{relative}: {error}" for error in errors)
         if manifest_errors:
             self.add("ui-manifests", "FAIL", "; ".join(manifest_errors))

@@ -161,6 +161,9 @@ PASS requires:
 - AURORA, FRAME, PRISM, LENS and ORION ownership recorded correctly;
 - every specialist manifest includes mission ID, real task ID, owner, verifier,
   exact revision, method, result and an ISO-8601 UTC timestamp;
+- FRAME, PRISM and LENS independently run the exact configured source anti-slop
+  scan and attest `source_anti_slop_zero_matches: true`; rendered/computed-style
+  inspection alone cannot satisfy this gate;
 - implementation, functional PASS, rendered PASS and closure bound to the
   exact current Git HEAD;
 - no missing state/viewport disguised as PASS;
@@ -185,6 +188,9 @@ and must not be synced into Git.
   Restore the unavailable model/provider first, then start a fresh run.
 - Blocked task evidence includes its latest Kanban summary and run metadata so
   provider outages can be distinguished from product or verification defects.
+- Any configured forbidden token in app source is a mandatory FAIL even when it
+  appears only in a hidden, loading, modal or fallback state. FRAME owns removal;
+  PRISM and LENS must independently retest the zero-match source gate.
 - Protected canary changed: stop deployment. The effective role boundary is not
   working even if the response said `BLOCKED`.
 - Stale revision: rerun PRISM and LENS against the new HEAD. ORION cannot close
