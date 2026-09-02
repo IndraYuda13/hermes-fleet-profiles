@@ -1,6 +1,6 @@
 model:
   context_length: 950000
-  default: ag-opus-pool
+  default: gemini-flash
   provider: custom:local-(localhost:20128)
 toolsets:
   - coding
@@ -29,7 +29,7 @@ dashboard:
   cors_origins: '[''https://hermes.indrayuda.my.id'']'
   host: 0.0.0.0
 delegation:
-  model: ag-opus-pool
+  model: gemini-flash
   provider: LocalAPI
   base_url: http://localhost:20128/v1
   api_key: REDACTED

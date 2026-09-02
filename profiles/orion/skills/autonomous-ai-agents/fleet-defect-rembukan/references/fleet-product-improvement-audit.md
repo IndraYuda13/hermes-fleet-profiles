@@ -36,7 +36,24 @@ Synthesize the peer responses into a decision-ready hierarchy:
 4. **Implementation & Performance:** Fragile DOM re-renders (`innerHTML`), missing persistence, accessibility concerns
 5. **Operational / SRE Handoff:** Missing API contracts, lack of health checks, deployment misconfigurations
 
-### 5. Final Synthesis Standard
+### 5. Kanban Task Dispatch Pitfalls
+
+#### `kanban_create` Tool vs CLI
+The `kanban_create` tool schema does NOT expose a `title` parameter, but the kernel requires it. If the tool call fails with `title is required`, fall back to the CLI.
+
+#### Shell Body Injection (Critical Pitfall)
+When using `hermes kanban create` via terminal with a `--body` argument, special characters in the body (backticks, `$variables`, paths with `/`, URLs with `://`, angle brackets `<>`, pipe `|`) cause bash expansion and corrupt the task body.
+
+**Working pattern:**
+```python
+# 1. Write body to temp file using write_file (avoids shell entirely)
+write_file("/tmp/task_body.md", body_content)
+# 2. Inject via $(cat ...)
+terminal('hermes kanban create "Title" --assignee forge --body "$(cat /tmp/task_body.md)" --workspace "dir:/path" --goal --json')
+```
+**Never** pass body content directly as an inline string in `terminal()` — bash interprets it.
+
+### 6. Final Synthesis Standard
 - Acknowledge what is already well-built to maintain constructive framing
 - Present findings with clear "Problem → Impact → Fix" structure
 - Provide a concise executive TL;DR with the single highest-priority next step

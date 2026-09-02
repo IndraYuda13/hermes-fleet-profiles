@@ -31,8 +31,8 @@ memory:
   user_profile_enabled: false
   write_approval: false
 model:
-  context_length: 200000
-  default: ag-opus-pool
+  context_length: 950000
+  default: gemini-flash
   provider: custom:local-(localhost:20128)
 onboarding:
   seen:

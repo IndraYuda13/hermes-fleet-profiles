@@ -16,6 +16,7 @@ Standardized patterns and state machines for building high-conversion, real-time
 > - `references/tactile-interactivity-patterns.md` — Dynamic micro-interactions and tactile feedback.
 > - `references/brand-artwork-integration.md` — 3:4 aspect ratio brand poster cards, spotlight thumbnails, ledger hero banners, and zero-CLS fallback strategies.
 > - `references/ingame-items-nominal-cards.md` — In-game item thumbnail box system, glowing pass badges, tabular pricing, and tactile micro-interactions.
+> - `references/digital-license-marketplace-patterns.md` — Inline duration/type micro-configurators, 4-stage QRIS state machine, credential vaults, and mobile bottom pill dock ergonomics.
 
 ---
 

@@ -129,7 +129,19 @@ For every captured viewport (Desktop 1920x1080 and Mobile 390x844) and major vie
 5. **Zero "undefined" / "null" DOM Oracle Invariant:** Test suites and visual inspectors MUST assert that `:text("undefined")`, `:text("null")`, and broken string templates count == 0 across all states and filter button clicks.
 6. **Icon Integrity Metric:** 100% of icons in all 4 sectors must render as valid vector `<svg>` elements with 0 unrendered icon tags or blank bounding boxes.
 
-## 6. Proactive Cache-Busting & Live Production Reload
+## 7. Reference-First Benchmark Invariant & Anti-AI-Cliché Discipline
+
+When a user provides a specific website reference (e.g. `tokono.cc.cd/aplikasi`) and asks for "a design like this":
+1. **Never substitute the reference with generic AI clichés**:
+   - Forbid defaulting to purple/indigo ambient glows, loud neon accents, and heavy gradients.
+   - Forbid "over-engineering" cards with noisy inline micro-configurators/selectors when the reference uses clean, breathable cards with modal/sheet drill-downs.
+2. **Deep-Inspect Source Tokens & CSS Variables**:
+   - Inspect the actual `:root` and `.dark` CSS tokens from the target (Warm Dark `#111110` / `#1a1a18` with subtle terracotta `#d1684f` discount tags and forest green `#3ba07f` accents vs harsh OLED/electric indigo).
+   - Replicate the macro-layout faithfully: 2-column structure (sticky 264px category & facet sidebar + responsive card grid), floating frosted pill navbar (`mat-func`), and squircle icon cards.
+3. **Progressive Disclosure via Modals/Sheets**:
+   - Keep the main catalog cards clean, scannable, and focused on core metadata (Icon + Title + 2-line Description + Platform Badges + Rating/Sales + "Mulai dari Rp XX.000").
+   - Move detailed duration/variant picking, feature lists, and checkout flows into an interactive Product Detail Modal / Bottom Sheet.
+
 When pushing fixes to production:
 - Nginx & Cloudflare Tunnel must be cleanly reloaded (`systemctl reload nginx && systemctl restart cloudflared`).
 - Always advise operators to perform a **Hard Refresh** (`Ctrl+Shift+R` / `Cmd+Shift+R`) or incognito verification when local browser cache might retain stale assets.

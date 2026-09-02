@@ -54,5 +54,7 @@ ORION is Chief of Staff and Quality Governor. When a defect or unexpected runtim
 - ORION synthesizes the final outcome for the user with reproducible evidence.
 
 ## Fleet Product Improvement Audits
-For open-ended improvement audits and architecture reviews, see `references/fleet-product-improvement-audit.md` for the full grounding, dispatch, and synthesis protocol.
+For open-ended improvement audits and architecture reviews, see `references/fleet-product-improvement-audit.md` for the full grounding, dispatch, and synthesis protocol (includes Kanban CLI body injection pitfall).
+
+For static HTML/JS storefront audits specifically (digital product stores, catalogs), see `references/static-site-storefront-audit.md` for a reusable checklist covering server, performance, mobile UX, data quality, security, and conversion.
 
