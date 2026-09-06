@@ -14,7 +14,7 @@ profiles:
 
   atlas:
     role_class: production-operator
-    model: ag-opus-pool
+    model: gemini-flash
     a2a_port: 9902
     production_write: true
     allowed_write_scopes: [infrastructure, deployment, rollback, observability]
@@ -24,7 +24,7 @@ profiles:
 
   aurora:
     role_class: design-author
-    model: ag-opus-pool
+    model: gemini-flash
     a2a_port: 9903
     production_write: false
     allowed_write_scopes: [design-dna, design-contract, research-evidence]

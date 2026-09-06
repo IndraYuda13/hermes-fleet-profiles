@@ -10,7 +10,7 @@ from pathlib import Path
 
 import yaml
 
-KEY_VALUE = re.compile(r"^(?P<indent>\s*)(?P<key>[A-Za-z0-9_.-]+):(?P<space>\s*)(?P<value>.*)$")
+KEY_VALUE = re.compile(r"^(?P<indent>\s*(?:-\s+)?)(?P<key>[A-Za-z0-9_.-]+):(?P<space>\s*)(?P<value>.*)$")
 SECRET_KEY = re.compile(
     r"(?:^|_)(?:api_key|token|secret|password|password_hash|client_secret)$",
     re.IGNORECASE,
