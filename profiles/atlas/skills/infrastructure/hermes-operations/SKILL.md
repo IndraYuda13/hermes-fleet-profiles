@@ -29,6 +29,16 @@ When overriding context window lengths for local LLM proxies (such as 9router or
 
 Treat `$HERMES_HOME` (normally `~/.hermes`) as stateful application data. Back up skills, plugins, profiles, config, and selected session state using rsync, rclone, or a separate private Git staging repository. Exclude secrets, databases, logs, and volatile caches when their loss/size risk outweighs restoration value. Test a restore path before calling a backup reliable. See `references/hermes-agent-backup.md` and `references/automated-git-backups.md`.
 
+## Profile Configuration & Approval Modes
+
+When managing multi-profile Hermes setups (e.g. `orion`, `atlas`, `forge`):
+
+- **Profile Config Path:** Profiles live at `~/.hermes/profiles/<profile>/config.yaml`. Always create a timestamped backup before mutation.
+- **Approval Mode ('off'):** In YAML 1.1, bare `off` is parsed as boolean `False`. Always quote string enums such as `mode: 'off'` under `approvals:` to avoid boolean coercion surprises, even though `_normalize_approval_mode` handles booleans defensively.
+- **Verification:** Check effective config with `hermes --profile <profile> config get approvals.mode`.
+- **Fleet Gateway Services:** Profile gateway daemons in multi-agent fleets often run as systemd user units (`systemctl --user status hermes-gateway-<profile>`). Use `systemctl --user reload hermes-gateway-<profile>` (`kill -USR1`) to reload configuration cleanly without terminating child browser or kernel runner sessions.
+- **Post-Update Gateway Restarts (Stale In-Memory Bytecode):** When updating the shared Hermes codebase (`git pull` or committing changes), running gateway processes retain cached modules in memory. If core agent runtime or turn lifecycle code changes (e.g. `TurnLivenessWatchdog`, `periodic_scheduler`, `turn_facade_lease`), inbound A2A requests to un-restarted peer gateways will fail with `AttributeError` (e.g. `'TurnLivenessWatchdog' object has no attribute 'make_thread'`). Always restart or reload fleet gateway daemons across all profiles after code updates to avoid silent A2A dispatch drops.
+
 ## Network and Web Proxying
 
 When the host uses a proxy and tools like `web_search` or `web_extract` need it, configure proxy settings at the environment level.

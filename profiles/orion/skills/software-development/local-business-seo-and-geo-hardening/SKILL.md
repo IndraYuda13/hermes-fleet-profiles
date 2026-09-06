@@ -110,8 +110,70 @@ When adapting or modifying DC power inputs on local networking hardware (e.g. Fi
 - **Direct 12V Danger:** Never connect 12V directly to 5V–6V equipment lacking wide-input switching ICs; linear LDO regulators (e.g. AMS1117-3.3) suffer immediate thermal breakdown and destroy 3.3V optical/PHY chips.
 - **Buck Converter Requirement:** Always wire an adjustable DC-DC step-down module (e.g. MP1584 Mini, LM2596) calibrated to 5.0V–5.2V before connecting to the board.
 
-## 6. Supporting Knowledge Base
+## 7. Dual-Track Revenue Recovery & Emergency Cashflow (SEO vs Paid/Direct)
+When a local or custom B2B business experiences a sharp drop in revenue:
+- **The Pure-SEO Trap:** Organic SEO fixes (Silo architecture, Google Business Profile optimization, schema markup) have an unavoidable crawler latency of **60 to 180 days** before translating into measurable revenue. Relying solely on organic SEO during an active revenue crisis creates severe cashflow insolvency.
+- **The Dual-Track Architecture:**
+  1. **Track 1: Quick Cashflow (Days 1–14):**
+     - **Database Reactivation:** Filter past 6–18 months of WhatsApp/invoice contacts. Run personalized, conversational follow-ups offering mold-fee waivers or repeat-order incentives (Rp 0 CAC, highest conversion).
+     - **WhatsApp Speed-to-Lead SLA (< 3 Minutes):** Enforce strict sub-3-minute response times during business hours with consultative questioning (event date, logo file for free mockup) instead of dumping price list PDFs.
+     - **High-Intent Google Ads (Rp 30k–50k/day):** Capture active, urgent orders needing delivery within the week using strict Exact/Phrase match and negative keyword shielding.
+  2. **Track 2: Sustainable Organic Foundation (Days 30–90):**
+     - Dedicated product sub-landing pages (`/pin-enamel/`, `/pin-kuningan/`, `/corporate-b2b/`).
+     - Google Business Profile weekly photo updates, NAP synchronization, and localized review gathering.
+     - 10 B2B Sample Boxes shipped proactively to event organizers and procurement teams.
+
+## 8. CSS Stacking Context & Hero Background Image Overlays
+When fixing black or missing background photos in hero sliders/carousels:
+- **Root Cause of "Black Screen" Hero:** If `.carousel-background img` lacks explicit absolute positioning, `width: 100%; height: 100%; object-fit: cover;`, and an explicit z-index layer, dark overlay pseudoelements (`::before { background-color: #000; }`) will stack over the image container, completely masking the photography.
+- **The JS-Deletion Race Condition:** Many legacy carousel scripts (e.g. `BizPage/main.js`) actively execute `$(this).children(".carousel-background").remove()` and convert the `<img>` tag into an inline `background-image: url(...)` on the `.carousel-item` container. If this script is deferred or delayed, the browser renders a jet-black background (`#000`) before JavaScript fires. Furthermore, applying an inline linear gradient on `::before` (e.g. 55%–75% black) on top of the inherited `rgba(0,0,0,0.7)` creates an opaque double-overlay that obliterates background photography on mobile LCD screens.
+- **Bulletproof Zero-Blackout Solution:**
+  1. Define inline `style="background-image: url('img/...');"` directly on `<div class="carousel-item active">` in the static HTML itself. This guarantees zero-delay image rendering on initial page paint before JS executes.
+  2. Maintain a balanced single gradient overlay (`rgba(0,0,0,0.35)` to `rgba(0,0,0,0.65)`) with `pointer-events: none;` so highlights and sparks remain vivid.
+  3. Add `padding-top: 60px;` to `.carousel-container` to prevent the fixed header/logo from colliding with the H1 headline.
+- **Correct CSS Stacking Structure:**
+  ```css
+  #intro { position: relative; background: #111; overflow: hidden; }
+  #intro .carousel-item {
+    width: 100%; height: 100vh; min-height: 560px;
+    background-size: cover !important;
+    background-position: center center !important;
+    background-repeat: no-repeat !important;
+    position: relative;
+  }
+  #intro .carousel-item::before {
+    content: '' !important;
+    background: linear-gradient(180deg, rgba(0,0,0,0.40) 0%, rgba(0,0,0,0.65) 100%) !important;
+    position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  }
+  #intro .carousel-container {
+    position: absolute; inset: 0; z-index: 3;
+    display: flex; align-items: center; justify-content: center;
+    padding-top: 60px;
+  }
+  #intro .carousel-background { display: none !important; }
+  ```
+
+## 9. Sub-Landing Page Silo Architecture & Asset Resilience
+When building targeted product sub-pages (e.g. `/pin-enamel/`, `/pin-kuningan/`, `/corporate-b2b/`):
+- **Silo Navigation & Schema:**
+  - Build standalone landing pages targeting high-intent local transactional keywords (e.g. `bikin pin enamel jakarta`, `hard enamel pin custom`).
+  - Bundle `Product` (AggregateOffer with realistic price tiers) and `FAQPage` JSON-LD schemas into `@graph` to capture Google Rich Snippets.
+  - Implement Hard vs Soft Enamel educational comparison sections to lower bounce rate and guide non-technical B2B buyers.
+- **Fail-Safe Asset Fallbacks for Nested Directories:**
+  - When assets live in the parent root (`/img/portfolio/`, `/img/clients/`), relative paths like `../img/...` frequently break during CDN routing, preview servers, or standalone sub-folder testing.
+  - Always implement self-healing image tags with inline fallback handlers:
+    ```html
+    <img src="/img/portfolio/1.png" onerror="this.onerror=null; this.src='https://www.example.com/img/portfolio/1.png';" alt="...">
+    ```
+  - For YouTube Shorts embeds in responsive cards:
+    - Avoid complex autoplay/playlist query strings (`autoplay=1&mute=1&playlist=...`) which trigger Google iframe origin blocks and render "This video is unavailable".
+    - Use clean standard embed URLs: `https://www.youtube.com/embed/<VIDEO_ID>?rel=0&modestbranding=1`.
+    - Ensure floating CTA buttons have appropriate z-index and viewport margin so they never obscure video controls or lower text captions on mobile screens.
+
+## 10. Supporting Knowledge Base
 - **B2B Scaling, Non-PT Operations & Funnel Repositioning:** See `references/b2b-scaling-and-funnel-repositioning.md` for mathematical blueprints on scaling custom service businesses from Rp 10M retail plateau to Rp 100M/month corporate accounts without requiring a large PT legal entity (operating cleanly as an independent creative studio with SPH/Invoice, 50% upfront DP cashflow rules, and single-price flat catalog structures).
+- **Google Ads Low-Cost & Micro-Budget B2B Playbook:** See `references/google-ads-low-cost-b2b-playbook.md` and `references/google-ads-micro-budget-playbook.md` for exact 25-working-day micro-budget allocation models (Rp 500k/month, Max CPC Rp 1.500 cap), 5 golden keyword pairs, negative keyword lists, high-converting RSA copy templates with MOQ pre-filters, and WhatsApp conversion event tracking.
 - **Single-Price vs Tiered Wholesale Models & Material Accuracy:** When creating catalogs for manufacturing/workshop owners:
   - Honor the owner's preference for **1 flat price per item (Single Price Edition)** rather than complex multi-tier volume matrices if requested.
   - Verify exact manufacturing methods before writing copy (e.g. distinguishing genuine **solid metal plate press/stamping/etching** from **casting/cor**; never label plate items as casting/cor).

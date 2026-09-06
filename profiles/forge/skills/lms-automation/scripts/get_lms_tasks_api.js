@@ -4,6 +4,7 @@ const fs = require('fs');
 (async () => {
     const browser = await chromium.launch({
         headless: true,
+        executablePath: '/usr/bin/google-chrome',
         args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu'],
         // proxy removed - using direct / flaresolverr
     });

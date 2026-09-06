@@ -50,8 +50,41 @@ A local model gateway can have separate guard-level and handler-level auth, serv
 - **Problem:** When Nginx/reverse proxy sets long `Cache-Control` (e.g. `expires 7d; max-age=604800`) on executable static assets (`.js`, `.css`, `.json`), Cloudflare edge caches and client mobile browsers serve outdated bundles after a deployment. If HTML templates are dynamic/no-cache while script assets remain cached, clients experience runtime initialization crashes (e.g. missing Alpine.js stores or undefined state properties).
 - **Remediation:**
   1. **Split Nginx Asset Blocks:** Keep immutable fonts/images on long caching (`expires 7d; max-age=604800`), but configure `.js|.css|.json` with `expires -1;` and `add_header Cache-Control "no-cache, no-store, must-revalidate, max-age=0";`.
-  2. **Query String Cache-Busting:** Inject explicit versioning parameters into HTML asset tags (e.g. `/js/app.js?v=2.0.0`, `/css/styles.css?v=2.0.0`) to immediately force Cloudflare edge cache misses (`cf-cache-status: BYPASS`) and mobile browser cache eviction without requiring Cloudflare API purge keys.
-  3. **Verification:** Test via `curl -I "https://domain/js/app.js?v=2.0.0"` to verify `cf-cache-status: BYPASS` / `Cache-Control: no-store, no-cache`, followed by `curl -s` payload inspection.
+  2. **Avoid Header Duplication (expires -1 vs Cache-Control):** In Nginx, using `expires -1;` automatically emits `Cache-Control: no-cache`. Pairing it with `add_header Cache-Control "no-cache, no-store, must-revalidate, max-age=0";` produces dual `Cache-Control` headers on the wire. Drop `expires -1;` when defining explicit `Cache-Control` via `add_header`.
+  3. **Nginx Header Inheritance Pitfall (Shadowing):** Any `add_header` defined in a child `location` block completely overrides and suppresses all `add_header` declarations from the parent `server` block. Always use an `include /etc/nginx/snippets/security-headers.conf` or replicate mandatory security headers (`X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, `X-Content-Type-Options`) inside every static/custom location block.
+  4. **Query String Cache-Busting:** Inject explicit versioning parameters into HTML asset tags (e.g. `/js/app.js?v=2.0.0`, `/css/styles.css?v=2.0.0`) to immediately force Cloudflare edge cache misses (`cf-cache-status: BYPASS`) and mobile browser cache eviction without requiring Cloudflare API purge keys.
+  5. **Verification:** Test via `curl -I "https://domain/js/app.js?v=2.0.0"` to verify `cf-cache-status: BYPASS` / `Cache-Control: no-store, no-cache`, followed by `curl -s` payload inspection.
+  6. **Pitfall — No-Store on Versioned Bundles:** Avoid adding `no-store` globally to hashed or query-versioned static assets (`styles.css?v=...`). `no-store` completely disables browser disk caching and ETag 304 validation, forcing clients to re-download heavy CSS/JS bundles on every page navigation. Use `no-cache, must-revalidate` or immutable content hashing (`max-age=31536000, immutable`).
+
+## Reverse Proxy Tuning for Streaming Endpoints vs REST APIs (Nginx & FastAPI/Uvicorn)
+
+- **Proxy Buffering Segregation:**
+  - Streaming endpoints (e.g. fragmented MP4 remuxing, video chunking, live SSE) require `proxy_buffering off;` so chunks are delivered immediately to clients without Nginx staging them in disk/memory temp buffers.
+  - Applying `proxy_buffering off;` globally to `/api/` degrades REST API performance by forcing micro-writes over the wire. Keep REST routes (`/api/`) on `proxy_buffering on; proxy_buffer_size 8k; proxy_buffers 16 8k;` and isolate streaming routes (`location /api/stream/ { proxy_buffering off; }`).
+- **Upstream Connect vs Read Timeouts:**
+  - Setting `proxy_connect_timeout 600s;` on localhost loopback (`127.0.0.1`) creates hanging client connections if the backend daemon crashes or hangs. Keep loopback `proxy_connect_timeout` low (`5s`).
+  - Set high read timeouts (`proxy_read_timeout 600s;`) specifically for streaming routes (`/api/stream/`) where clients may pause or buffer, while keeping REST API read timeouts bounded (`30s`).
+- **Dynamic WebSocket / HTTP Upgrade Mapping:**
+  - Never hardcode `proxy_set_header Connection "upgrade";` globally in Nginx locations. If the request is a standard HTTP request, sending `Connection: upgrade` violates RFC 7230 and breaks upstream HTTP/1.1 keep-alive pooling.
+  - Always use standard map directives:
+    ```nginx
+    map $http_upgrade $connection_upgrade {
+        default upgrade;
+        '' close;
+    }
+    ```
+    Then inside location: `proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection $connection_upgrade;`.
+
+## Upstream Geo-Restriction & Silent API Payload Degradation
+
+- **Problem:** Streaming/media APIs (e.g. Bstation / Bilibili TV) behind regional CDN/gateways often return HTTP `200 OK` even when geoblocked, but silently degrade payload structure:
+  - Timeline APIs return HTTP `200` with empty/null card arrays (`"cards": null` across all date entries), crashing downstream parsers with `'NoneType' object is not iterable` (500 Internal Server Error).
+  - Stream/playurl extractors (e.g. `yt-dlp` / BiliIntl) fail hard with explicit geo-restriction errors (`[BiliIntl] This video is not available from your location due to geo restriction`).
+- **Diagnosis & Verification Protocol:**
+  1. **Multi-Source Geo IP Check:** Never trust a single IP lookup service. Some datacenters/ASNs show inconsistent country attribution across databases (e.g. `ipinfo.io` showing Singapore while `ipwho.is` and `am.i.mullvad.net` resolve Thailand/Bangkok). Probe multiple endpoints (`curl -s --socks5 <proxy> https://ipwho.is/` and `https://am.i.mullvad.net/json`).
+  2. **Payload-Level Validation (Not Just HTTP 200):** Inspect inner payload fields rather than HTTP status alone: verify `sum(len(d.get('cards') or []) for d in items) > 0`.
+  3. **Multi-Trial Latency & Jitter Probing:** Run at least 5 consecutive calls through the candidate proxy node measuring `time_connect` and `time_total` to ensure latency stability (e.g. <300ms) and zero packet loss before switching production systemd egress proxies.
+  4. **Direct Stream Extraction Smoke Test:** Test yt-dlp / extractor against a known geoblocked title/episode using `--proxy socks5://<host>:<port>` to verify valid CDN mirror URLs (e.g. Akamai/UPOS) are returned.
 
 ## Verification checklist
 

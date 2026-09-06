@@ -64,3 +64,24 @@ Displaying internal architecture notes in production footers (e.g. `FASTAPI + SQ
 
 ### The Invariant
 Production public interfaces must remain clean, professional, and consumer-facing. Never leak server ports, database engines, or internal process topologies into public headers/footers unless building an internal developer observability dashboard.
+
+---
+
+## 4. Hero Section Background Stacking & Legacy Template Defect Prevention
+
+### The Defect (The BizPage / Legacy Slider "Blackout" Trap)
+Legacy templates (such as Bootstrap BizPage / Owl Carousel) frequently include JavaScript in `main.js` that dynamically strips `<img>` elements from `.carousel-background` and moves the `src` into inline CSS `background-image`:
+```javascript
+// Legacy pattern in main.js
+$(this).css("background-image", "url('" + $(this).children(".carousel-background").children("img").attr("src") + "')")
+       .children(".carousel-background").remove();
+```
+When paired with asynchronous script execution (`defer`), dark container backgrounds (`#intro { background: #000; }`), and pseudo-element overlays (`::before` with 70%+ opacity), this causes:
+1. **Flash of Blackout:** The hero area displays solid pitch-black during initial page load before JS executes.
+2. **Double Overlay Darkness:** If an inline linear gradient and a stylesheet overlay (`rgba(0,0,0,0.7)`) both apply, photos and lighting effects (sparks, workshop action) are completely obscured into jet black.
+3. **Navbar Overlap:** Fixed navigation headers colliding with hero headlines on viewport resize when proper padding isn't reserved.
+
+### The Invariants & Fixes
+1. **Inline HTML Fallback:** Always declare `style="background-image: url('...'); background-size: cover; background-position: center;"` directly on the slide container in the HTML itself. Never rely exclusively on deferred JavaScript to mount hero imagery.
+2. **Balanced Overlay Ratios:** Keep dark scrim overlays between `rgba(0,0,0,0.35)` and `rgba(0,0,0,0.65)` maximum, ensuring background textures, lighting, and action remain crisp while preserving text readability.
+3. **Dedicated Hero Header Offset:** Maintain explicit `padding-top: 60px` to `80px` on the hero content container to guarantee zero collisions with fixed navigation bars across mobile and desktop breakpoints.

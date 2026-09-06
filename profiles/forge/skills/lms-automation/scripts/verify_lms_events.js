@@ -16,7 +16,7 @@ const STATE = '/root/.openclaw/workspace/state/lms_browser_state.json';
 (async () => {
     const browser = await chromium.launch({
         headless: true,
-        // proxy removed - using direct / flaresolverr
+        executablePath: '/usr/bin/google-chrome'
     });
     const context = await browser.newContext({ storageState: fs.existsSync(STATE) ? STATE : undefined });
     const page = await context.newPage();

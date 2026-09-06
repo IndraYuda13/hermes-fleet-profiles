@@ -1,4 +1,108 @@
-_config_version: 39
+model:
+  context_length: 950000
+  default: ag-opus-pool
+  provider: custom:local-(localhost:20128)
+toolsets:
+- kanban
+- memory
+- todo
+- clarify
+- session_search
+- skills
+agent:
+  reasoning_effort: xhigh
+web:
+  backend: firecrawl
+  search_backend: firecrawl
+  extract_backend: firecrawl
+  firecrawl_api_url: https://firecrawl.indrayuda.my.id
+  firecrawl_url: https://firecrawl.indrayuda.my.id
+  use_gateway: false
+browser:
+  cdp_url: http://127.0.0.1:9222
+  use_real_profile: true
+  real_profile_autoclose: true
+context_file_max_chars: 150000
+auxiliary:
+  curator:
+    provider: custom
+    model: ag-opus-pool
+    base_url: http://localhost:20128/v1
+    timeout: 600
+  background_review:
+    provider: custom
+    model: ag-opus-pool
+    base_url: http://localhost:20128/v1
+    timeout: 300
+  video:
+    model: ag/gemini-3.7-flash-high
+display:
+  platforms:
+    telegram:
+      busy_ack_detail: true
+      show_reasoning: false
+  tool_progress: all
+dashboard:
+  cors_origins: '[''https://hermes.indrayuda.my.id'']'
+  host: 0.0.0.0
+tts:
+  edge:
+    voice: id-ID-ArdiNeural
+memory:
+  write_approval: false
+  nudge_interval: 4
+  flush_min_turns: 3
+delegation:
+  orchestrator_enabled: false
+  subagent_auto_approve: false
+moa:
+  enabled: false
+skills:
+  write_approval: false
+  creation_nudge_interval: 4
+  disabled: []
+curator:
+  consolidate: true
+  prune_builtins: false
+approvals:
+  mode: smart
+  denial_breaker_threshold: 2
+  mcp_reload_confirm: true
+  destructive_slash_confirm: true
+command_allowlist: []
+plugins:
+  disabled: []
+  enabled:
+  - observability/langfuse
+  - platforms/a2a
+  - ponytail
+  - superpowers
+  - web-firecrawl
+  - web-searxng
+kanban:
+  auto_subscribe_on_create: true
+  dispatch_in_gateway: true
+  review_dispatch: true
+  dispatch_interval_seconds: 15
+  orchestrator_profile: orion
+  default_assignee: orion
+  max_in_progress: 6
+  max_in_progress_per_profile: 1
+  auto_decompose: false
+  auto_promote_children: true
+network:
+  force_ipv4: false
+gateway:
+  platforms:
+    a2a:
+      enabled: true
+      extra:
+        port: 9901
+onboarding:
+  seen:
+    busy_input_prompt: true
+    openclaw_residue_cleanup: true
+_config_version: 40
 a2a_agents:
   atlas:
     timeout: 300
@@ -30,35 +134,6 @@ a2a_agents:
   sentinel:
     timeout: 300
     url: http://127.0.0.1:9911
-agent:
-  reasoning_effort: xhigh
-approvals:
-  denial_breaker_threshold: 2
-  destructive_slash_confirm: true
-  mcp_reload_confirm: true
-  mode: smart
-auxiliary:
-  background_review:
-    base_url: http://localhost:20128/v1
-    model: ag-opus-pool
-    provider: custom
-    timeout: 300
-  curator:
-    base_url: http://localhost:20128/v1
-    model: ag-opus-pool
-    provider: custom
-    timeout: 600
-  video:
-    model: ag/gemini-3.7-flash-high
-browser:
-  cdp_url: http://127.0.0.1:9222
-  real_profile_autoclose: true
-  use_real_profile: true
-command_allowlist: []
-context_file_max_chars: 150000
-curator:
-  consolidate: true
-  prune_builtins: false
 custom_providers:
 - api_key: REDACTED
   base_url: https://9router.indrayuda.my.id/v1
@@ -78,35 +153,6 @@ custom_providers:
     gpt:
       context_length: 500000
   name: Local (localhost:20128)
-dashboard:
-  cors_origins: '[''https://hermes.indrayuda.my.id'']'
-  host: 0.0.0.0
-delegation:
-  orchestrator_enabled: false
-  subagent_auto_approve: false
-display:
-  platforms:
-    telegram:
-      busy_ack_detail: true
-      show_reasoning: false
-  tool_progress: all
-gateway:
-  platforms:
-    a2a:
-      enabled: true
-      extra:
-        port: 9901
-kanban:
-  auto_decompose: false
-  auto_promote_children: true
-  auto_subscribe_on_create: true
-  default_assignee: orion
-  dispatch_in_gateway: true
-  dispatch_interval_seconds: 15
-  max_in_progress: 6
-  max_in_progress_per_profile: 1
-  orchestrator_profile: orion
-  review_dispatch: true
 known_builtin_toolsets:
   a2a:
   - browser
@@ -199,23 +245,12 @@ known_plugin_toolsets:
   telegram:
   - a2a
   - spotify
-mcp_servers: {}
-memory:
-  flush_min_turns: 3
-  nudge_interval: 4
-  write_approval: false
-moa:
-  enabled: false
-model:
-  context_length: 950000
-  default: ag-opus-pool
-  provider: custom:local-(localhost:20128)
-network:
-  force_ipv4: false
-onboarding:
-  seen:
-    busy_input_prompt: true
-    openclaw_residue_cleanup: true
+mcp_servers:
+  monetag:
+    url: https://mcp.monetag.com/mcp
+    headers:
+      Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiJtY3BfZHluXzA1Y2Q5ZTFmZTRlZTZjOTM2YWQ1YjQ2ODUyZjlkNjgxIiwianRpIjoiYTlhYzVjNDQ1ODE5ZjRmNzk5NGRiZmU5MDZjNDQzODEzOGE0Y2IwMjZlMTk4ZmQ1OTljNTI4YjE5ODExYWRmMjQ3MmM1ZmM3ZmIwYWZlNmIiLCJpYXQiOjE3ODg3MTI1MDEuMDU5NzYyLCJuYmYiOjE3ODg3MTI1MDEuMDU5NzY1LCJleHAiOjE3ODg3MTYxMDEuMDUwMzIxLCJzdWIiOiI1ODM2MjUxIiwic2NvcGVzIjpbInB1YmxpY19hcGk6cmVhZF93cml0ZSJdLCJlbWFpbCI6Imx2dHN1bmRlcmVAZ21haWwuY29tIn0.Vf-gDZFjueP_KcJCiJcJkoHK1ycEbfa_oxtmwuIW6BD3DVU526Ku7BTyokSJtIni9bzl15GeIMJ9iQx8bHP77UrMLZQeiu67d2aoJXQKFR3fDhLstqcFkrlKhVJzlzaonftpR4OS0CCYhSGrN7OX0TTgSvIrLdJuhz6MUNnkAoCquDEJtZmUZX_TmjAHy4uAIaY5XklYVC4ja9_7xROWfCUqeS6CqJlSg-qoMSEPHjcAIn3trftiSioFFJQ3rHZUHWtQfWhPDMTUSYJzCef3qA_vVo6jpvxb-xCV6AlFZOtucCR6t-qQaHCicOHxsa_qzAeLZrfs0aSGDl8kPAKpcw
+    timeout: 60
 platform_toolsets:
   a2a:
   - a2a
@@ -249,33 +284,3 @@ platforms:
     enabled: true
   whatsapp:
     enabled: false
-plugins:
-  disabled: []
-  enabled:
-  - observability/langfuse
-  - platforms/a2a
-  - ponytail
-  - superpowers
-  - web-firecrawl
-  - web-searxng
-skills:
-  creation_nudge_interval: 4
-  disabled: []
-  write_approval: false
-toolsets:
-- kanban
-- memory
-- todo
-- clarify
-- session_search
-- skills
-tts:
-  edge:
-    voice: id-ID-ArdiNeural
-web:
-  backend: firecrawl
-  extract_backend: firecrawl
-  firecrawl_api_url: https://firecrawl.indrayuda.my.id
-  firecrawl_url: https://firecrawl.indrayuda.my.id
-  search_backend: firecrawl
-  use_gateway: false

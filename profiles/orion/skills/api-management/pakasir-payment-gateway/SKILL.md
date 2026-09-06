@@ -81,7 +81,9 @@ When payment succeeds, PaKasir dispatches a `POST` request to the project's conf
 
 ### Verification & Failsafe Rules:
 1. **Match Project Slug:** Ignore any payload where `payload.project != configured_project`.
-2. **Re-query Transaction Detail:** Before fulfilling orders or delivering high-value digital assets, always make an independent verification call to `GET /api/transactiondetail` to confirm `status == 'completed'`.
+2. **Re-query Transaction Detail & URL Secret Token:**
+   - PaKasir payloads do not feature asymmetric HMAC signatures. Always make an independent verification call to `GET /api/transactiondetail` to confirm `status == 'completed'`.
+   - **Anti-Amplification DoS:** Because verification requires an outbound HTTP call to PaKasir, protect the endpoint against fake-payload flooding by registering a secret query/path token in the PaKasir dashboard URL (e.g. `/webhook/pakasir?token=<secret>`). Immediately reject requests with invalid tokens before executing any outbound verification.
 3. **Atomic DB State Lock (Anti-Double Fulfillment):** When a webhook and background poller run concurrently, both can detect a paid order at the same time. Never use a read-then-write pattern or return truthy order objects if already paid. Use atomic SQL transitions:
    ```sql
    UPDATE orders 
@@ -89,16 +91,36 @@ When payment succeeds, PaKasir dispatches a `POST` request to the project's conf
    WHERE order_id = ? AND status = 'pending';
    ```
    Only proceed to `deliver_product()` if `cur.rowcount > 0`. If `rowcount == 0` (another worker already won the race), return `200 OK` and skip duplicate delivery.
-4. **Idempotency Key to Upstream H2H:** When dispatching top-ups to upstream providers (e.g. Digiflazz), always pass the unique internal `order_id` as the upstream `ref_id` so provider-side duplicate rejection protects balance even under retry storms.
-5. **Background Poller Fallback:** In sandbox or flaky network conditions, webhooks may experience delays. Always run a background polling worker (e.g. interval 3–5 seconds) querying pending transactions via `/api/transactiondetail` to auto-resolve paid orders in real-time.
-6. **Chat Cleanliness (Auto-Delete Invoice):** Persist `chat_id` and `message_id` of the invoice/QR image when generated. Immediately call `bot.delete_message` on the invoice upon payment verification before delivering the fulfillment message.
-7. **Order Expiration & Cancellation Handling:**
+4. **Fast-Ack Webhook & Decoupled Fulfillment:** Never execute slow or variable-latency upstream fulfillment (such as H2H top-up APIs like Digiflazz, which can take 5–20 seconds) synchronously inside the webhook handler. After verifying the transaction and acquiring the atomic claim lock, return `200 OK` immediately (<100ms) to PaKasir and dispatch fulfillment to an asynchronous background task / queue. Synchronous processing risks gateway HTTP timeouts and redundant retry storms.
+5. **Idempotency Key to Upstream H2H:** When dispatching top-ups to upstream providers (e.g. Digiflazz), always pass the unique internal `order_id` as the upstream `ref_id` so provider-side duplicate rejection protects balance even under retry storms.
+6. **Background Poller Fallback & Mobile Tab-Switch Re-sync:**
+   - In sandbox or flaky network conditions, webhooks may experience delays. Always run a background polling worker (e.g. interval 3–5 seconds) querying pending transactions via `/api/transactiondetail` to auto-resolve paid orders in real-time.
+   - **Mobile Browser Throttling Fix:** When mobile users switch away to their e-wallet / banking apps to pay, mobile browsers (Safari/Chrome) throttle or freeze background JS timers. Attach a `visibilitychange` listener on the QRIS checkout page:
+     ```javascript
+     document.addEventListener('visibilitychange', () => {
+       if (document.visibilityState === 'visible') checkPaymentStatus();
+     });
+     ```
+     This triggers immediate status re-validation the moment the user returns to the browser.
+7. **Upstream Timeout Non-Refund Invariant (Prevent Financial Leaks):**
+   - Transient network/read timeouts during upstream H2H fulfillment (e.g. Digiflazz HTTP timeout) must **NEVER** trigger automatic buyer refund.
+   - A timeout represents an indeterminate state (unknown status), not an execution failure. The upstream provider may have successfully charged merchant balance and delivered the item while the HTTP connection dropped.
+   - Immediate auto-refund creates double financial loss (product delivered + money refunded).
+   - Flag the order as `pending_reconciliation` (or `paid_submit_failed`) and require resolution via upstream webhook/status check before any manual or automated refund is evaluated.
+8. **State Terminal Guard (Anti-Reversal):**
+   - Out-of-order webhook deliveries or late retry callbacks carrying a `failed` or `pending` status must never revert an order that has already reached terminal `completed` / `success` state.
+   - Enforce unidirectional state machine transitions (`waiting_payment` -> `submitting` -> `success` / `failed`).
+9. **Mobile QRIS Ergonomics (1-Tap Save to Gallery):**
+   - Mobile users shopping on a smartphone cannot point their camera at their own screen to scan QRIS.
+   - Always provide a 1-tap **"Simpan QRIS ke Galeri"** (Download Image) button alongside the rendered QR code using Canvas/Blob data URL so users can easily select the QR image from their m-banking / e-wallet gallery scanner.
+10. **Chat Cleanliness (Auto-Delete Invoice):** Persist `chat_id` and `message_id` of the invoice/QR image when generated. Immediately call `bot.delete_message` on the invoice upon payment verification before delivering the fulfillment message.
+11. **Order Expiration & Cancellation Handling:**
    - Run periodic sweep (e.g. in background poller) for pending orders exceeding timeout (e.g. 15 mins).
    - Upon timeout or user manual cancellation: call `transactioncancel`, release database reservation lock (`status = 'available'`), delete the QR invoice message from chat, and send clean feedback.
-8. **Bulk Delivery via File Attachment (Anti-4096 Character Limit):**
+12. **Bulk Delivery via File Attachment (Anti-4096 Character Limit):**
    - For single item orders (`qty == 1`): deliver in chat text message directly.
    - For bulk / multi-item orders (`qty > 1` or `qty > 5`): generate an in-memory `.txt` file attachment containing all items/tokens/links and send via `send_document` to prevent Telegram's 4096 character message truncation error.
-9. **Admin-Buyer Deduplication:**
+13. **Admin-Buyer Deduplication:**
    - If `buyer_user_id == ADMIN_USER_ID`, suppress the separate admin sales notification to prevent duplicate pings in the admin's personal chat.
 
 ## Telegram Bot + FastAPI Architecture Pattern

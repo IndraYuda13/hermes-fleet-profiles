@@ -24,6 +24,7 @@ Standardized architecture, reverse-engineering methodology, and execution protoc
 - Hardening 24/7 fleet architectures against memory bloat (bounded log tail seek), race conditions (thread-safe atomic JSON writes), method shadowing bugs, and dashboard action endpoint security (API key auth).
 - Designing self-healing multi-worker scaling architectures (10-100+ accounts) with non-blocking error isolation and adaptive backoffs.
 - Building real-time multi-account web telemetry dashboards with interactive withdrawal readiness hubs, search filters, and dense table views.
+- Extracting and proxying video/audio media streams from protected web platforms (e.g. Bstation DASH video/audio CDN, yt-dlp stream remuxing, WebVTT subtitle conversion).
 
 ## Prerequisites
 - Python 3.9+ with standard library (`urllib.request`, `urllib.parse`, `threading`, `json`, `time`, `http.server`).
@@ -91,6 +92,7 @@ Standardized architecture, reverse-engineering methodology, and execution protoc
 - `references/watch_claim_reverse_engineering.md`: Complete playbook for Nuxt 3 chunk extraction, payload reconstruction, and reward attribution flows.
 - `references/visual_icon_captcha_and_dataset_flywheel.md`: SOP for 3-icon sequence captchas, Vision LLM integration, latency constraints, coordinate math, and self-training dataset harvesting.
 - `references/turnstile_and_session_lifecycle.md`: Turnstile token resolution, datacenter IP bypass strategies, cross-node solving fallback, security challenge resolution (`checkSecurity`), and session cookie caching.
+- `references/bstation_video_streaming_pipeline.md`: Architecture for Bstation/yt-dlp web streaming, on-the-fly zero-transcode FFmpeg remuxing, direct CDN bypass, and dynamic SRT-to-WebVTT subtitle conversion.
 - `references/multi_account_architecture_and_telemetry.md`: 1-Account-1-Proxy isolation, infinite dynamic stream loop, precision sub-minute rollover, FaucetPay USDT TRC20 wallet manager, live email verification detection, official Nuxt payout status codes (`"1"` = PAID), and Apple-grade telemetry dashboard with withdrawal readiness hub.
 - `templates/multi_account_bot_template.py`: Runnable template for multi-worker daemons with dynamic limit handling.
 - `templates/icon_captcha_solver_client.py`: Complete standalone microservice template for Vision LLM icon captcha solving.

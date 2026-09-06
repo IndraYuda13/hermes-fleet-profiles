@@ -50,6 +50,13 @@ Never call external upstream suppliers synchronously within the HTTP webhook han
 3. Return `HTTP 200 OK` to the Payment Gateway immediately (< 200ms) to prevent webhook timeouts and retry storms.
 4. An asynchronous worker process picks up the outbox event and dispatches fulfillment.
 
+### 1.3 Asynchronous DB & Connection Pooling Guard
+In async web frameworks (FastAPI / Starlette / Sanic / Tornado):
+- Never invoke blocking synchronous DB drivers (e.g. raw `PyMySQL`, `psycopg2`, synchronous `sqlite3`) directly inside `async def` routes, as they block the central event loop.
+- Use asynchronous drivers with connection pooling (`aiomysql`, `asyncpg`, `aiosqlite`, SQLAlchemy `async_sessionmaker`).
+- Avoid running DDL or schema inspection checks (`CREATE TABLE IF NOT EXISTS`, `ALTER TABLE`) inside hot request paths or query helpers. Keep schema initialization strictly within application startup lifecycle (`lifespan`).
+- Maintain persistent connection-pooled HTTP clients (e.g. shared `httpx.AsyncClient`) via app lifespan context rather than instantiating and closing connections on each individual request.
+
 ---
 
 ## 2. Upstream Dispatch & Resilience
@@ -65,6 +72,12 @@ $$T_{\text{wait}} = \min(T_{\text{max}}, T_{\text{base}} \times 2^{\text{attempt
 
 ### 2.3 Circuit Breaker & Failover
 If an upstream aggregator fails consecutively (>5 times within 1 minute), trip the circuit breaker and route the SKU to a secondary backup supplier or queue the order for manual reconciliation.
+
+### 2.4 Indeterminate Upstream Timeout & Anti-False-Refund Rule
+Never trigger an automatic refund or mark an order terminal `FAILED` solely on an upstream HTTP timeout / network exception (`httpx.HTTPError`, `ReadTimeout`, `ConnectTimeout`).
+- **The Financial Trap:** In H2H top-up integrations, upstream aggregators often process and deduct balance even if the HTTP response connection drops before returning. Refunding the customer immediately on timeout causes double financial loss (deposit balance lost + customer balance credited).
+- **Correct State Transition:** Mark the order as `SUBMITTED`, `PROCESSING_SUPPLIER`, or `PENDING_RECONCILIATION`.
+- **Resolution:** Let subsequent upstream webhooks or periodic reconciliation pollers (`status` inquiry by `ref_id`) resolve the final state (`SUCCESS` vs terminal `FAILED`) before initiating any wallet or payment gateway refund.
 
 ---
 

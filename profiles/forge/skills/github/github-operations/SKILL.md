@@ -31,6 +31,10 @@ When the question is repository size or language composition rather than a GitHu
 
 For issues: capture the report, classify/label/assign deliberately, and use templates for bug reports or feature requests. For pull requests: create a focused branch, commit only intended files, push, open the PR with a summary and test plan, then inspect CI rather than assuming it is green. See `references/issues-and-prs.md` and `templates/`.
 
+### Commit metadata and cryptographic invariants
+
+Never attempt to self-reference a commit's own SHA inside files tracked within that same commit (e.g. evidence manifests or closure reports). Changing the file changes the tree hash, preventing `git commit --amend` loops from ever converging. Always pin the target snapshot commit being audited, or attach post-commit metadata via Git tags or external release records. See `references/git-commit-hash-invariants.md`.
+
 ## Review workflow
 
 Read PR metadata and changed files before the diff. For each meaningful change, inspect enough surrounding code to validate its contract; run focused checks when the repository permits. Post only evidence-backed findings, separated into blocking defects, warnings, and suggestions. Do not approve based on a summary alone. See `references/code-review.md`.

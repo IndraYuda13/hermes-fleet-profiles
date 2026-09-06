@@ -128,6 +128,9 @@ WHATSAPP_DEBUG=true
        3. Set `approvals.mode: smart` so destructive shell patterns (`rm -rf`, systemctl restarts, config overwrites) are automatically intercepted and blocked.
        4. In `SOUL.md`, explicitly establish the **Read-Only / Non-Destructive Boundary**: explicitly permit read-only hardware/status inspection commands while strictly forbidding configuration edits, service stops, package installs, file deletions, or cross-profile access (`/root/.hermes/profiles/*`).
      - *Strictly disable in all group profiles:* `file` (raw file read/write/patch across VPS), `kanban`, `delegation`, `skill_manage`, `memory`, `cronjob`.
+     - **File Conversion & Media Handling via Dedicated Plugin (No Shell):**
+       If group members need file utilities (e.g. converting uploaded images to PDF, audio formats, OCR), NEVER enable `terminal` or `file` toolsets on the group profile.
+       Instead, create a dedicated zero-shell plugin in `~/.hermes/plugins/<tool-name>` using Python native libraries (e.g. `Pillow` for image-to-PDF). Register the tool under a custom toolset, configure `MEDIA:<output_path>` return directives, and add the toolset to `groupbot/config.yaml`. This delivers full utility while strictly preserving the zero-RCE sandbox.
   4. **Zero Memory & Zero Profile Retention:** Completely disable cross-session memory and self-improvement in `groupbot/config.yaml`:
      ```yaml
      memory:
@@ -162,6 +165,15 @@ WHATSAPP_DEBUG=true
 - In `bridge.js`, group messages with `fromMe: true` are intentionally discarded (`reason: "from_me_group"`) to prevent the bot from entering infinite self-reply loops with its own sent messages.
 - **Testing Rule:** Always test group bot responses using a **secondary WhatsApp number** or by asking another member in the group to mention the bot. Never test group mentions from the host account itself.
 - **Port 3000 `EADDRINUSE` Handling:** When restarting the WhatsApp bridge manually, always verify no orphaned node process holds the socket (`lsof -i :3000`) before launching a new background instance.
+- **Session Cache & Memory Wipe for Hallucinating / Stuck Group Bots:**
+  When a group bot (`groupbot`) becomes unresponsive or hallucinates wildly across prolonged group discussions:
+  1. Kill both gateway and bridge PIDs: `kill -9 <gateway_pid> <bridge_pid>`.
+  2. Wipe accumulated conversational state without unlinking WhatsApp credentials:
+     `rm -rf ~/.hermes/profiles/<profile>/sessions/* ~/.hermes/profiles/<profile>/cache/* ~/.hermes/profiles/<profile>/image_cache/* ~/.hermes/profiles/<profile>/audio_cache/* ~/.hermes/profiles/<profile>/state-snapshots/*`
+  3. Flush DNS resolver cache: `resolvectl flush-caches` or `systemctl restart systemd-resolved`.
+  4. Launch gateway cleanly via supervisor or background terminal: `hermes --profile <profile> gateway run`.
+  5. Post-restart confirmation: broadcast a friendly system ready message to the group JID via `POST http://127.0.0.1:3000/send` with payload `{"chatId": "<group_jid>", "message": "..."}`.
+  6. **Re-Check Live Processes After Re-Launch:** Always verify with `ps aux | grep -E 'groupbot.*gateway|whatsapp-bridge'` to confirm both Python gateway and Node.js bridge spawned successfully, and test socket response before declaring complete.
 - **Direct Bridge Health & Restart Diagnostics:**
   - Health endpoint: `http://127.0.0.1:3000/health` (returns JSON status `connected`, `queueLength`, `uptime`).
   - Direct message test payload: `POST http://127.0.0.1:3000/send` with JSON `{"chatId": "<jid/lid>", "message": "text"}` (do NOT use field key `text` or `recipient` alone; schema requires exact `chatId` and `message`).

@@ -1,9 +1,9 @@
 {
-  "last_report_path": "/root/.hermes/profiles/nexus/logs/curator/20260829-123745",
-  "last_run_at": "2026-08-29T12:37:45.345694+00:00",
-  "last_run_duration_seconds": 240.576095,
-  "last_run_summary": "auto: 6 marked stale; llm: API call failed after 3 retries: HTTP 429: [antigravity/claude-opus-4-6-thinking] [429]: {\n  \"error\": {\n    \"code\": 429,\n    \"message\": \"Resource has been exhausted (e.g. check quota (reset after 45s)",
+  "last_report_path": "/root/.hermes/profiles/nexus/logs/curator/20260905-131019",
+  "last_run_at": "2026-09-05T13:10:19.572109+00:00",
+  "last_run_duration_seconds": 9.704153,
+  "last_run_summary": "auto: 12 marked stale; llm: API call failed after 3 retries: cannot import name '_bound_prompt_cache_key_field' from 'agent.transports.codex' (/usr/local/lib/hermes-agent/agent/transports/codex.py)",
   "last_run_summary_shown_at": "2026-07-24T13:00:21.305599+00:00",
   "paused": false,
-  "run_count": 9
+  "run_count": 10
 }

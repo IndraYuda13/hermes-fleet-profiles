@@ -83,6 +83,18 @@ events_data = js('''(() => {
 print("EVENTS_RESULT:", events_data)
 ```
 
+## Automated CLI Workflow via Playwright & FlareSolverr
+
+For headless node/playwright execution:
+```bash
+NODE_PATH=/root/.openclaw/workspace/node_modules node /root/.hermes/profiles/forge/skills/lms-automation/scripts/check_lms_flaresolverr.js 60 60
+```
+
+## Important Pitfalls & Fallback Inspections
+1. **Disabled Moodle Web Services:** `core_course_get_contents` returns `servicenotavailable` error on CeLOE. Rely on `core_calendar_get_action_events_by_timesort` and `core_course_get_enrolled_courses_by_timeline_classification` for AJAX API calls.
+2. **Self-Paced / No-Deadline Quizzes:** Courses with open self-paced quizzes (e.g. Career Coach STAR) do not generate timesort calendar events. Always check enrolled courses and inspect `course/view.php?id=<id>` via DOM parsing (`.activityitem`, `.activity`, `a[href*="/mod/quiz/view.php"]`) to verify quiz availability and completion status (`Done` vs `To do`).
+3. **Playwright Navigation Events:** CeLOE pages often keep background connections open. Prefer `waitUntil: 'domcontentloaded'` over `'networkidle'` to prevent 60s script timeouts.
+
 ## Output Formatting
 When presenting LMS tasks/deadlines to the user (Boskuu), use this exact format:
 "Berikut daftar tugas dan kuis aktif Boskuu di LMS (CeLOE):

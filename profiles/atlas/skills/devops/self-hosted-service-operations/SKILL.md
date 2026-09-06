@@ -46,7 +46,13 @@ Start with filesystem and journal measurements. Inspect stopped Docker container
   - **Restoring Bot Fleets**: Reload daemon and restart systemd services: `systemctl daemon-reload && systemctl restart cust1 cust2 cust3 cust4 cust5`.
   - **Process Verification**: Check both active systemd services and specific process args/working directories: `ps -ef | grep index.py` and inspect `/proc/<pid>/cwd` to verify workers are running in their expected `/root/cust/resellerX` directories.
 
-- **Systemd Unit File Creation via Terminal**: File tools (like `write_file`) block direct writes to protected system paths such as `/etc/systemd/system/`. Write unit files via `terminal` tool using `cat << EOF > /etc/systemd/system/name.service`.
+- **Systemd Unit Creation via Terminal**: File tools (like `write_file`) block direct writes to protected system paths such as `/etc/systemd/system/`. Write unit files via `terminal` tool using `cat << EOF > /etc/systemd/system/name.service`.
+- **Systemd Hardening & Signal Hygiene for Heavy Pipelines (FFmpeg / SQLite WAL / Python Daemons)**:
+  - **Preflight Screen / Duplicate Process Check**: Before starting a new systemd daemon, probe for lingering interactive sessions or orphan processes (`screen -ls`, `tmux ls`, `pgrep -fa script.py`). Dual instances running against the same SQLite database (`WAL` mode) or shared download dir cause split-brain data corruption, duplicate API credit burn, and concurrent file locking.
+  - **Signal Hygiene (`KillMode=mixed` & `TimeoutStopSec`)**: Pipelines with heavy tasks (video rendering, large downloads, LLM synthesis) must not use short timeouts (e.g. 15-30s). Set `TimeoutStopSec=90s` (or higher) and `KillMode=mixed` so systemd sends `SIGTERM` exclusively to the root Python process to trigger internal cleanup (`RUNNING=False`, finishing current cycle / DB checkpoint), escalating to `SIGKILL` on the remaining cgroup only if the timeout expires.
+  - **Crash-Loop & Burst Dampening**: Never use unconstrained `Restart=always` without limits. Always add `StartLimitIntervalSec=300s` and `StartLimitBurst=5` under `[Unit]` to prevent runaway CPU spin and provider rate-limiting during syntax or credentials crashes.
+  - **Journald Stream Flushing**: In Python services, always inject `Environment=PYTHONUNBUFFERED=1` and `StandardOutput=journal` / `StandardError=journal` with an explicit `SyslogIdentifier=<name>` so logs appear immediately in `journalctl -u <name> -f` without stdio buffering delays.
+  - **Internal Dashboard Network Binding**: Bind internal microservice dashboards to loopback (`127.0.0.1:<port>`) unless explicitly secured by external reverse proxy auth. Check socket availability first (`ss -tulpn | grep <port>`).
 - **Payment Webhook & Store Bot Diagnostics (Pakasir / Digiflazz / Telegram)**:
   - When verifying deposit/payment webhooks or Telegram shop bots: check both the bot runner service (`digiflazz-topup-bot.service`, `lemonnokos.service`) and the uvicorn webhook receiver (`digiflazz-topup-webhook.service` on port 8123, `lemonnokos-webhook.service` on port 8099).
   - **Pre-restart Syntax Validation**: Before triggering `systemctl restart` after code updates in a Python service, compile the modified modules with `<venv>/bin/python -m py_compile <path/to/file.py>` to avoid taking down running daemons into a crash loop on syntax errors.
@@ -81,6 +87,18 @@ ss -tlnp 2>/dev/null | head -30
 ```
 
 Report: host/uptime/load, RAM, disk (flag ≥75%), top mem consumers, failed units, key running services/containers. Offer to dig failed units or free disk — do not auto-delete or prune.
+
+## Graceful service shutdown and decommissioning
+
+When asked to stop, halt, or decommission a running service:
+
+1. **Stack tracing**: Identify related systemd units (`systemctl list-units | grep <keyword>`), running processes (`ps aux | grep <keyword>`), listener ports (`ss -tlnp`), and reverse proxy / Cloudflare Tunnel mappings (`/etc/cloudflared/config-vps-baru.yml` or `/etc/nginx/`).
+2. **Stop and disable**: `systemctl stop <unit>... && systemctl disable <unit>...` to ensure `Restart=always` units or system reboots do not unexpectedly revive the service.
+3. **4-Point post-stop verification**:
+   - Unit state: `systemctl status <unit>` reports `inactive (dead)` and `disabled`.
+   - Process tree: `pgrep -af <keyword>` confirms no detached or child worker processes linger.
+   - Socket release: `ss -tlnp | grep <port>` confirms the port has been released.
+   - Ingress verification: `curl -I https://<subdomain>.<domain>` confirms upstream origin is down (e.g. Cloudflare returns HTTP 502 Bad Gateway), while confirming the tunnel/proxy daemon itself remains healthy and unaffected.
 
 ## Dead / unused systemd unit removal
 
@@ -154,6 +172,12 @@ When purging and clean-reinstalling a Docker Compose service (e.g. NoFx AI Tradi
 ## Stateful worker/bot services
 
 For a long-running worker using a proxy fleet, verify its exact virtualenv, account/token store, proxy format, and interactive/headless mode. Preserve stateful authentication databases before resets. Test proxy nodes without spraying one endpoint, and keep connector/DNS behavior explicit.
+
+- **Automated Video Clipping & Render Pipelines (FFmpeg, yt-dlp & Subtitles)**:
+  - On VPS systems with limited root storage (<=15GB free) and 0B swap, execute video processing strictly inside RAM scratchpad (`/dev/shm/video_scratch/{job_id}`) with guaranteed `try ... finally` cleanup.
+  - Pin FFmpeg to `-threads 2` with de-escalated scheduler priorities (`nice -n 15 ionice -c 2 -n 7`) and concurrency 1 to prevent CPU starvation on critical daemons (9router, webhooks).
+  - Enforce Constant Frame Rate (`-fps_mode cfr -r 30`) and PTS re-basing to eliminate audio-video drift from VFR YouTube downloads.
+  - See `references/video-processing-pipeline.md`.
 
 - **Bounded Log Tail Buffers in Telemetry/Web Dashboards**:
   - Never use unconstrained `Path.read_text().splitlines()` or `readlines()` on active service logs (e.g. `bot.log`) inside polling web servers. When logs grow to tens of megabytes, parsing the entire string into memory on every 5–15s refresh causes process memory bloat (e.g. 400MB–650MB+ RSS).

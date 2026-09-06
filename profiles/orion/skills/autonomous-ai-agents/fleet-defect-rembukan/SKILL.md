@@ -58,3 +58,10 @@ For open-ended improvement audits and architecture reviews, see `references/flee
 
 For static HTML/JS storefront audits specifically (digital product stores, catalogs), see `references/static-site-storefront-audit.md` for a reusable checklist covering server, performance, mobile UX, data quality, security, and conversion.
 
+For third-party provider incident triage (such as business email outbound suspensions `554 5.7.1 Outbound sending is disabled` on Hostinger/cPanel), see `references/business-email-outbound-suspension.md` for the triage checklist, mandatory password reset, and Hostinger Live Chat unsuspend procedure.
+
+## Multi-Agent Web Pipeline Pitfalls & Best Practices
+- **Editable Install / Finder Namespace Guard:** When executing Kanban CLI tasks or custom subprocesses inside Hermes virtualenvs, ensure package namespace paths like `hermes_state_holders.py` are properly resolvable via `.pth` or PYTHONPATH so `_connect()` / `kanban_create` does not fail with `ModuleNotFoundError`.
+- **Kanban Card Title Invariant:** Always provide an explicit `title` in `kanban_create` dict payloads; omitting title will be rejected immediately by the tool schema.
+- **Split-Stream Video Architectures:** When orchestrating video streaming from providers with separate DASH/video-only and audio-only streams (e.g. Bstation), enforce zero-transcode remuxing (`ffmpeg -c:v copy -c:a copy -movflags frag_keyframe+empty_moov -f mp4 pipe:1`) at the FORGE layer to guarantee sub-second initial playback latency without CPU exhaustion.
+

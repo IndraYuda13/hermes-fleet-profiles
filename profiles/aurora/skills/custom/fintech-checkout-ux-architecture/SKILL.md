@@ -52,10 +52,14 @@ Post-payment anxiety occurs when scanning QRIS/e-wallets without instantaneous f
   * High-contrast QRIS with download button and visual `MM:SS` countdown timer.
   * Amber pulse micro-warning when remaining time < 2 minutes.
   * Modal focus trap and disabled accidental dismiss while payment is pending.
+  * **Mobile QRIS "Scan vs Save" Ergonomics:** Since smartphone users cannot scan their own screen, provide a primary 1-tap **"Simpan QRIS ke Galeri"** button (trigger canvas/blob download), a copyable raw QR payload fallback, and a 3-step micro-guide (*1. Unduh QRIS → 2. Buka m-Banking/E-Wallet → 3. Upload dari Galeri*).
 * **Live SSE (Server-Sent Events) Stream:**
   * Lightweight, 1-way HTTP/2 stream with native auto-reconnect (more efficient on mobile than WebSocket).
   * 4-Stage visual timeline: `Menunggu Pembayaran` → `Pembayaran Diterima` → `Memproses ke Provider` → `Sukses Terkirim`.
   * Auto-close drawer with celebratory micro-animation on success; seamless transition to digital receipt.
+* **Tab-Switch Visibility Re-Sync:**
+  * Mobile browsers throttle background JS timers when user switches to m-banking/e-wallet apps to scan/pay QRIS.
+  * Register `document.addEventListener('visibilitychange')`: immediately trigger payment status check when `document.visibilityState === 'visible'` to avoid stale timer display upon returning to the tab.
 * **Backend & Security Controls:**
   * **Atomic DB Claim Lock:**
     ```sql
@@ -79,6 +83,10 @@ Requiring mandatory login before checkout ruins guest conversion, while treating
   * Store up to 5 recently successful account identifiers in encrypted local client storage.
   * Render as horizontal chips above the input zone (e.g. `[MLBB] SkyWalker (Zone 2042)`).
   * Single tap auto-populates fields and triggers non-blocking background re-verification.
+* **Frictionless Guest Checkout & Post-Purchase Account Conversion:**
+  * Never block instant checkout with mandatory registration/login forms (`require_account` before payment). Allow guest purchase with minimal contact (WhatsApp / HP) for invoice delivery.
+  * Store guest orders in local browser storage (`localStorage['lt_guest_orders']`) for tracking continuity.
+  * Convert guests on the **Post-Payment Success Screen**: pitch 1-tap PIN setup or Telegram binding to protect order history and activate wallet cashback without disrupting the primary purchase funnel.
 * **Stateless Telegram Deep-Link Account Binding:**
   * Avoid heavy registration forms. Use 1-tap deep links: `t.me/LemonTopupBot?start=bind_<token>`.
   * Token must be single-use, signed (HMAC-SHA256), and short-lived (5–10 min expiry).
@@ -104,4 +112,7 @@ Requiring mandatory login before checkout ruins guest conversion, while treating
   * **Mobile (<768px):** Transform ledger into a floating bottom action summary bar with a swipeable/tap-to-expand bottom sheet drawer. Never force multi-column stacking beneath the primary wizard.
 * **Touch Target & Viewport Floor:**
   * Maintain strict 44x44px minimum hit bounding boxes for all interactive chips, payment channels, and pills.
+  * Pad floating mobile action bars with `bottom: calc(12px + env(safe-area-inset-bottom, 0px));` to prevent collision with iOS/Android OS gesture navigation bars.
+  * Provide bottom buffer padding on main scroll containers (`padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));`) to prevent floating dock occlusion over bottom-most receipts or action buttons.
+  * Hide or collapse floating action bars when text inputs are focused (`focusin`/`focusout`) to prevent virtual keyboard occlusion.
   * Wrap all ambient glow and background grids in `overflow: hidden; contain: paint; pointer-events: none;` to eliminate horizontal scrollbar defects on 360px–390px viewports.

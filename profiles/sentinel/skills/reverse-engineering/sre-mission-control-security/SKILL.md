@@ -31,6 +31,26 @@ Use when performing security audits, STRIDE threat modeling, injection testing, 
 4. **Action Endpoint Authentication & Authorization:**
    - Dedicated management and mutation endpoints (e.g. manual payouts, wallet configuration, daemon settings) must enforce API key validation (e.g. `X-Dashboard-Key` header verification) to prevent unauthorized execution via public domain exposures.
 
+5. **Daemon & Multi-Instance Process Lifecycle Security (Screen to Systemd):**
+   - **Socket & Zombie Cleanup:** Verify termination of legacy interactive multiplexers (`screen -ls`, `tmux ls`) to prevent orphaned/duplicate processes competing for locks or sessions.
+   - **Interpreter / Virtualenv Integrity:** Audit active process table (`psutil` / `ps aux`) to guarantee all supervisors and child workers execute strictly within the intended virtualenv binary (`/usr/local/lib/.../python3`), preventing version mismatch or uncontrolled host package loading.
+   - **Graceful Shutdown & Signal Traps:** Validate unit definitions specify appropriate signal handling (`KillSignal=SIGINT`, `TimeoutStopSec=30`, `Restart=always`, `RestartSec=10`) so workers flush atomic state files without session corruption.
+   - **Circuit Breaker Verification in Logs:** Check journal telemetry (`journalctl -u <unit>`) for proper multi-account rate limiting, upstream FloodWait cooldown sync, and absence of infinite reconnect storms.
+   - **Service Hardening Directives:** Inspect systemd unit isolation parameters: `ProtectSystem=full/strict`, `PrivateTmp=true`, `NoNewPrivileges=true`, `LimitNOFILE=65536`, and `ReadWritePaths=`. Flag any web-facing dashboard service binding `0.0.0.0` without authn/authz.
+
+6. **Log Streaming, Real-time SSE Telemetry & Invariant Pruning Security:**
+   - **SSE Memory Exhaustion (DoS):** Never use `f.readlines()` across active log files for initial tail buffer. Seek from end-of-file (`max(0, file_size - 16384)`) to avoid synchronous multimegabyte memory spikes and event-loop stalls.
+   - **Log File Truncation / Rotation Handling:** Track byte offsets carefully (`last_pos`). Reset `last_pos = 0` when `curr_size < last_pos` to prevent permanent SSE stream stall upon log rotation or truncation.
+   - **Automated Cleanup / Pruning Path Containment:** When implementing automatic file cleanup invariants (e.g. post-upload unlink), enforce strict directory containment (`Path(target).resolve().is_relative_to(base_dir.resolve())`) before invoking `unlink()`.
+   - **SQLite Connection & WAL Hygiene:** Ensure single-writer multi-reader concurrency uses WAL mode with a busy timeout. In Python `sqlite3`, wrap connections in explicit context managers with `conn.close()` in `finally:` blocks, as `with conn:` only handles transactions.
+
+7. **Streaming Media Pipeline & Reverse-Proxy Hardening:**
+   - **FastAPI / Starlette Permissive CORS Reflection:** Never pair `allow_origins=["*"]` with `allow_credentials=True`. Starlette automatically reflects arbitrary request `Origin` headers alongside credentials, allowing untrusted sites to read internal API telemetry. Explicitly whitelist trusted production origins.
+   - **On-the-fly Subprocess Concurrency (DoS):** Streaming endpoints piping external transcoders (e.g. `ffmpeg`, `yt-dlp`) without concurrency semaphores allow remote callers to exhaust system PIDs and file descriptors. Bound active remuxing workers using `asyncio.Semaphore(N)` and enforce upstream disconnect cleanup (`proc.kill()` on `request.is_disconnected()`).
+   - **CRLF & Subtitle Metadata Injection:** Text formats like WebVTT are sensitive to unescaped newline delimiters. Untrusted language query parameters (`lang`) or headers must be strictly validated against ISO regexes before concatenation into WebVTT comments/notes to prevent arbitrary cue injection into cached responses.
+   - **Operational Endpoint Data Hygiene:** Health endpoints (`/api/health`) must never expose internal filesystem paths to cookies/tokens or unmasked internal proxy connection strings.
+   - **Reverse Proxy Header Completeness:** Nginx configurations fronting SPA media players must declare CSP, HSTS, `X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options: nosniff`, and `Permissions-Policy` across both static asset routes and reverse-proxied `/api/` locations.
+
 ## Threat Modeling (STRIDE) Matrix
 1. **Spoofing (Authentication & Token Security):**
    - Inspect JWT signing algorithm configuration (`HS256`/`RS256`), prevent `alg:none`, verify expiration and secret entropy.

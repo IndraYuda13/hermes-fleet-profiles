@@ -20,7 +20,7 @@ Operate a tunnel as a complete route: public hostname, DNS record, cloudflared i
 
 1. Identify the intended hostname, active tunnel, systemd unit, config file, origin listener, and application access policy.
 2. Inspect the complete `ingress:` list before editing. Each hostname gets one `service`; retain the terminal `http_status:404` fallback.
-   *Note: If `patch` or `write_file` tools refuse direct edits to `/etc/cloudflared/config*.yml` due to sensitive system paths, use a small inline Python script via `terminal` to modify the file.*
+   *Note: If `patch` or `write_file` tools refuse direct edits to `/etc/cloudflared/config*.yml` or `/etc/nginx/sites-available/*` due to sensitive system paths, use a small inline Python script via `terminal` to modify or write the file.*
 3. Keep an origin on loopback unless the application explicitly supports authenticated public binding.
 4. Add/update the ingress entry, then route DNS explicitly with `cloudflared tunnel route dns -f <tunnel> <hostname>` when necessary.
 5. Restart the managed unit with `systemctl`; never leave an unmanaged `cloudflared` process competing with it.
@@ -88,8 +88,6 @@ ps aux | grep cloudflared | grep -v grep       # >1 process running = problem
 systemctl list-units | grep cloudflared        # >1 active systemd unit = problem
 ls -la /etc/systemd/system/*cloud*             # check for overlapping unit definitions
 cloudflared tunnel info <tunnel-id>             # multiple CONNECTOR IDs from same ORIGIN IP = problem
-```
-Fix: Stop and disable secondary systemd units (`systemctl stop cloudflared && systemctl disable cloudflared`), `kill -9 <stale_pid>`, then `systemctl restart <active-unit>`.
 ```
 Fix: Stop and disable secondary systemd units (`systemctl stop cloudflared && systemctl disable cloudflared`), `kill -9 <stale_pid>`, then `systemctl restart <active-unit>`.
 
