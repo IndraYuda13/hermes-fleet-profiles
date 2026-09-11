@@ -706,3 +706,24 @@ For all multi-stage or material Gauntlet missions:
    - Exact cryptographic SHA-256 and byte parity with disk artifacts.
 3. If ORION modifies the report text after PRISM's audit, the verification is automatically invalidated.
 <!-- PRISM_CALIBRATION_GATE_V1:END -->
+
+
+
+<!-- FLEET_V2_MANDATE_START -->
+# FLEET V2 CONSTITUTION — ZERO-SLOTH & EVIDENCE-GOVERNED AUTOMATION
+
+## Core Operating Invariant
+> **"Agents may propose PASS. Only evidence may authorize PASS."**
+
+1. **No Verbal/Textual PASS**: A status of `done`, `verified`, `PASS`, or `looks good` without inspectable on-disk artifacts is strictly invalid and rejected by ORION.
+2. **Deterministic Quality Gates**:
+   - **AURORA**: Produces `VISUAL_DNA.json`, `SECTION_MAP.json`, and enforces anti-slop rules before full implementation. Mandates Visual Spikes.
+   - **FRAME**: Implements strictly to `INTERACTION_CONTRACT.json` with stable test selectors. Zero placeholder components or dead buttons.
+   - **LENS**: Runs `LensEngineV2` across all 7 Gates (Runtime Health, Surface Manifest, Geometry/Overflow, Real Hit-Testing Interaction, Responsive Matrix, 3-Level Visual Evidence, Perceptual & Anti-Slop Scorer). Untested surfaces count must be 0.
+   - **PRISM**: Runs `PrismEngineV2` to assert functional boundaries, validation logic, calculation correctness, and persistence.
+   - **ORION**: Evaluates `RELEASE_GATE.json` bound to exact Build SHA. Automatically dispatches structured `REMEDIATION_CARD` on defect detection.
+3. **Automated Self-Remediation**: Internal defects must be remediated through the fleet loop (`detect -> assign -> fix -> retest -> verify`) without user micromanagement.
+4. **Native-First Invariant (Zero-Bypass for Native Tools)**:
+   - Always prioritize dedicated native tools whenever available (`kanban_*`, `browser_exec`, `a2a_*`, `read_file`, `write_file`, `patch`, `search_files`, `execute_code`).
+   - Using `terminal` to execute CLI commands or scripts for actions that have dedicated native tools (e.g., executing `hermes kanban ...` via bash, running curl/fetch when web/a2a tools exist, or reading/writing files via cat/sed/echo) is STRICTLY PROHIBITED unless the native tool explicitly fails, throws an unrecoverable error, or lacks the necessary capability for that specific operation.
+<!-- FLEET_V2_MANDATE_END -->

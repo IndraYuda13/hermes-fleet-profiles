@@ -1,7 +1,7 @@
 ---
 name: headless-ui-visual-audit-and-scroll-reveal
 description: "Audit scroll-reveal UIs and headless visual verification."
-version: 1.1.0
+version: 1.2.0
 author: Hermes
 license: MIT
 metadata:
@@ -13,6 +13,11 @@ metadata:
 # Headless UI Visual Audit & Scroll-Reveal Standards
 
 Practical operational guidelines for auditing and verifying modern web applications, landing pages, and single-page applications using headless browsers (Playwright / CDP) and AI visual analyzers.
+
+## When to Use
+- When testing or taking screenshots of single-page apps or landing pages with scroll-triggered entrance animations (`IntersectionObserver`, `FadeInUp`, `will-change-[transform,opacity]`).
+- When diagnosing why an automated visual audit returns "blank voids" or "elements missing" despite code being mounted.
+- When verifying dark-mode landing pages with dynamic video/canvas backgrounds and high-contrast accessibility.
 
 ## 1. Scroll-Reveal & IntersectionObserver Audit Trap
 
@@ -58,20 +63,6 @@ Dark-mode hero and footer sections featuring looping `<video>` elements with glo
 
 ---
 
-## 4. Infinite Horizon Marquee & Viewport Masking
-
-To implement continuous horizontal tickers, partner marquees, and badge rails without edge-clipping glitches:
-1. **Edge Fade Gradient Mask:** Apply a linear-gradient CSS mask to the overflow container:
-   ```css
-   mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent);
-   -webkit-mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent);
-   ```
-2. **Infinite Track Multiplication:** Replicate brand/partner items at least 3–4 times within a `flex w-max` track running `animate-[marquee_30s_linear_infinite]`, paired with `flex-shrink-0 px-8` on each item to prevent screen gaps on wide monitors.
-3. **Hover Suspension:** Pause animation during user interaction using `.animate-marquee:hover { animation-play-state: paused; }`.
-
-
----
-
 ## 3. Flawless Accordion Expansions (CSS Grid Trick)
 
 To avoid JavaScript height recalculations and DOM layout thrashing on accordion components (e.g. FAQ sections):
@@ -86,3 +77,28 @@ To avoid JavaScript height recalculations and DOM layout thrashing on accordion 
   </div>
   ```
 - Pair with an inline SVG Plus icon (`+`) that rotates 45 degrees (`rotate-45`) into a Close cross (`×`).
+
+---
+
+## 4. Infinite Horizon Marquee & Viewport Masking
+
+To implement continuous horizontal tickers, partner marquees, and badge rails without edge-clipping glitches:
+1. **Edge Fade Gradient Mask:** Apply a linear-gradient CSS mask to the overflow container:
+   ```css
+   mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent);
+   -webkit-mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent);
+   ```
+2. **Infinite Track Multiplication:** Replicate brand/partner items at least 3–4 times within a `flex w-max` track running `animate-[marquee_30s_linear_infinite]`, paired with `flex-shrink-0 px-8` on each item to prevent screen gaps on wide monitors.
+3. **Hover Suspension:** Pause animation during user interaction using `.animate-marquee:hover { animation-play-state: paused; }`.
+
+---
+
+## 5. Large Deliverable & Attachment Delivery Limits
+
+When sharing generated archives, dumps, or build artifacts with users over chat interfaces (e.g. Telegram):
+- **Bot Delivery Limits (50 MB Cap):** Telegram Bot API enforces a hard 50 MB limit for outbound bot document uploads (`MEDIA:`). Archives exceeding 50 MB will fail delivery with `Couldn't deliver the file attachment`.
+- **Proactive Mitigation:** Check deliverable size prior to sending. If size > 45 MB:
+  1. Immediately expose the artifact under an active web origin or tunnel path (e.g., `<web_root>/download/<file>`) and provide a clean HTTPS direct download link.
+  2. Provide split chunks (`split -b 40M <file>`) or instruct on cloning directly from Git remotes.
+
+

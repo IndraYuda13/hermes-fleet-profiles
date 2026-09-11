@@ -32,7 +32,9 @@ Actions that affect distributed services or system components should demonstrate
 
 ## 3. Zero-Asset Procedural Audio (Web Audio API)
 
-Zero external MP3/WAV assets keep the application lightweight, instant-loading, and responsive.
+> **CRITICAL INVARIANT GUARD:** On consumer storefronts and commercial platforms enforcing the **Zero-Audio Invariant** (e.g. LemonTopup), procedural audio is **STRICTLY FORBIDDEN**. All interactions must remain completely silent, relying exclusively on pure optical haptics (specular glints, micro-displacements, color shifts) and Android `navigator.vibrate()`. Only use Web Audio recipes below on platforms that explicitly mandate audio feedback.
+
+Zero external MP3/WAV assets keep the application lightweight, instant-loading, and responsive when audio is explicitly authorized.
 
 ### Audio Context Lazy Initialization & Autoplay Compliance
 Browsers block audio context creation before user interaction. Initialize audio on the first `pointerdown` or `click` event:
@@ -55,11 +57,16 @@ function getAudioContext() {
    * Oscillator: Sine wave
    * Frequency: $1200\text{Hz} \to 400\text{Hz}$ exponential ramp over $35\text{ms}$
    * Gain: $0.15 \to 0.001$ exponential decay over $40\text{ms}$
-2. **Warning / Emergency Alarm Chime:**
+2. **Fintech Snap/Denomination Switch (Crisp Ceramic Micro-Click):**
+   * Oscillator: Sine wave
+   * Frequency: $1400\text{Hz} \to 320\text{Hz}$ exponential ramp over $18\text{ms}$
+   * Gain: $0.045 \to 0.0001$ exponential decay over $18\text{ms}$ (extremely subtle, zero fatigue)
+   * Mobile haptic pairing: `if (navigator.vibrate) navigator.vibrate(6);`
+3. **Warning / Emergency Alarm Chime:**
    * Oscillators: Dual detuned sawtooth waves ($440\text{Hz}$ and $448\text{Hz}$)
    * LFO: $8\text{Hz}$ amplitude modulation
    * Gain: $0.2 \to 0.001$ over $300\text{ms}$
-3. **System Recovery / Success Harmonic Sweep:**
+4. **System Recovery / Success Harmonic Sweep:**
    * Triad major chord arpeggio ($C_5 \to E_5 \to G_5$)
    * Oscillator: Pure sine wave with soft low-pass filter ($2000\text{Hz}$)
    * Duration: $250\text{ms}$ total with decaying envelope

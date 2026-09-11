@@ -167,12 +167,34 @@ When building targeted product sub-pages (e.g. `/pin-enamel/`, `/pin-kuningan/`,
     <img src="/img/portfolio/1.png" onerror="this.onerror=null; this.src='https://www.example.com/img/portfolio/1.png';" alt="...">
     ```
   - For YouTube Shorts embeds in responsive cards:
-    - Avoid complex autoplay/playlist query strings (`autoplay=1&mute=1&playlist=...`) which trigger Google iframe origin blocks and render "This video is unavailable".
-    - Use clean standard embed URLs: `https://www.youtube.com/embed/<VIDEO_ID>?rel=0&modestbranding=1`.
+    - **The Error 153 Lockout:** YouTube Shorts that utilize copyrighted audio tracks or have embedding restricted in YouTube Studio will throw `Video player configuration error (Error 153)` regardless of embed parameters (`autoplay`, `mute`, `loop`, `playlist`, `nocookie`). Even direct browser requests to `/embed/<ID>` will fail with Error 153.
+    - **Shorts Showcase Card Standard:** Never let a landing page display a broken black iframe box. Use a high-fidelity showcase card with a 9:16 container (`padding-top: 177.78%`), high-res poster (`https://i.ytimg.com/vi/<ID>/hqdefault.jpg`), glowing Play button SVG, and direct `target="_blank"` link to `https://www.youtube.com/shorts/<ID>`.
     - Ensure floating CTA buttons have appropriate z-index and viewport margin so they never obscure video controls or lower text captions on mobile screens.
 
+## 11. Live Google SERP & Local Rank Auditing via FlareSolverr
+
+When verifying a local business's live organic ranking or Google Business Profile presence on Google Search (`google.com/search?q=...`):
+- **The Datacenter Captcha Wall:** Direct CLI requests or standard headless Chrome visits to Google Search from VPS/cloud IPs are instantly redirected to `google.com/sorry/index` (captcha block), returning 0 organic results.
+- **FlareSolverr Anti-Bot Bypass:** Route the request through the local FlareSolverr daemon at `http://127.0.0.1:8191/v1`:
+  ```python
+  import urllib.request, json
+  req_data = {
+      "cmd": "request.get",
+      "url": "https://www.google.com/search?q=" + urllib.parse.quote(query) + "&hl=id&gl=id",
+      "maxTimeout": 60000
+  }
+  req = urllib.request.Request("http://127.0.0.1:8191/v1", data=json.dumps(req_data).encode(), headers={"Content-Type": "application/json"})
+  resp = json.loads(urllib.request.urlopen(req, timeout=65).read().decode())
+  html = resp.get("solution", {}).get("response", "")
+  ```
+- **SERP & Knowledge Panel Extraction:**
+  - Parse organic results via BeautifulSoup by scanning `<h3>` headings and `/goto?url=...` redirection attributes.
+  - Note social media dominance: high-engagement branded Instagram accounts (`@brand.jkt`) often take Rank #1 above the official domain (`.com`).
+  - Extract the Knowledge Panel / Google Maps data from container `#rhs` or `div.kp-blk`: verify star rating, total review count, and physical street address.
+  - **Audit Operational Hours Mismatch:** Always cross-reference Google Maps listed hours against the website claims. For example, if GBP says "Sabtu Tutup" while the website claims "Buka Senin–Sabtu", local weekend customers will assume the business is closed, leaking high-intent weekend inquiries.
+
 ## 10. Supporting Knowledge Base
-- **B2B Scaling, Non-PT Operations & Funnel Repositioning:** See `references/b2b-scaling-and-funnel-repositioning.md` for mathematical blueprints on scaling custom service businesses from Rp 10M retail plateau to Rp 100M/month corporate accounts without requiring a large PT legal entity (operating cleanly as an independent creative studio with SPH/Invoice, 50% upfront DP cashflow rules, and single-price flat catalog structures).
+- **B2B Scaling, Non-PT Operations & Funnel Repositioning:** See `references/b2b-scaling-and-funnel-repositioning.md` for mathematical blueprints on scaling custom service businesses from Rp 10M retail plateau to Rp 100M/month corporate accounts without requiring a large PT legal entity (operating cleanly as an independent creative studio with SPH/Invoice, 50% upfront DP cashflow rules, single-price flat catalog structures, and the 4-tier competitor taxonomy & 5-point differentiation moat).
 - **Google Ads Low-Cost & Micro-Budget B2B Playbook:** See `references/google-ads-low-cost-b2b-playbook.md` and `references/google-ads-micro-budget-playbook.md` for exact 25-working-day micro-budget allocation models (Rp 500k/month, Max CPC Rp 1.500 cap), 5 golden keyword pairs, negative keyword lists, high-converting RSA copy templates with MOQ pre-filters, and WhatsApp conversion event tracking.
 - **Single-Price vs Tiered Wholesale Models & Material Accuracy:** When creating catalogs for manufacturing/workshop owners:
   - Honor the owner's preference for **1 flat price per item (Single Price Edition)** rather than complex multi-tier volume matrices if requested.

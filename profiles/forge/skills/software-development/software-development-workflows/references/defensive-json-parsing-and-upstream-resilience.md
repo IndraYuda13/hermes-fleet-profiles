@@ -48,6 +48,65 @@ for card in day.get('cards', []):
 
 ---
 
+## Polymorphic LLM Error Lists & Non-Error Sentinels
+
+When prompting multimodal LLMs (e.g. Gemini, Claude, GPT) to return structured lists of defects or transcription errors (e.g. `obvious_transcription_errors: [{"shown": "...", "heard": "..."}]`), models frequently return polymorphic payloads:
+- Plain strings instead of dicts: `["salah kata mukabomi bukannya muka bumi"]`
+- Affirmative "no-error" sentinel strings: `["tidak ada"]`, `["none"]`, `["clean"]`, `["pass"]`, `[""]`
+
+Iterating blindly with `.get()`:
+```python
+# CRASHES with AttributeError: 'str' object has no attribute 'get'
+for err in obvious_errors:
+    shown = err.get("shown", "")
+```
+And checking `if obvious_errors:` without filtering sentinels causes false failure triggers:
+```python
+# FAILS VALIDATION even though the model stated there were NO errors!
+if obvious_errors: # contains ["tidak ada"]
+    status = "FAIL"
+```
+
+### Canonical Defensive Handling
+
+1. **Pydantic Schema Typing:**
+   ```python
+   obvious_transcription_errors: List[Union[Dict[str, Any], str]] = Field(
+       default_factory=list,
+       description="List of obvious transcription errors {shown, heard} or error descriptions"
+   )
+   ```
+
+2. **Polymorphic Type Branching & Sentinel Filtering:**
+   ```python
+   IGNORABLE_SENTINELS = {"none", "tidak ada", "tidak ada kesalahan", "clean", "pass", "no", "n/a", "-", ""}
+
+   real_errors = []
+   for err in obvious_errors:
+       if isinstance(err, dict):
+           shown = err.get("shown", "")
+           heard = err.get("heard", "")
+           desc = f"Obvious subtitle error: '{shown}' instead of heard '{heard}'"
+           real_errors.append(err)
+       elif isinstance(err, str):
+           if err.lower().strip() in IGNORABLE_SENTINELS:
+               continue
+           desc = f"Obvious subtitle error: {err}"
+           real_errors.append(err)
+       else:
+           desc = f"Obvious subtitle error: {str(err)}"
+           real_errors.append(str(err))
+       if desc not in blocking_reasons:
+           blocking_reasons.append(desc)
+
+   if real_errors:
+       quality_gate_passed = False
+   else:
+       obvious_errors = []
+   ```
+
+---
+
 ## Service Configuration & Verification Protocol
 
 When updating service environment parameters (e.g., proxy ports, cookies, upstream endpoints):

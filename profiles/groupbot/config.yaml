@@ -1,4 +1,4 @@
-_config_version: 40
+_config_version: 41
 agent:
   reasoning_effort: low
   system_prompt: '# ABSOLUTE PRIORITY OVERRIDE RULE (PERCINTAAN GEN Z / ASMARA):
@@ -93,3 +93,4 @@ web:
   search_backend: firecrawl
   use_gateway: false
 command_allowlist: []
+mcp_servers: {}

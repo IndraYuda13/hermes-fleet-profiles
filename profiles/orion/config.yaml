@@ -102,37 +102,37 @@ onboarding:
   seen:
     busy_input_prompt: true
     openclaw_residue_cleanup: true
-_config_version: 40
+_config_version: 41
 a2a_agents:
   atlas:
-    timeout: 300
+    timeout: 900
     url: http://127.0.0.1:9902
   aurora:
-    timeout: 300
+    timeout: 1200
     url: http://127.0.0.1:9903
   forge:
-    timeout: 300
+    timeout: 1200
     url: http://127.0.0.1:9904
   frame:
-    timeout: 300
+    timeout: 1200
     url: http://127.0.0.1:9905
   lens:
-    timeout: 300
+    timeout: 1800
     url: http://127.0.0.1:9906
   nexus:
-    timeout: 300
+    timeout: 600
     url: http://127.0.0.1:9907
   prism:
-    timeout: 300
+    timeout: 1800
     url: http://127.0.0.1:9908
   quant:
-    timeout: 300
+    timeout: 900
     url: http://127.0.0.1:9909
   radar:
-    timeout: 300
+    timeout: 900
     url: http://127.0.0.1:9910
   sentinel:
-    timeout: 300
+    timeout: 1800
     url: http://127.0.0.1:9911
 custom_providers:
 - api_key: REDACTED
@@ -279,8 +279,35 @@ platform_toolsets:
   - session_search
   - skills
   - todo
+  whatsapp:
+  - a2a
+  - clarify
+  - hermes-a2a
+  - kanban
+  - memory
+  - session_search
+  - skills
+  - todo
 platforms:
   telegram:
     enabled: true
   whatsapp:
-    enabled: false
+    enabled: true
+    extra:
+      allow_all_users: true
+      allow_from: []
+      group_allow_from: []
+      group_allowed_chats: []
+      group_policy: open
+      require_mention: true
+      bridge_port: 3001
+      session_path: /root/.hermes/profiles/orion/whatsapp/session
+      mention_patterns:
+      - Orion
+      - '@Orion'
+      - \bOrion\b
+      - bot
+      - '@bot'
+      - \bbot\b
+      - Bb
+      - '@Bb'

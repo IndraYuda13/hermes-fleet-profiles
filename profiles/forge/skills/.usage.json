@@ -338,14 +338,14 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-02T06:56:56.428606+00:00",
-    "last_viewed_at": "2026-09-02T06:56:56.414516+00:00",
+    "last_used_at": "2026-09-11T08:00:10.219309+00:00",
+    "last_viewed_at": "2026-09-11T08:00:10.203072+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": true,
     "state": "active",
-    "use_count": 2,
-    "view_count": 2
+    "use_count": 4,
+    "view_count": 4
   },
   "claude-code": {
     "archived_at": "2026-07-24T13:16:36.776250+00:00",
@@ -1018,6 +1018,21 @@
     "use_count": 3,
     "view_count": 3
   },
+  "google-stitch-design-intelligence": {
+    "archived_at": null,
+    "created_at": "2026-09-07T15:43:27.582042+00:00",
+    "created_by": null,
+    "last_patched_at": null,
+    "last_reused_patch_generation": 0,
+    "last_used_at": "2026-09-07T15:57:11.659546+00:00",
+    "last_viewed_at": "2026-09-07T15:57:11.627916+00:00",
+    "patch_count": 0,
+    "patch_generation": 0,
+    "pinned": false,
+    "state": "active",
+    "use_count": 2,
+    "view_count": 2
+  },
   "google-workspace": {
     "archived_at": null,
     "created_at": "2026-07-12T09:16:28.894616+00:00",
@@ -1413,16 +1428,16 @@
     "archived_at": null,
     "created_at": "2026-09-04T09:31:20.476474+00:00",
     "created_by": "agent",
-    "last_patched_at": "2026-09-06T16:40:33.893118+00:00",
-    "last_reused_patch_generation": 22,
-    "last_used_at": "2026-09-06T16:40:24.812856+00:00",
-    "last_viewed_at": "2026-09-06T16:40:24.804454+00:00",
-    "patch_count": 23,
-    "patch_generation": 23,
+    "last_patched_at": "2026-09-09T16:23:58.755096+00:00",
+    "last_reused_patch_generation": 62,
+    "last_used_at": "2026-09-09T16:23:37.178635+00:00",
+    "last_viewed_at": "2026-09-09T16:23:37.170138+00:00",
+    "patch_count": 64,
+    "patch_generation": 64,
     "pinned": false,
     "state": "active",
-    "use_count": 37,
-    "view_count": 37
+    "use_count": 90,
+    "view_count": 90
   },
   "meeting-action-items": {
     "archived_at": null,
@@ -1931,14 +1946,14 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-05T13:16:03.183559+00:00",
-    "last_viewed_at": "2026-09-05T13:16:03.175286+00:00",
+    "last_used_at": "2026-09-11T05:10:38.197184+00:00",
+    "last_viewed_at": "2026-09-11T05:10:38.187696+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 2,
-    "view_count": 2
+    "use_count": 3,
+    "view_count": 3
   },
   "runtime-debugging": {
     "archived_at": "2026-07-17T12:46:55.673224+00:00",
@@ -2091,16 +2106,16 @@
     "archived_at": null,
     "created_at": "2026-07-17T12:30:21.314339+00:00",
     "created_by": "agent",
-    "last_patched_at": "2026-09-06T08:01:09.410244+00:00",
-    "last_reused_patch_generation": 16,
-    "last_used_at": "2026-09-06T08:00:58.859250+00:00",
-    "last_viewed_at": "2026-09-06T08:00:58.850847+00:00",
-    "patch_count": 58,
-    "patch_generation": 18,
+    "last_patched_at": "2026-09-11T16:02:34.556913+00:00",
+    "last_reused_patch_generation": 37,
+    "last_used_at": "2026-09-11T16:02:40.324574+00:00",
+    "last_viewed_at": "2026-09-11T16:02:40.314159+00:00",
+    "patch_count": 77,
+    "patch_generation": 37,
     "pinned": false,
     "state": "active",
-    "use_count": 69,
-    "view_count": 69
+    "use_count": 90,
+    "view_count": 90
   },
   "software-development:dogfood": {
     "archived_at": null,
@@ -2495,14 +2510,14 @@
     "created_by": "agent",
     "last_patched_at": "2026-08-25T20:18:02.799135+00:00",
     "last_reused_patch_generation": 4,
-    "last_used_at": "2026-09-05T18:57:14.658068+00:00",
-    "last_viewed_at": "2026-09-05T18:57:14.644041+00:00",
+    "last_used_at": "2026-09-07T03:39:36.928831+00:00",
+    "last_viewed_at": "2026-09-07T03:39:36.918147+00:00",
     "patch_count": 6,
     "patch_generation": 4,
     "pinned": false,
     "state": "active",
-    "use_count": 12,
-    "view_count": 12
+    "use_count": 13,
+    "view_count": 13
   },
   "web-ui-testing-and-auditing": {
     "archived_at": null,

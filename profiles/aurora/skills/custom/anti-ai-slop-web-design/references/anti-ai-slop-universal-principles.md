@@ -1,6 +1,6 @@
 # Universal Anti-AI Slop Principles & World-Class Web Design Standard
 
-This reference synthesizes the proven design decisions from the Awwwards-grade WebGL 3D Particle Scrollytelling project and general digital art/editorial engineering into 7 foundational, domain-neutral rules for building web interfaces that eliminate generic AI slop.
+This reference synthesizes the proven design decisions from the Awwwards-grade WebGL 3D Particle Scrollytelling project, high-end design research (e.g. OFF+BRAND study), and the 12-stage internal exploration workflow into domain-neutral, non-negotiable rules for building web interfaces that eliminate generic AI slop.
 
 ---
 
@@ -94,3 +94,63 @@ An agent or developer writing code and immediately self-certifying: *"The UI loo
    - **FRAME**: Faithfully executes code and mathematical asset distribution.
    - **LENS & PRISM**: Independently audit headless rendered viewports (Playwright CDP + VLM).
 2. **Zero-Bypass Failure Remediation**: If LENS identifies that an asset looks like a blob or typography overlaps an element, work CANNOT proceed to completion. An explicit remediation task must be routed back to FRAME to reformulate the mathematics or CSS before independent retest.
+
+---
+
+## 8. The 8 Mandatory Hard Checks (Lens Review Contract)
+
+Before any UI build can receive a `pass` verdict, all 8 hard checks must pass (return `true`). A failure on any check triggers an immediate `verdict = "revise"`:
+
+1. **`no_emoji_ui_icons`**: Unicode emoji are strictly forbidden as UI navigation, action, button, card header, or decorative icons. A single, coherent SVG family (e.g. Lucide/custom) or text labels must be used.
+2. **`stable_status_not_animated`**: Stable states (`Active`, `Online`, `Available`, `Connected`, `Operational`) must NEVER pulse, ping, blink, breathe, or animate continuously. Use a calm text label with an optional static dot. Motion is reserved only for active, ongoing background tasks with clear end conditions.
+3. **`primary_flow_works`**: Primary CTAs must not be dead links (`href="#"`, `href=""`, `javascript:void(0)` without handlers). All primary flows must be clickable and navigable.
+4. **`important_content_not_clipped`**: Critical titles, metrics, hero copy, and navigation items must never be clipped by `overflow: hidden` without intentional ellipsis or line-clamp.
+5. **`keyboard_and_touch_usable`**: Mobile touch targets must meet ergonomic standards ($\ge 44 \times 44\text{px}$). No essential navigation or data may be locked behind desktop-only hover states.
+6. **`reduced_motion_reviewed`**: All motion must respect `@media (prefers-reduced-motion: reduce)` and gracefully stop or dampen for users sensitive to vestibular motion.
+7. **`fonts_and_assets_loaded`**: Zero broken images (`naturalWidth > 0`), zero 4xx/5xx network asset failures, and clean web font readiness before capture.
+8. **`claims_and_data_are_grounded`**: Strictly zero generic marketing hallucinations: no fake testimonials ("John Doe, CEO at Acme"), fake metrics ("10,000+ Happy Customers"), or fake media badges ("As featured on Forbes/TechCrunch") unless grounded in authentic domain facts or explicitly marked as illustrative.
+
+---
+
+## 9. The 6-Dimension Calibrated Scoring Rubric
+
+Lens audits builds across 6 weighted dimensions (Total 100 points):
+
+| Dimension | Weight | Target Assessment |
+|---|---|---|
+| **Identity & Brief Match** | 25% | Specificity to product/domain; custom character; zero template genericness. |
+| **Composition & Hierarchy** | 25% | Clear primary/secondary focal path; rhythm; breathing room; anti-card-grid. |
+| **Typography** | 15% | Typographic triad; measure; optical tracking; contrast ratio $\ge 7:1$. |
+| **Assets & Visual Direction** | 15% | Proof-driven visuals; authentic photography/renders; intentional cropping. |
+| **Interaction & Motion** | 10% | Tactile micro-interactions; calm anchored macro; reduced-motion compliance. |
+| **Responsive** | 10% | Intentional mobile two-tier stage; touch targets $\ge 44\text{px}$; zero overflow. |
+
+**Scoring Anchors**:
+- `0–3`: Gagal total atau hierarki membingungkan.
+- `4–5`: Berfungsi tetapi template default AI slop (centered hero + dual pill + 3-box bento).
+- `6–7`: Ada arah desain jelas namun ada kelemahan struktural material.
+- `8–9`: Koheren, spesifik, bernilai editorial tinggi dengan sedikit kelemahan minor.
+- `10`: Museum-grade / Awwwards level dengan bukti visual sangat kuat.
+
+**Pass Threshold**:
+- Weighted Total $\ge 85/100$
+- Minimum $\ge 8/10$ across EVERY individual dimension
+- All 8 Hard Checks = `true`
+- Zero blocking defects
+
+---
+
+## 10. The 12-Stage Anti-Slop Orchestration Pipeline
+
+1. **Brief & Grounding**: Extract authentic product constraints and core conversion actions. Do not hallucinate business data.
+2. **Visual Reference Discovery**: Inspect live references in headless browser; extract concrete spatial, typographic, and motion lessons.
+3. **3 Structural Candidates**: Explore 3 radically distinct layout/hierarchy candidates (not just color palette swaps).
+4. **Concept Selection (Lens + Orion)**: Lens critiques candidates; Orion locks one global direction and designates one token owner.
+5. **Design Contract**: Generate compact `DESIGN_CONTRACT.md` specifying typography triad, semantic colors, grid, and assets.
+6. **Real Asset Production & Cropping**: Secure and crop authentic imagery before implementation. No placeholder grey boxes.
+7. **Vertical Slice (Hero + 1 Section)**: Build complete hero and first follow-up section on desktop and mobile. Audit with Lens before fanning out.
+8. **Implementation Execution**: FRAME implements remaining surfaces with stable selectors and zero placeholder components.
+9. **Binding Lens Review**: Lens executes `LensEngineV2` across all 7 gates and issues `LENS_REVIEW_REPORT.json`.
+10. **Priority Remediation Loop**: Maximum 5 priority design defects + all hard check failures per cycle. Budget: 2–4 cycles.
+11. **Retest & SHA Validation**: Lens retests the new build SHA. If no progress after 2 cycles, re-evaluate direction.
+12. **Verified Handoff**: Release verified build, inspection artifacts, and residual risk notes.

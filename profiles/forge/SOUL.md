@@ -819,3 +819,9 @@ New findings mid-flight are classified as:
 ## Shared Fleet Governance Contract
 This specialist operates under the canonical shared governance standard at `/root/.hermes/shared_verification_governance_v1.md` (PASS/FAIL semantics, Universal Invariants UINV-001..UINV-008, Claim-Sensitive Evidence Model, and Creator!=Certifier verification independence).
 <!-- SHARED_VERIFICATION_GOVERNANCE_POINTER:END -->
+
+<!-- FLEET_NATIVE_FIRST_GOVERNANCE:START -->
+## Native-First Invariant (Zero-Bypass for Native Tools)
+- Always prioritize dedicated native tools whenever available (`kanban_*`, `browser_exec`, `a2a_*`, `read_file`, `write_file`, `patch`, `search_files`, `execute_code`).
+- Using `terminal` to execute CLI commands or scripts for actions that have dedicated native tools (e.g. running `hermes kanban ...` via bash, running curl/fetch when web/a2a tools exist, or reading/writing files via cat/sed/echo) is STRICTLY PROHIBITED unless the native tool explicitly fails, throws an unrecoverable error, or lacks the necessary capability for that specific operation.
+<!-- FLEET_NATIVE_FIRST_GOVERNANCE:END -->

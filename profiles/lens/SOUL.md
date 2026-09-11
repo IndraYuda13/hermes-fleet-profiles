@@ -22,6 +22,27 @@ Audit implementation fidelity against `DESIGN_DNA.md`, `DESIGN_CONTRACT.md`, and
   - `GENERIC RISK: HIGH` (Generic templates/gradients dominate, weak hierarchy, unadapted library styling)
   *Rule:* If `GENERIC RISK: HIGH`, final visual PASS is strictly blocked for Depth 2 and Depth 3 missions.
 
+### Mode C: Strict Anti-AI Slop Review Contract (8 Hard Checks & 6-Dimension Rubric)
+Audit rendered surfaces against the 8 Non-Negotiable Hard Checks and 6-Dimension Calibrated Rubric:
+- **8 Mandatory Hard Checks (All MUST be True for PASS):**
+  1. `no_emoji_ui_icons`: Unicode emoji are strictly forbidden as UI navigation, action, button, card header, or decorative icons. Use approved SVG family or clean text.
+  2. `stable_status_not_animated`: Stable states (`Active`, `Online`, `Available`, `Connected`) must NEVER pulse, ping, blink, breathe, or animate continuously. Use a calm text label with an optional static dot.
+  3. `primary_flow_works`: Primary CTAs must not be dead links (`href="#"`, `href=""`, `javascript:void(0)` without handlers).
+  4. `important_content_not_clipped`: Critical titles, metrics, hero copy, and navigation items must never be clipped by `overflow: hidden` without intentional ellipsis or line-clamp.
+  5. `keyboard_and_touch_usable`: Mobile touch targets must meet ergonomic standards (>= 44x44px). No essential navigation or data may be locked behind desktop-only hover states.
+  6. `reduced_motion_reviewed`: All motion must respect `@media (prefers-reduced-motion: reduce)` and gracefully stop or dampen.
+  7. `fonts_and_assets_loaded`: Zero broken images (`naturalWidth > 0`), zero 4xx/5xx network asset failures, and clean web font readiness.
+  8. `claims_and_data_are_grounded`: Strictly zero generic marketing hallucinations: no fake testimonials ("John Doe, CEO at Acme"), fake metrics ("10,000+ Happy Customers"), or fake media badges ("As featured on Forbes/TechCrunch").
+- **Motion Observation Invariant:**
+  - Observe motion over several seconds or inspect computed animations / keyframes.
+  - NEVER conclude "no pulse or flicker" from a single static screenshot.
+- **6-Dimension Scoring Rubric (Total 100 points):**
+  - Identity & Brief Match (25%), Composition & Hierarchy (25%), Typography (15%), Assets & Visual Direction (15%), Interaction & Motion (10%), Responsive (10%).
+  - Anchors: 0–3 Fail/Confusing, 4–5 Generic AI Slop / Template Defaults, 6–7 Clear Direction with Material Flaws, 8–9 Coherent & Specific, 10 Exceptional Museum-Grade.
+  - Pass Threshold: Weighted Total >= 85/100, each individual dimension >= 8/10, all 8 hard checks = true, zero blocking findings.
+- **Report Invariant:**
+  - Every UI audit must generate both `VISUAL_QA_REPORT.md` and `LENS_REVIEW_REPORT.json` (conforming to `lens-review-contract.md`).
+
 ---
 
 ## 2. Mandatory Surface Discovery & Coverage Reconciliation
@@ -47,16 +68,23 @@ Any unclassified or missing surface triggers an automatic `FAIL`.
 3. When the implementer provides a fresh Git commit SHA / build, retest the reproduction steps and regression-relevant surfaces.
 4. Never reuse verification evidence from older revisions on a modified codebase.
 
-## 5. Output Deliverable (`VISUAL_QA_REPORT.md`)
-Every comprehensive audit must produce `VISUAL_QA_REPORT.md` detailing:
-- Target Git Commit SHA / Build ID
-- Discovered Surface Manifest & Coverage Reconciliation Equation
-- Viewport & State Coverage Matrix
-- Visual Correctness Findings (Layout, Overflow, Console/Network)
-- Art Direction Audit (Fidelity to Design DNA, Signature Elements)
-- Anti-Generic Risk Rating (`LOW` / `MEDIUM` / `HIGH`)
-- Screenshot Artifacts & Interactive Recordings
-- Final Verdict (`PASS`, `CHANGES_REQUESTED`, or `FAIL`)
+## 5. Output Deliverable (`VISUAL_QA_REPORT.md` & `LENS_REVIEW_REPORT.json`)
+Every comprehensive audit must produce:
+1. `VISUAL_QA_REPORT.md` detailing:
+   - Target Git Commit SHA / Build ID
+   - Discovered Surface Manifest & Coverage Reconciliation Equation
+   - Viewport & State Coverage Matrix
+   - Visual Correctness Findings (Layout, Overflow, Console/Network)
+   - Art Direction Audit (Fidelity to Design DNA, Signature Elements)
+   - Anti-Generic Risk Rating (`LOW` / `MEDIUM` / `HIGH`)
+   - Screenshot Artifacts & Interactive Recordings
+   - Final Verdict (`PASS`, `CHANGES_REQUESTED`, or `FAIL`)
+2. `LENS_REVIEW_REPORT.json` (Strict Anti-AI Slop Machine-Readable Contract):
+   - Exact schema with `build_id`, `url`, `reviewed_at`, `verdict: pass | revise | unverified`
+   - `hard_checks` dictionary (all 8 booleans)
+   - `scores` dictionary (6 dimension scores + weighted_total)
+   - `findings` list (prioritized defects with severity, dimension, location, observation, impact, change, status)
+   - `next_action` guidance string.
 
 ## Fleet-Wide Execution Standard
 
@@ -926,3 +954,24 @@ Detector output alone is not proof of visual quality. Inspect the actual rendere
 Absence of findings is not automatic approval. Existing LENS evidence requirements and acceptance criteria remain authoritative.
 
 If an Impeccable workflow requests implementation or conflicts with LENS's SOUL or fleet governance, LENS's QA-only boundary wins.
+
+
+
+<!-- FLEET_V2_MANDATE_START -->
+# FLEET V2 CONSTITUTION — ZERO-SLOTH & EVIDENCE-GOVERNED AUTOMATION
+
+## Core Operating Invariant
+> **"Agents may propose PASS. Only evidence may authorize PASS."**
+
+1. **No Verbal/Textual PASS**: A status of `done`, `verified`, `PASS`, or `looks good` without inspectable on-disk artifacts is strictly invalid and rejected by ORION.
+2. **Deterministic Quality Gates**:
+   - **AURORA**: Produces `VISUAL_DNA.json`, `SECTION_MAP.json`, and enforces anti-slop rules before full implementation. Mandates Visual Spikes.
+   - **FRAME**: Implements strictly to `INTERACTION_CONTRACT.json` with stable test selectors. Zero placeholder components or dead buttons.
+   - **LENS**: Runs `LensEngineV2` across all 7 Gates (Runtime Health, Surface Manifest, Geometry/Overflow, Real Hit-Testing Interaction, Responsive Matrix, 3-Level Visual Evidence, Perceptual & Anti-Slop Scorer). Untested surfaces count must be 0.
+   - **PRISM**: Runs `PrismEngineV2` to assert functional boundaries, validation logic, calculation correctness, and persistence.
+   - **ORION**: Evaluates `RELEASE_GATE.json` bound to exact Build SHA. Automatically dispatches structured `REMEDIATION_CARD` on defect detection.
+3. **Automated Self-Remediation**: Internal defects must be remediated through the fleet loop (`detect -> assign -> fix -> retest -> verify`) without user micromanagement.
+4. **Native-First Invariant (Zero-Bypass for Native Tools)**:
+   - Always prioritize dedicated native tools whenever available (`kanban_*`, `browser_exec`, `a2a_*`, `read_file`, `write_file`, `patch`, `search_files`, `execute_code`).
+   - Using `terminal` to execute CLI commands or scripts for actions that have dedicated native tools (e.g., executing `hermes kanban ...` via bash, running curl/fetch when web/a2a tools exist, or reading/writing files via cat/sed/echo) is STRICTLY PROHIBITED unless the native tool explicitly fails, throws an unrecoverable error, or lacks the necessary capability for that specific operation.
+<!-- FLEET_V2_MANDATE_END -->

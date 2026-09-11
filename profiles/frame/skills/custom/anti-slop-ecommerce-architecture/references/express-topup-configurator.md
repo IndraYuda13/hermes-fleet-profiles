@@ -84,3 +84,46 @@ const triggerImmediatePoll = () => {
 document.addEventListener('visibilitychange', triggerImmediatePoll);
 window.addEventListener('focus', triggerImmediatePoll);
 ```
+
+## 4. Zero-DOM-Mutating SVG Registry Pattern
+
+Avoid runtime script injection such as `lucide.createIcons()` or `data-lucide` selectors. Store vector strings in memory:
+
+```javascript
+const ICONS = {
+  check: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+  zap: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',
+  arrowRight: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>'
+};
+
+function icon(name) {
+  return ICONS[name] || '';
+}
+```
+
+## 5. Quick Nominal Picker & Sanitized Live Feed Pattern
+
+```javascript
+// Express nominal selection directly binds to checkout state
+function selectQuickNominal(product) {
+  orderState.selectedItemId = product.sku;
+  orderState.selectedProduct = product;
+  openCheckoutDrawer();
+}
+
+// Live feed rendering with privacy masking & deterministic fallback
+function renderLiveFeed(container, transactions) {
+  const items = (transactions && transactions.length > 0) ? transactions : FALLBACK_FEED;
+  container.innerHTML = items.map(t => `
+    <div class="transaction-item">
+      <div class="t-logo ${clean(t.themeClass)}">${clean(t.brandCode)}</div>
+      <div class="t-name">
+        <strong>${clean(t.game)} <span class="t-sku">(${clean(t.skuLabel)})</span></strong>
+        <small>${rupiah(t.amount)}</small>
+      </div>
+      <div class="status-badge success">✔ Berhasil</div>
+      <div class="t-time">${clean(t.relativeTime)}</div>
+    </div>
+  `).join('');
+}
+```

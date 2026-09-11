@@ -48,3 +48,21 @@
 - `HMPR*E` : Display ticket sales report today
 - `TRV/6181234567890` : Void ticket same-day
 - `TRNE6181234567890/DDMMMYY` : Auto refund ticket
+
+## 6. Advanced Troubleshooting & Pricing Workarounds
+### A. Codeshare/Partner Sub-Class Mismatch & Open-Jaw Through-Fare
+- **Problem:** International long-haul flight uses booking class B/H, but connecting partner flight (e.g. SQ codeshare operated by SAS / Lufthansa) only has class W/S available as live inventory (`HK1`), triggering `NO FARE FOR CLASS` or `CHECK ITINERARY`.
+- **Solution (Passive Ghost Segment Trick):**
+  1. Keep live segments active (`HK1`) on the available class (e.g. W/S).
+  2. Direct-sell passive segments (`AK1`) matching the parent international booking class (e.g. B/H):
+     `0SQ2736B12SEPCPHARNAK1`
+     `0SQ2639H23SEPOSLCPHAK1`
+  3. Price explicitly skipping mismatched live segments and including passive segments:
+     `FQCSQ/S1-2.4.6-8`
+  4. Store fare quote into PNR:
+     `T:P1/S1-2.4.6-8/CSQ` (or `T.T1`)
+  5. Verify stored calculation via `*FF1`, add TMU commission & payment, then issue via `TKPDTD`.
+
+### B. Open-Jaw Surface Discontinuity
+- Insert ARUNK segment when passenger travels overland between cities (e.g. ARN to OSL):
+  `0A/3` or `Y3` (insert after segment 3).

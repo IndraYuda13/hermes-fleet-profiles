@@ -341,43 +341,26 @@ When verifying or troubleshooting a production media streaming deployment:
   }`);
   ```
 
-## 16. Full Catalog Browser via Broad Search Aggregation
-- **Problem:** Bstation has NO browse/index API endpoint (all `/ogv/index`, `/ogv/filter`, `/ogv/catalog`, `/ogv/all` return 404). The only discovery mechanism is the search API (`/search_v2`) and timeline API (`/ogv/timeline`).
-- **Solution — Multi-Keyword Catalog Builder:**
-  1. Execute broad search across ~60+ keywords: all 26 alphabet letters + popular franchise names + Indonesian genre terms + misc terms like "dub indo", "season"
-  2. Deduplicate by `season_id` into a single catalog dict
-  3. Merge with timeline API data (`/ogv/timeline`) to enrich `styles`/genre fields
-  4. Cache the full aggregated catalog for 1 hour (building takes 30-60s due to many sequential API calls)
-  5. Serve with server-side pagination, genre filter, sort (title/rating), and text search
-- **Yield:** ~113-150 unique OGV anime from Bstation Indonesia catalog
-- **Keywords that produce results (tested):**
-  ```python
-  CATALOG_KEYWORDS = [
-      # Alphabet
-      *list('abcdefghijklmnopqrstuvwxyz'),
-      # Franchise names
-      'one piece', 'naruto', 'dragon ball', 'bleach', 'fairy tail',
-      'sword art', 'my hero', 'demon slayer', 'jujutsu', 'chainsaw',
-      'spy family', 'mob psycho', 'overlord', 're:zero', 'konosuba',
-      'shield hero', 'mushoku', 'slime', 'solo leveling', 'black clover',
-      'hunter', 'fullmetal', 'death note', 'code geass', 'steins',
-      'attack on titan', 'frieren', 'oshi no ko', 'vinland',
-      'link click', 'blue lock', 'iruma', 'tensura', 'kaiju',
-      'haikyuu', 'kuroko', 'gintama', 'boruto',
-      # Indonesian genre terms
-      'isekai', 'komedi', 'pertarungan', 'romantis', 'fantasi',
-      'petualangan', 'sihir', 'sekolah', 'olahraga', 'horor',
-      'adaptasi', 'misteri', 'aksi', 'drama',
-      # Misc
-      'dub indo', 'season 1', 'season 2', 'season 3', 'musim',
-  ]
-  ```
-- **API Endpoint Design:**
-  ```
-  GET /api/catalog?page=1&pagesize=24&genre=isekai&sort=title&q=naruto
-  Response: { catalog: [...], total: 149, genres: [...], page: 1 }
-  ```
-- **Parallelism:** Use `asyncio.gather` with batches of 5 concurrent searches to speed up catalog build from ~60s to ~15s.
+## 16. Official Bstation OGV Index API vs Brute-Force Search Pitfall
+- **The Brute-Force Search & WAF HTTP 412 Trap:**
+  - Attempting to build a full catalog by firing parallel batches of broad search keywords (`/search_v2` with alphabet + genres + popular franchise names) triggers Bstation's WAF rate limiter with **HTTP 412 (Precondition Failed)**.
+  - This causes silent query drops, leaving the catalog builder with only 31 to 113 titles instead of the full library.
+- **The Official OGV Index/Category Endpoints (Discovered via Web Bundle RE):**
+  - Bstation web (`/id/category?season_type=1,4`) uses official dedicated gateway endpoints:
+    - Catalog Items: `https://api.bilibili.tv/intl/gateway/web/v2/ogv/index/items_v2`
+    - Filter Taxonomy: `https://api.bilibili.tv/intl/gateway/web/v2/ogv/index/filters?season_type=1,4`
+    - Categories: `https://api.bilibili.tv/intl/gateway/web/v2/ogv/index/categories`
+- **Query Parameters & Invariants:**
+  - `season_type=1,4` (1 = Japanese Anime [50 titles], 4 = Donghua / OGV Anime [282 titles]).
+  - `s_locale=id_ID`, `platform=web`.
+  - **Page Size Cap Invariant:** Maximum `ps` is **50**. Requesting `ps > 50` (such as 60 or 100) returns error `code: -400` with empty cards. Always use `ps=50`.
+  - **Catalog Paging:** Loop `pn=1` incrementally until `res.data.has_next == False` or `res.data.cards` is empty. In Bstation SEA (id_ID), this yields the complete 100% official licensed anime library (~332 unique titles) across just 7 clean requests.
+- **Why User Sees "Ribuan Anime" on Bstation:**
+  - Bstation's total library includes Dracin / Short Dramas (`season_type=5`, ~1,448 titles), TV Shows (`season_type=2,3`), and millions of user-generated UGC videos. The official licensed anime library on Bstation Indonesia is specifically 332 titles.
+- **Catalog Harvesting Architecture:**
+  1. Fetch `ogv/index/items_v2` with `season_type=1,4`, `ps=50`, paging from `pn=1` with 100ms pause between pages.
+  2. Merge with weekly schedule (`/ogv/timeline`) to enrich latest episode update strings (`index_show`).
+  3. Cache the resulting ~332 titles in memory/Redis with 1-hour TTL.
 
 ## 17. SVG Icon Sizing in CTA Buttons — The Unconstrained Icon Pitfall
 - **Problem:** Inline SVG icons (e.g., info circle icon in "Daftar Episode" button) without explicit CSS sizing constraints inflate to their intrinsic SVG `viewBox` size.
@@ -442,6 +425,30 @@ When auditing or building production on-the-fly media streaming backends (FastAP
 - **Supporter Utility Freemium Architecture:**
   - Never paywall core video playback. Keep base streaming (720p/1080p) completely open.
   - Monetize high-value convenience utilities: batch downloading seasons to Telegram via bot, priority low-latency CDN routing during peak hours (19:00–22:00 WIB), and cosmetic player custom styling/badges.
+
+## 22. Empty Cache Poisoning & Frontend Hero Dummy ID Pitfalls
+- **Empty Array Cache Poisoning (`set_cache(..., [])`):**
+  - Endpoints like `/api/featured` and `/api/popular` often query search or curation APIs. If queries return 0 items (e.g. WAF 412 or keyword returning only UGC), executing `set_cache(key, [], ttl=3600)` locks an empty state into cache for an hour, blanking the home page even after upstream recovers.
+  - **The Zero-Empty Invariant:** NEVER write an empty array to cache (`if not items: return fallback without set_cache`). Always maintain hardcoded in-memory `_STALE_FEATURED_FALLBACK` / `_STALE_POPULAR_FALLBACK` dictionaries to guarantee the backend never delivers an empty array to the client.
+  - **Sourcing Featured/Popular from Harvested Catalog Store:** Never rely on static search queries (`execute_pure_ogv_search`) for home spotlight or popular shelves. Instead, slice and rank directly from the already-harvested OGV catalog store (`get_or_build_catalog_store()`) and seasonal timeline, sorting by view count and rating.
+- **The Dummy Season ID Trap (`const seasonId = item?.season_id || '2097863'`):**
+  - Fallbacks using hardcoded dummy season IDs cause the Hero CTA button ("Nonton Sekarang") to route users to non-existent metadata (`#/watch/2097863`), causing the video player to crash into an alarming stream error ("Aliran Video Sedang Disiapkan: Aliran data video terputus").
+  - **Fix:**
+    1. Remove all dummy season IDs.
+    2. Disable CTA buttons (`disabled = true`, `onclick = null`) if `season_id` is missing.
+    3. Implement a 3-tier Hero fallback cascade: `featured -> seasonal.slice(0, 5) -> popular.slice(0, 5) -> hide`.
+    4. Enforce the Zero-Void Principle on shelves: if `popular.length === 0`, hide the container (`DOM.popularBlock.hidden = true`) rather than rendering "0 Judul Populer".
+
+## 23. Standalone Repository Portability & Core Vendorization Invariant
+- **The Sibling Path Insertion Trap (`sys.path.insert(0, "/root/...")`):**
+  - When extracting or developing web backends alongside automation bots (e.g. `animeTGStream` Telegram bot and `animestr-web`), developers often shortcut code reuse by inserting absolute host filesystem paths into `sys.path`.
+  - **The Portability Defect:** When a user clones the repository on a fresh machine or server (`git clone https://github.com/IndraYuda13/animestr-web`), running the service fails immediately with fatal `ModuleNotFoundError: No module named 'core'`.
+  - **Remediation & Packaging Standards:**
+    1. **Vendorize Core Modules:** Always copy required domain logic (`bstation_core.py`, `ytdlp_core.py`, `cookie_helper.py`, `stream_probe.py`) directly into the repository structure (e.g. `backend/core/` with `__init__.py`).
+    2. **Local Package Imports:** Use dynamic directory resolution (`CURRENT_DIR = Path(__file__).resolve().parent; if str(CURRENT_DIR) not in sys.path: sys.path.insert(0, str(CURRENT_DIR))`) or package-local imports (`from .core.bstation_core import BstationClient`) with zero references to host-specific parent directories.
+    3. **Document System CLI Prerequisites:** Explicitly document in `README.md` the external non-pip binaries required in `$PATH` (`ffmpeg` for stream muxing, `yt-dlp` for metadata extraction).
+    4. **Credential & Cookie Stubs:** Provide `backend/cookies.txt.example` and clearly document environment variables (`BILI_PROXY_URL`) so cloned environments can be configured and run without code modification. Ensure `.gitignore` explicitly prevents committing live session cookies (`backend/cookies.txt`).
+    5. **Up-to-Date Setup & Run Commands in Root README:** Every time project dependencies, modules, or ports change, immediately verify and patch the root `README.md` with explicit, copy-pasteable quickstart instructions (clone -> install dependencies -> setup cookies/proxy -> run backend & frontend) so users cloning the repo can run it with zero friction.
 
 See `references/bstation-and-mobile-player.md` for extended reference notes on Bstation franchise search patterns and mobile player implementation, and `references/streaming-monetization-and-compliance.md` for in-depth compliance and monetization guidelines.
 

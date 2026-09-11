@@ -13,6 +13,22 @@ Operate, troubleshoot, and maintain the 5 Telethon reseller instances (`reseller
 - `cust3.service` -> `/root/cust/reseller3/start4.py`
 - `cust4.service` -> `/root/cust/reseller4/start4.py`
 - `cust5.service` -> `/root/cust/reseller5/start4.py`
+- `share9.service` -> `/mnt/MYvps_partial/sharefile9/indexnew.py` (Bot file share @Aulia66_bot)
+- `share10.service` -> `/mnt/MYvps_partial/sharefile10/indexnew.py` (Bot file share @Rendy13_bot)
+
+### Verifying Bot File Share Health (share9 / share10)
+When user asks if `share9` or `share10` is dead or not responding:
+1. Check service and PID: `systemctl status share9 share10`.
+2. Inspect network socket to MTProto: `ss -tanp | grep -E "<PID_share9>|<PID_share10>"`. The status should be `ESTABLISHED` to Telegram DC (`91.108.56.x:443`).
+3. If `journalctl -u shareX` is empty or rotated, check bot connection and recent updates directly via Telegram Bot API or Telethon:
+   ```python
+   import urllib.request, json
+   # Check webhook & pending updates
+   tok = json.load(open('/mnt/MYvps_partial/sharefile9/config.json'))['bot_token']
+   info = json.loads(urllib.request.urlopen(f'https://api.telegram.org/bot{tok}/getWebhookInfo').read())
+   updates = json.loads(urllib.request.urlopen(f'https://api.telegram.org/bot{tok}/getUpdates?offset=-5').read())
+   ```
+4. If process event loop appears stuck or sluggish after config updates, run a fresh restart: `systemctl restart share9 share10`.
 
 **CRITICAL Python Environment:**
 Always use `/usr/local/lib/hermes-agent/venv/bin/python3`.
@@ -24,19 +40,47 @@ python3 index.py +628xxx
 ```
 
 ## Common Customer Issues & Pitfalls
+- **"Silent Worker Drop / Zombie Service" (Deceptive `active (running)`):**
+  - In `start4.py`, child `index.py` workers run via `await process.wait()` without an auto-restart loop. When an account hits an MTProto connection drop (`[Errno 110] Connection timed out`, server closed connection, or DC reset), `index.py` exits cleanly.
+  - Because `start4.py` remains running as long as at least one worker is still connected, systemd reports `custX.service` as `active (running)`, creating a zombie state where the service appears alive but 80–90% of customer bots are dead.
+  - **Verification Rule:** NEVER rely solely on `systemctl status custX`. Always verify the total running worker count:
+    `ps -ef | grep index.py | grep -v grep | wc -l` (must be exactly 51 total across the 5 instances: 11 in cust1, 10 each in cust2..5).
+  - In `systemctl status custX`, healthy units show `Tasks: 21` (or 23 for cust1). A unit showing `Tasks: 5` has dropped all but 2 workers.
+  - **Quick Remediation:** Run `systemctl restart cust1 cust2 cust3 cust4 cust5` to respawn all 51 workers cleanly.
+
 - **"Bot Gak Nyebar":**
   1. Check if `state_{phone}.json` has `floodwait_active: true`.
   2. Check if config `cf/cf{phone}.json` was accidentally emptied by customer via `/del 1` and `/del 2`.
   3. Check if customer repeatedly spammed `/restart` in Saved Messages (`me`), which triggers Telegram's anti-flood penalty (can reach 10–13 hours).
+  4. Check for Telegram SpamBot restrictions: if journalctl shows `Slot X forward error: You're banned from sending messages in supergroups/channels`, the account has been muted by Telegram SpamBot (account-level restriction, not a code defect).
 - **Command Debounce & Outgoing Filter:**
   Commands sent by customer in Saved Messages (`me`) are intercepted by `@client.on(events.NewMessage(outgoing=True, chats="me"))`. A 3-second debounce is in place to prevent multiple responses when commands are rapidly clicked.
-- **SQLite Database Lock:**
-  Before running manual testing with `index.py`, ensure the corresponding `custX.service` (or screen) is stopped to avoid `sqlite3.OperationalError: database is locked`.
+- **SQLite Database Lock & Telethon Wildcard Caution:**
+  - Before running manual testing with `index.py`, ensure the corresponding `custX.service` (or screen) is stopped to avoid `sqlite3.OperationalError: database is locked`.
+  - NEVER pass masked or wildcard strings (e.g. `+628****1234`) to Telethon or `index.py`; Telethon creates dummy SQLite `.session` files with literal asterisks in the session folder.
 
 ## Diagnostic & Inspection Commands
 ```bash
-# Service status & process tree
+# Verify all 51 workers are running (11 in cust1, 10 in cust2-5)
+ps -ef | grep index.py | grep -v grep | wc -l
+
+# Service status & process tree (check Tasks count: 21-23 = normal, 5 = workers dropped)
 systemctl status cust1 cust2 cust3 cust4 cust5
+
+# Comprehensive audit probe: running status, FloodWait cooldown, and active paid slots
+/usr/local/lib/hermes-agent/venv/bin/python3 -c "
+import os, glob, json, time, psutil
+running = {p.info['cmdline'][2]: p.info['pid'] for p in psutil.process_iter(['cmdline']) if p.info.get('cmdline') and len(p.info['cmdline']) >= 3 and 'index.py' in p.info['cmdline'][1]}
+now = int(time.time())
+for res in ['reseller', 'reseller2', 'reseller3', 'reseller4', 'reseller5']:
+    base = f'/root/cust/{res}'
+    for s in sorted(glob.glob(f'{base}/session/*.session')):
+        ph = os.path.basename(s).replace('.session', '')
+        cf_path, st_path = f'{base}/cf/cf{ph}.json', f'{base}/state_{ph}.json'
+        slots = [f'Slot{k}({round((v.get(\"expired\",0)-now)/86400,1)}d)' for k, v in json.load(open(cf_path)).items() if v.get('expired', 0) > now] if os.path.exists(cf_path) else []
+        fw = json.load(open(st_path)).get('floodwait_until', 0) - now if os.path.exists(st_path) and json.load(open(st_path)).get('floodwait_active') else 0
+        print(f'{res} | {ph} | PID:{running.get(ph, \"DEAD\")} | FW:{fw}s | Slots:{len(slots)} {slots}')
+"
 
 # Live streaming logs per phone or event
 journalctl -u custX -f

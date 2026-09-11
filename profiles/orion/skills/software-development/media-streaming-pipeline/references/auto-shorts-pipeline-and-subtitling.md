@@ -186,6 +186,40 @@ ffmpeg -y -ss {START_SEC} -to {END_SEC} -i input_video.mp4 \
   - Graceful upload error handling: If platform credentials (OAuth tokens / API keys) are missing or expired, mark clip status as `skipped: no_credentials` and retain rendered output on disk instead of terminating the continuous loop.
   - Automate cleanups of source downloads in temporary scratch directories after each cycle.
 
+## 8. Deterministic Content-Aware Editing V2 Architecture & Render QC
+When evolving from random hook overlays to a production-grade content-aware short generator:
+- **Typed Edit Plan Abstraction (`edit_plan.py`)**:
+  - Model rendering requirements using strict Pydantic v2 schemas: `EditingProfile` (`PODCAST_CLEAN`, `HIGH_ENERGY`, `STORY`, `NEWS`, `COMEDY`), `FramingMode` (`FACE_TRACKED`, `CENTER_CROP`, `BLURRED_FALLBACK`), `EditEvent`, `CropKeyframe`, and `EditPlan`.
+  - Validate and clamp event timestamps strictly inside clip duration `[0.0, clip_duration]`. Sort crop keyframes monotonically.
+  - Zero random visual choice: replace `random.choice(hooks)` with deterministic director logic based on semantic transcript analysis. Default profile must be `PODCAST_CLEAN` with 0–3 subtle emphasis punch-in moments.
+- **Clip-Local Word Alignment (`transcriber.py`)**:
+  - Never fabricate word timings by evenly dividing YouTube Transcript API segments.
+  - Slice only the selected 30–55s audio snippet into a temporary WAV file, run `faster-whisper` with `word_timestamps=True`, and return clip-local timestamps starting at `0.0s`. Clean up the temporary audio file in a `finally` block.
+  - If clip-local Whisper fails, degrade gracefully to phrase-level static subtitles rather than synthesized pseudo-karaoke.
+- **CPU-Friendly Face Tracking Adapter (`visual_framing.py`)**:
+  - In headless Linux environments without heavy PyTorch/MediaPipe dependencies, use OpenCV DNN with YuNet ONNX (`face_detection_yunet_2023mar.onnx`) or Haar Cascades as fallback.
+  - Sample frames at 1–2 fps, smooth crop centers across a moving average window (preventing camera jitter), and enforce head-and-upper-body framing.
+  - Graceful Fallback Invariant: If face confidence is low (<0.5) or zero faces detected, fall back to blurred-background landscape framing rather than blind center cropping.
+- **Pacing Engine & Monotonic Timeline Remapping (`pacing.py`)**:
+  - Derive dead-air candidates (>0.55s–0.70s) from word timestamps, keeping 0.15s padding around speech boundaries.
+  - Generate an explicit source-span timeline and remap subtitle and event timestamps monotonically through the same timeline to prevent audio-subtitle drift. Keep behind `PACING_ENABLED=false` until fully validated.
+- **Voice-First Audio Mastering Chain**:
+  - In FFmpeg, apply a dedicated speech mastering chain before AAC encoding:
+    `highpass=f=80,compand=attacks=0.02:decays=0.2:points=-80/-80|-30/-20|-18/-10|0/-3,loudnorm=I=-16:TP=-1.5:LRA=11`
+  - Eliminates low-frequency rumble, levels speaker dynamics without pumping, and enforces true-peak compliance (-1.5 dBTP).
+- **Automated Render Quality Control (QC Gate)**:
+  - Run automated post-render checks via `ffprobe` before persisting DB records or triggering uploaders:
+    1. File exists and size > 0.
+    2. Parsable by `ffprobe` with both Video and Audio streams present.
+    3. Resolution strictly equals `1080x1920` (9:16).
+    4. Codecs match `h264` and `aac`.
+    5. Duration matches expected clip duration within ±1.5s tolerance.
+  - If QC fails, abort upload immediately and flag status as `failed_qc` with detailed error logs.
+- **Offline Synthetic Smoke Render Verification**:
+  - Verify render pipelines offline without external networks using synthetic FFmpeg sources:
+    `ffmpeg -f lavfi -i testsrc=duration=4:size=1920x1080:rate=30 -f lavfi -i sine=frequency=1000:duration=4 -c:v libx264 -c:a aac -y synthetic.mp4`
+  - Exercise EditPlan parsing, portrait cropping, Subtitle V2 burn, and QC verification end-to-end.
+
 ## 7. YouTube Upload OAuth Scopes & Privacy Lifecycle
 - **The `youtube.upload` Scope Limitation**:
   - Requesting only `https://www.googleapis.com/auth/youtube.upload` permits *only* inserting new videos (`videos.insert`).
@@ -199,5 +233,41 @@ ffmpeg -y -ss {START_SEC} -to {END_SEC} -i input_video.mp4 \
     ```
 - **Initial Upload Privacy Default Contract**:
   - Automated pipelines must default to `"privacyStatus": "private"` (or `"unlisted"`) so the channel owner can review video quality, subtitles, and hook alignment in YouTube Studio before releasing to the public algorithm. Never default automated uploads to `"public"`.
+
+## 9. Auto Clipper Architecture Reset Blueprint (Selection-First & Stability-First)
+- **Selection-First & Stability-First Core Principle:**
+  - "Lebih baik edit sederhana tapi stabil dan enak ditonton, daripada edit canggih tapi sering rusak."
+  - Stop adding brittle renderer rescue patches. If candidate selection is disciplined, the renderer does not need extreme tricks.
+  - **"Reject Is a Valid Outcome":** A pipeline that outputs `NO_GOOD_CLIP_FOUND` or rejects unviable candidates is succeeding, not failing. Not every long video must yield a short.
+- **Static/Semi-Static Scene Framing > Continuous Tracking:**
+  - For stable V1: Detect subject/face per scene cut, calculate the best portrait crop, and HOLD (`scene A -> hold -> scene cut -> scene B -> hold`). Never let the crop jitter every second following frame-level detections.
+  - Single speaker: stable head + upper torso, consistent headroom. Multi-speaker: safe two-shot or dominant subject only if confident; never active-speaker camera ping-pong.
+- **Subtitle Policy & Burned-In Handling:**
+  - Classify source: `NONE` (generate Subtitle V2: 2–5 words/phrase, 1–2 lines, white with dark stroke), `EMBEDDED_TRACK` (use source track), `BURNED_IN` (keep layout wide enough; if 9:16 crop cuts burned-in text, reject candidate; never attempt OCR reconstruction).
+- **Three-Tier Quality Control (QC Gate):**
+  - **Technical QC:** File exists, H.264, AAC, 1080x1920, 30–55s, audio present.
+  - **Visual QC:** Sample frames across clip; check blank/black/white frames, missing subject, bad face cuts, duplicate/overlapping subtitles.
+  - **Perceptual QC:** Gemini Visual Director evaluates contact sheet + transcript. Upload only if all three gates PASS.
+- **Isolated Evolution Rule (Zero-Mutation Contract on Stable Version):**
+  - When re-architecting or testing major pipeline updates, NEVER edit or mutate active production branches or running systemd daemons in-place.
+  - Always provision an isolated git worktree (`git worktree add ../<project>-v3 <branch>`), separate test databases, and dedicated non-conflicting test ports.
+
+## 10. Auto Clipper V3 Vision QC & Pipeline Integration Pitfalls
+- **The Whole-ROI Subtitle Stuck / Duplicate Detector Background Noise Pitfall:**
+  - **The Defect:** Comparing raw edge maps or diff ratios across the whole subtitle ROI (`cv2.absdiff(edge_map, last_edge_map) / edge_map.size < 0.015`) fails in real talking-head content because 98% of the ROI is static background or speaker's body. When the text changes between phrases, only 1–1.5% of pixels in the ROI change, causing the detector to falsely flag normal phrase updates as "stuck duplicates".
+  - **The Fix:** Isolate the high-contrast bright text mask (`_, mask = cv2.threshold(gray, 180, 255, cv2.THRESH_BINARY)`), filter text contours, and calculate the normalized intersection over max non-zero pixels (`count_nonzero(mask1 & mask2) / max(n1, n2)`). Two identical subtitles have overlap > 0.65; two different subtitles have overlap < 0.25.
+- **The Studio Corner Decoration False Positive in Boundary Danger Safe-Zone Checks:**
+  - **The Defect:** Searching for horizontal high-contrast text bars in the top 15% / bottom 20% strips purely by aspect ratio and edge density falsely flags studio background wall decor, light panels, acoustic slats, and monitors positioned in the top corners.
+  - **The Fix:** Subtitles in video are horizontally centered on canvas. Enforce a horizontal centering constraint (`abs(center_x - w/2) < 0.25*w`) before flagging danger-zone violations.
+- **Multimodal LLM / Proxy SSE Streaming Trap:**
+  - **The Defect:** Calling OpenAI-compatible endpoints or local LLM proxies (e.g. 9router) with image inputs (contact sheets) often returns SSE chunks (`data: {"id": ...}\n\n`) even when `"stream": False` is requested. Blindly calling `response.json()` raises `JSONDecodeError`.
+  - **The Fix:** Check `if response.text.strip().startswith("data:")`, extract and concatenate delta content across `data:` chunks, and only parse direct JSON when response text is not SSE. Always provide a deterministic fallback if the multimodal endpoint times out.
+- **Fast Boxblur via Downscale-First Pipeline:**
+  - In FFmpeg, executing `boxblur=20:5` directly on full 1080x1920 canvas causes extreme CPU load and encode timeouts on long clips.
+  - Downscale first: `scale=270:480:force_original_aspect_ratio=increase,crop=270:480,boxblur=10:2,scale=1080:1920[bg_blur]` achieves visually identical ambient blur at 10x faster encoding speed.
+- **Safe-Zone Horizontal Margin in ASS Subtitles:**
+  - Subtitle V2 in ASS format must use `MarginL=90, MarginR=90` (not default 40) on 1080px canvas so long phrases do not clip against mobile screen curvatures or UI engagement sidebars.
+
+
 
 

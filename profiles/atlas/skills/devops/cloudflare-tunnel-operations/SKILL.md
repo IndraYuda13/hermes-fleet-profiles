@@ -20,10 +20,10 @@ Operate a tunnel as a complete route: public hostname, DNS record, cloudflared i
 
 1. Identify the intended hostname, active tunnel, systemd unit, config file, origin listener, and application access policy.
 2. Inspect the complete `ingress:` list before editing. Each hostname gets one `service`; retain the terminal `http_status:404` fallback.
-   *Note: If `patch` or `write_file` tools refuse direct edits to `/etc/cloudflared/config*.yml` or `/etc/nginx/sites-available/*` due to sensitive system paths, use a small inline Python script via `terminal` to modify or write the file.*
+   *Note: If `patch` or `write_file` tools refuse direct edits to `/etc/cloudflared/config*.yml` or `/etc/nginx/sites-available/*` due to sensitive system paths, use a small inline Python script via `write_file` into workspace and run it via `terminal` to modify or write the file.*
 3. Keep an origin on loopback unless the application explicitly supports authenticated public binding.
-4. Add/update the ingress entry, then route DNS explicitly with `cloudflared tunnel route dns -f <tunnel> <hostname>` when necessary.
-5. Restart the managed unit with `systemctl`; never leave an unmanaged `cloudflared` process competing with it.
+4. Add/update the ingress entry, validate syntax with `cloudflared tunnel --config <path> ingress validate` (the `--config` flag MUST precede `ingress validate`), then route DNS explicitly using tunnel UUID (`cloudflared --origincert /root/.cloudflared/cert.pem tunnel route dns --overwrite-dns <tunnel-uuid> <hostname>`).
+5. Restart the managed unit with `systemctl`; never leave an unmanaged `cloudflared` process competing with it. Note that `systemctl reload cloudflared` is unsupported (cloudflared doesn't implement reload); use restart or kill process if allowed.
 6. Verify in order: origin listener, local HTTP with its expected Host header, public HTTP, then the browser/WebSocket path.
 
 ## Ingress pattern
@@ -102,12 +102,21 @@ When routing custom domains or proxies through Cloudflare Tunnel to FastAPI/Star
 - **Port vs Public URL Mismatch:** When configuring apps behind Cloudflare Tunnel with public HTTPS URLs (e.g. `WEB_URL=https://app.domain.com`), ensure internal bind port (`WEB_PORT`) is explicitly set to an unprivileged loopback port (e.g. 8090) rather than defaulting to `urlparse(WEB_URL).port` (443), which causes local permission errors or binds to port 443 unexpectedly.
 - **Port Collision with Reverse Proxies:** Always verify via `netstat -tlpn` / `ss -tlpn` that a target port (e.g. 8088) is not already bound by local Nginx or another tunnel before mapping ingress rules. Multiple ingress targets sharing a port with Nginx serve wrong web pages or HTTP 405 errors.
 
-### DNS CNAME routed to wrong tunnel
-When multiple tunnels exist on the same CF account, `cloudflared tunnel route dns <name> <host>` may bind the CNAME to the wrong tunnel (e.g. an inactive one that doesn't have the hostname in its ingress). Always use the tunnel UUID and `--overwrite-dns`:
+### DNS CNAME routed to wrong tunnel & Origin Cert requirement
+When multiple tunnels exist on the same account, `cloudflared tunnel route dns <name> <host>` can resolve ambiguously or bind the CNAME to the first tunnel in account list order instead of the named tunnel. Always pass the exact tunnel UUID and `--overwrite-dns`. Furthermore, if `cert.pem` is not in standard search paths, specify `--origincert /root/.cloudflared/cert.pem` or export `TUNNEL_ORIGIN_CERT`.
 ```bash
-cloudflared tunnel route dns --overwrite-dns <tunnel-uuid> <hostname>
+cloudflared --origincert /root/.cloudflared/cert.pem tunnel route dns --overwrite-dns <tunnel-uuid> <hostname>
 ```
-Verify: `cloudflared tunnel route dns -f <tunnel-uuid> <hostname>` prints "already configured to route to your tunnel" if correct.
+Verify: `cloudflared --origincert /root/.cloudflared/cert.pem tunnel route dns -f <tunnel-uuid> <hostname>` prints "already configured to route to your tunnel" if correct.
+
+### Ingress Validation Syntax Flag Order
+`cloudflared tunnel ingress validate` does not accept trailing flags. Always place `--config` before the subcommand:
+```bash
+# Correct:
+cloudflared tunnel --config /etc/cloudflared/config-vps-baru.yml ingress validate
+# Wrong (fails with "flag provided but not defined: -config"):
+cloudflared tunnel ingress validate --config /etc/cloudflared/config-vps-baru.yml
+```
 
 ### Cloudflare Pages Custom Domain Verification (Proxied CNAME Failure)
 When binding a custom domain to Cloudflare Pages via API or Wrangler, the CNAME record must initially be set to `proxied: false` (Grey Cloud) for Cloudflare Pages verification to complete (`verification_data.status == "active"`). Once active, re-enable `proxied: true` (Orange Cloud). If a user API token lacks `DNS:Edit` privileges, extract the Zone API token embedded inside `/root/.cloudflared/cert.pem` on the host. See `references/cloudflare-pages-custom-domain.md`.

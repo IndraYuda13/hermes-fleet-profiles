@@ -47,6 +47,7 @@ ORION is Chief of Staff and Quality Governor. When a defect or unexpected runtim
   - **Frontend/UI**: State-aware badges, action button safety locks, tooltips (assigned to FRAME).
   - **Infra/SRE**: Log rotation, cgroup memory caps, service recovery (assigned to ATLAS).
   - **QA & Verification**: Zero-spam assertions, test matrices (assigned to PRISM / LENS).
+- **Native Kanban Toolset Invariant:** Always execute Kanban operations (`kanban_create`, `kanban_list`, `kanban_show`, `kanban_complete`, etc.) via native function calls rather than executing `hermes kanban ...` via the `terminal` tool. Native tools operate directly against SQLite DB (`~/.hermes/kanban.db`), avoiding process overhead, quoting bugs, and interactive shell issues. Reserve `terminal` strictly for invoking the background dispatcher (`hermes kanban dispatch`) if immediate manual promotion is required.
 
 ### Step 4: Independent Verification & Synthesis
 - Implementer profiles complete work and hand off structured metadata.

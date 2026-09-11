@@ -159,6 +159,27 @@ TRV/6181234567890                        # Void e-ticket (same-day issuance)
 TRNE6181234567890/DDMMMYY                # Process Automated Ticket Refund
 ```
 
+## Advanced Workaround: Codeshare / Interline Fare Alignment (Passive Segment Pricing)
+
+When long-haul flights (e.g. SQ long-haul class `B` or `H`) require partner/codeshare connecting flights (e.g. SAS intra-Europe) to match the international parent booking class for through-fare calculation, but partner live inventory only has lower/different classes (e.g. `W` or `S` `HK1`), auto-pricing fails (`NO FARE FOR CLASS`).
+
+**Resolution Protocol:**
+1. Retain live segments (`HK1`) on available classes (e.g. Seg 3 class W, Seg 5 class S).
+2. Book passive ghost segments (`AK1`) matching the parent international class:
+   ```text
+   0SQ2736B12SEPCPHARNAK1
+   0SQ2639H23SEPOSLCPHAK1
+   ```
+3. Price explicitly skipping mismatched live segments:
+   ```text
+   FQCSQ/S1-2.4.6-8
+   ```
+4. File/Store the valid fare quote:
+   ```text
+   T:P1/S1-2.4.6-8/CSQ
+   ```
+5. Confirm stored fare (`*FF1`), attach commission (`TMU1Z0`) and form of payment (`TMU1FINVAGT`), then issue e-ticket (`TKPDTD`).
+
 ## Smartpoint NDC vs Traditional EDIFACT
 
 * **NDC Content:** Sourced directly from airline offer APIs; features dynamic pricing, zero GDS distribution surcharges, and interactive seat/ancillary selection.

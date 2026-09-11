@@ -75,10 +75,17 @@ In automated headless browser audits, verify:
 
 ## 2. Elevating Beyond Generic "Lazy" AI Slop (Apple / Linear Precision)
 
-To prevent generic AI templates, implement these 7 craft layers:
+To prevent generic AI templates, implement these 8 craft layers:
 
 1. **Interactive Living Engineering Showcases / Simulators (Over Static Text Cards):**
    Instead of passive text descriptions and generic feature cards, transform flagship engineering projects into **living interactive laboratories and simulators** (e.g. live Cloudflare handshake solvers with streaming stage logs, dynamic time-series forecast charts with interactive horizon/quantile sliders, interactive multi-step checkout flows with simulated QRIS payment state transitions, and live multi-node ping sweep telemetry grids). This brings the benchmark of **Apple Product Showcase (apple.com/id/iphone) × Linear/Vercel Lab** to life.
+
+1b. **Tactile Micro-Interactions & Specular Sheen (sceneai.art Benchmark):**
+   Incorporate tangible user agency over cheap macro wobble:
+   - **Specular Cursor Sheen:** Track pointer coordinates per card (`--pointer-x`, `--pointer-y`) and render a subtle radial sheen ray (`radial-gradient(circle at var(--pointer-x) var(--pointer-y), rgba(255,255,255,0.15), transparent 60%)`) with `mix-blend-mode: overlay`. Limit tilt strictly to $\le 3^\circ-4^\circ$.
+   - **Zero-Asset Web Audio Micro-Haptics:** Synthesize crisp mechanical switch clicks directly via native browser `AudioContext` (sine wave ramp 1400 Hz $\to$ 320 Hz in 18ms, peak gain 0.04) + `navigator.vibrate(6)` on mobile without downloading audio assets.
+   - **Spring Quick-Dial Staging:** Enable drag/snap selectors with `cubic-bezier(0.16, 1, 0.3, 1)` and `font-variant-numeric: tabular-nums` to eliminate cumulative layout shift (CLS = 0.000).
+   - **Inline Micro-Assurance Tickers:** Consolidate trust signals and live metrics into single-line horizontal strips ($\le 36\text{px}$) with pulse dots and $14\text{px}$ vector icons instead of bulky 3-box feature cards.
 
 2. **Fluid Apple Squircle Surface Architecture (Anti-Harsh Box Geometry):**
    Eliminate harsh, sharp-cornered isolated boxes. Use continuous-curvature squircle geometry (`rounded-2xl` / `rounded-3xl` / radius 20px–28px) with seamless canvas blending (`#FBFBFD` base, `bg-white/70 backdrop-blur-2xl`, ultra-subtle ambient diffusion shadows `0 20px 40px -15px rgba(0,0,0,0.03)`, and hair-thin specular borders `rgba(15,23,42,0.04)`).

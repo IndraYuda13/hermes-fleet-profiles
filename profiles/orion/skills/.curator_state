@@ -1,9 +1,9 @@
 {
-  "last_report_path": "/root/.hermes/profiles/orion/logs/curator/20260904-161742",
-  "last_run_at": "2026-09-04T16:17:42.620676+00:00",
-  "last_run_duration_seconds": 459.108826,
-  "last_run_summary": "auto: no changes; llm: # Background Skill Curator Consolidation Review\n\n## Landscape Analysis & Evaluation\n\nIn this review pass, all 20 curator-managed active skills were audited against the library's mission: building class-level procedural memory and experienti…",
+  "last_report_path": "/root/.hermes/profiles/orion/logs/curator/20260911-171436",
+  "last_run_at": "2026-09-11T17:14:36.450038+00:00",
+  "last_run_duration_seconds": 341.719354,
+  "last_run_summary": "auto: no changes; llm: ### Consolidation Pass Summary\n\nDuring this background curator consolidation pass across the 33 curator-managed skills, the library was evaluated to distill narrow, incident-specific, and fragmented skills into class-level umbrellas. Five m…",
   "last_run_summary_shown_at": "2026-07-24T13:00:21.305599+00:00",
   "paused": false,
-  "run_count": 11
+  "run_count": 12
 }

@@ -59,6 +59,45 @@ Endpoint proxy video rawan disalahgunakan sebagai open proxy atau SSRF vector. T
    - Kredensial akun (cookies login, SESSDATA) hanya boleh ada di backend resolver.
    - Node CDN streaming umumnya tidak memerlukan cookies akun, hanya memerlukan CDN query signature dan header Referer. Jangan pernah meneruskan cookies akun ke CDN atau client.
 
+## Streaming Feed Resilience & Anti-Poisoning Caching
+
+Home and discovery feeds (e.g., featured spotlight, popular shelves) require strict resilience guarantees to prevent blank homepages on upstream disruption:
+
+1. **Avoid Serial Upstream Live Searches in Request Path:**
+   - Melakukan loop pencarian judul upstream (misal 8-16 query `search_v2` sekuensial) di handler request menyebabkan latensi O(N), menghabiskan connection pool, dan sangat rentan terpicu WAF/rate-limit (HTTP 412).
+   - **Solusi (Catalog Slice First):** Bangun single source of truth berupa in-memory catalog store (`build_full_catalog` via category harvester `items_v2`). Handler `/api/featured` dan `/api/popular` cukup membaca, memfilter, dan mengurutkan data langsung dari memory catalog store (sub-millisecond latency).
+
+2. **The "Never-Cache-Empty" Guard (Anti-Poisoning):**
+   - **Pitfall:** Menyimpan empty list `set_cache(key, [], ttl=3600)` saat upstream search mengembalikan 0 hasil akibat WAF/schema drop. Hal ini mengunci frontend dalam kondisi blank hero/empty shelf selama 1 jam penuh meskipun upstream sudah pulih.
+   - **Rule:** Pasang guard `set_cache_safe(key, data, min_items=1)` yang menolak menimpa cache valid dengan data kosong atau berukuran di bawah ambang batas minimal.
+
+3. **4-Tier Graceful Degradation Hierarchy:**
+   - **Tier 1 (LRU Memory Cache):** Fast path sub-millisecond untuk hit non-empty.
+   - **Tier 2 (Dynamic Catalog Slice):** In-memory filtering/ranking dari store katalog aktif yang dipanen periodik.
+   - **Tier 3 (Seasonal Timeline Fallback):** Ambil rilis anime musiman aktif dari endpoint timeline dengan short TTL (300s).
+   - **Tier 4 (Guaranteed Static Seed):** Hardcoded fallback constant berisi 4-8 judul terverifikasi (season_id, title, cover CDN valid) dengan micro-TTL (60s) agar frontend dijamin tidak pernah blank.
+
+## Streaming Web UI & Discovery Guardrails (Zero-Void Contract)
+
+Frontend streaming web apps must handle upstream feed anomalies gracefully without rendering zombie UI states or broken interactions:
+
+1. **Hero Multi-Tier Fallback Cascade:**
+   - Jangan biarkan Hero Spotlight kosong jika `/api/featured` me-return `[]`.
+   - Pasang cascade bertingkat: `featured` -> `seasonal.slice(0, 5)` -> `popular.slice(0, 5)`.
+   - Jika seluruh sumber data kosong total: sembunyikan hero (`heroSpotlight.hidden = true`) dan bersihkan carousel interval timer.
+
+2. **Action Button Guardrails (No Hardcoded Dummy IDs):**
+   - **Pitfall:** Menggunakan hardcoded dummy season ID saat metadata hero tidak lengkap. Mengklik tombol memicu router ke endpoint episode yang tidak ada atau melempar dialog error playback ("Aliran video terputus").
+   - **Rule:** Jika `!item || !item.season_id`, tombol "Nonton Sekarang" & "Detail" wajib dinonaktifkan (`disabled = true`, `aria-disabled="true"`, `onclick = null`, title "Konten belum tersedia"). Hanya aktifkan dan bind click routing jika `season_id` valid.
+
+3. **Carousel Timer Lifecycle Guard:**
+   - Jalankan `startHeroTimer()` hanya jika `slides.length > 1`.
+   - Jika slide <= 1 atau kosong, selalu panggil `clearInterval(state.heroTimer)` dan sembunyikan dots pagination.
+
+4. **The Zero-Void Shelf Principle (Streaming Rail Pattern):**
+   - Shelf tidak boleh dirender jika jumlah item bernilai 0 (contoh: teks "0 Judul Populer" di atas row kosong).
+   - Jika list kosong setelah deduplikasi: coba fallback ke sisa anime dari shelf lain (misal `seasonal.slice(6)`). Jika tetap 0, sembunyikan seluruh kontainer shelf (`popularBlock.hidden = true`).
+
 ## Subtitle Parsing (ASS to WebVTT)
 
 Banyak upstream menyediakan subtitle dalam format Advanced SubStation Alpha (`.ass`). Browser `<track>` membutuhkan WebVTT (`RFC 8216`).
@@ -91,7 +130,8 @@ Banyak upstream menyediakan subtitle dalam format Advanced SubStation Alpha (`.a
 
 ## Supporting Files
 
-- `references/anime-streaming-api-contract.md`: Skema payload API riil, struktur endpoint (featured, search, episodes, subtitles), dan density layout.
+- `references/anime-streaming-api-contract.md`: Skema payload API riil, struktur endpoint (featured, search, episodes, subtitles, items_v2 catalog harvesting & proxy regional override, catalog content type separation & type_counts, blockbuster anime seed discovery harvester, serta direct routing fallback season_info), dan density layout.
 - `references/split-stream-mse-proxy.md`: Detail arsitektur proxy FastAPI async dan konfigurasi Nginx reverse proxy.
-- `references/short-video-pipeline-patterns.md`: FFmpeg 16:9 to 9:16 blurred background filtergraph, vertical UI safe zones, Hormozi/MrBeast dynamic karaoke ASS formatting, datacenter YouTube cookies anti-bot bypass, youtube-transcript-api v1.2.4+ quirks, dynamic AI query discovery, and TikTok/YouTube upload specs.
+- `references/short-video-pipeline-patterns.md`: FFmpeg 16:9 to 9:16 blurred background filtergraph, vertical UI safe zones, Hormozi/MrBeast dynamic karaoke ASS formatting, datacenter YouTube cookies anti-bot bypass, youtube-transcript-api v1.2.4+ quirks, dynamic AI query discovery, Selection Core (zero-download discovery, Indonesian language gate, isolated window word alignment, pause boundary windowing, self-contained semantic scoring, OpenCV/Gemini dual vision, and 30-55s boundary snapping), Stable Editing Core (scene-static portrait framing, single/multi-speaker rules, subtitle policy classification, broadcast voice mastering -16 LUFS zero SFX, clean multi-segment concat & punch-in filtergraph), Three-Tier Quality Control Gate (ffprobe stream integrity, OpenCV local visual sampling, YuNet face/headroom/stuck subtitle guards, 3x3 contact sheet, Gemini Visual Director via 9router, max 1 repair loop), State Machine & Production Pipeline (11 happy + 6 terminal reject states, uploading guard invariant, 8-gate Strict Upload Gate, and clipped subtitle relative timestamp normalization), Hybrid Subtitle Accuracy Engine V3.1 (Whisper WHEN vs Gemini WHAT division, faster-whisper large-v3 CPU INT8 runtime and HF_HOME storage routing, dedicated Gemini native-video verbatim verifier via 9router, transcript fusion without synthetic timing, zero-overlap ASS timeline invariants, and strict Gemini Video QC gate), Double Subtitle Prevention (SOURCE_EXISTING vs GENERATE vs strict UNKNOWN rejection, conflict detection, and QC double subtitle gate), Natural Sentence Ending Engine (dangling clause detection, 55s boundary extension vs ranked candidate fallback, natural pause preservation, force_extend preflight repair, and Gemini ending QC gate), Surgical Shorts Metadata Generator (5 ranked candidates, <=85 char curiosity gap, raw-transcript overlap detection & retry guard, contextual description, and hashtag normalization), and TikTok/YouTube upload specs.
+- `templates/catalog_feed_endpoints.py`: Boilerplate implementasi feed `/api/featured` & `/api/popular` berbasis in-memory catalog store, double-checked locking, negative cache guardrail, dan 3-tier fallback.
 - `scripts/ass_to_vtt.py`: Skrip konversi deterministik format ASS ke WebVTT standar.

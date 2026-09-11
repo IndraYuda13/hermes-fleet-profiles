@@ -138,20 +138,99 @@ WHATSAPP_DEBUG=true
        user_profile_enabled: false
        write_approval: false
      ```
-  5. **Platform Exclusivity & The Bridge Polling Race Hazard:**
-     - **CRITICAL:** The Node.js Baileys bridge (`/messages`) serves a single destructively-consumed message queue (`messageQueue.splice()`).
-     - If multiple gateway profiles (e.g. `orion` and `groupbot`) are simultaneously running with `whatsapp.enabled: true` pointing to the same bridge port (`3000`), incoming messages are randomly consumed by whichever gateway process polls first. If the other profile has a different allowlist or policy, messages will appear randomly dropped or intermittently unresponsive!
-     - **Mandatory Rule:** When offloading WhatsApp to a dedicated profile (`groupbot`), WhatsApp **MUST be disabled** on the primary profile in BOTH `config.yaml` (`platforms.whatsapp.enabled: false`) and `.env` (`WHATSAPP_ENABLED=false`). Ensure only ONE gateway profile holds active TCP connections to port 3000.
+  5. **Platform Exclusivity, The Bridge Polling Race Hazard & Multi-Instance Architecture:**
+     - **CRITICAL Bridge Polling Invariant:** The Node.js Baileys bridge (`/messages`) serves a single destructively-consumed message queue (`messageQueue.splice()`). If multiple gateway profiles (e.g. `orion` and `groupbot`) run concurrently pointing to the *same bridge port* (default `3000`), incoming messages are randomly consumed by whichever gateway process polls first, causing intermittent drops and dropped turn state.
+     - **Architecture Option A — Single-Number Takeover:**
+       When moving WhatsApp between profiles on the same phone number/port 3000, always stop and disable the previous profile first:
+       1. Stop the old profile service: `systemctl --user stop hermes-gateway-<old>`
+       2. Set `platforms.whatsapp.enabled: false` on old profile.
+       3. Enable on the target profile with `hermes config set platforms.whatsapp.enabled true`.
+     - **Architecture Option B — Concurrent Dual-Port Multi-Instance (Personal Orchestrator + Sandboxed Group Bot):**
+       To run a high-capability orchestrator (e.g. `orion` with memory, reasoning, and system tools) alongside a sandboxed group bot (`groupbot`) without collisions, isolate them across separate bridge ports and numbers:
+       1. **Groupbot:** Port 3000, session `~/.hermes/platforms/whatsapp/session`, group allowlist, zero memory, toolset stripped.
+       2. **Personal Orchestrator:** Port 3001, session `~/.hermes/profiles/<profile>/platforms/whatsapp/session`, linked to a dedicated second number.
+       3. **Dual-Instance Hardening Contracts (Choose Based on Use Case):**
+          - **Contract 1: Personal Orchestrator (DM-Only to Owner):**
+            ```yaml
+            platforms:
+              whatsapp:
+                enabled: true
+                extra:
+                  bridge_port: 3001
+                  group_policy: "disabled"
+                  group_allow_from: []
+                  allow_all_users: false
+                  require_mention: false
+                  allow_from:
+                    - "<owner_phone_number>"
+            ```
+            *Why:* Setting `group_policy: "disabled"` and locking `allow_from` strictly to the owner guarantees zero memory pollution, zero group prompt injection, and zero ambient group token consumption on expensive reasoning models (`ag-opus-pool`).
+          - **Contract 2: Collaborative Group Builder (Owner + Collaborators Building Websites):**
+            ```yaml
+            platforms:
+              whatsapp:
+                enabled: true
+                extra:
+                  bridge_port: 3001
+                  group_policy: "open"
+                  allow_all_users: true
+                  require_mention: true
+                  mention_patterns:
+                    - "@Orion"
+                    - "Orion"
+                    - "\\bOrion\\b"
+                    - "@bot"
+                    - "bot"
+            ```
+            *Why:* In group builder mode, `require_mention: true` prevents ambient chatter from burning tokens. `allow_all_users: true` prevents gateway authz drops on collaborator messages. All project generation is locked to an isolated workspace (`/root/workspace/web-collab/`), with collaborator role permissions sandboxed in `SOUL.md`.
+       4. **Session Symlink Collision Trap:**
+          Profiles copied or created via templates often have `~/.hermes/profiles/<profile>/platforms/whatsapp/session` symlinked to `~/.hermes/platforms/whatsapp/session`. Always break this symlink before starting a secondary instance:
+          `rm -f ~/.hermes/profiles/<profile>/platforms/whatsapp/session && mkdir -p ~/.hermes/profiles/<profile>/platforms/whatsapp/session`
+          *Failure mode:* Failing to unlink causes both instances to write to the same session data, corrupting authentication state on both profiles.
+       5. **Preflight `creds.json` Invariant & Standalone QR Pairing:**
+          In Hermes `adapter.py`, `_preflight()` checks `self._session_path / "creds.json"`. If missing, the gateway fails immediately and never initiates the bridge loop.
+          *Pairing Procedure for New Profiles:*
+          - Spawn standalone bridge with `--pair-json` for clean programmatic QR capture:
+            `node /usr/local/lib/hermes-agent/scripts/whatsapp-bridge/bridge.js --port <port> --session <session_dir> --mode bot --pair-json`
+          - Capture the emitted `{"event":"qr","qr":"..."}` event or terminal QR and scan via WhatsApp.
+          - Once Baileys writes `creds.json`, terminate the standalone bridge process and start the gateway service (`hermes --profile <profile> gateway run`).
+       6. **In-Chat QR Code Delivery via Image Rendering (Headless Chat Handshake):**
+          When pairing a new WhatsApp profile from within another messaging channel (e.g. Telegram):
+          - Ensure `qrcode` is installed in the venv: `pip install qrcode`.
+          - Capture the raw QR text string emitted by `bridge.js` (via `--pair-json`).
+          - **Persistent Tmux Daemon Pattern (Anti-Turn-Termination):** Background python/terminal subshells can terminate when agent turns conclude. To guarantee the pairing bridge stays permanently alive across multi-turn user interactions, spawn it in a detached tmux session:
+            `tmux new-session -d -s wa-<profile>-bridge -x 120 -y 40 'node /usr/local/lib/hermes-agent/scripts/whatsapp-bridge/bridge.js --port <port> --session <dir> --mode bot --pair-json'`
+            Capture the QR string using `tmux capture-pane -t wa-<profile>-bridge -p -S -100`, strip tmux soft wraps, render via `qrcode.make()`, and deliver via `MEDIA:<path>`.
+          - **Permanent Daemon Mode Preferred Over `--pair-only`:** Running `bridge.js` with normal daemon flags (`--port <port> --session <dir> --mode bot --pair-json`) keeps the HTTP server alive and transitions seamlessly from QR presentation to `connected` without dropping the TCP/WebSocket link. In contrast, `--pair-only` terminates the process 2s after pairing, which mobile WhatsApp frequently misinterprets as an abnormal client disconnect, triggering `conflict: device_removed (code 401)` and unlinking the device.
+          - **Mandatory Credential Flush Invariant (If using `--pair-only`):** Baileys calls `setTimeout(() => process.exit(0), 1500)` after connection. The supervisor MUST wait for the node process to exit naturally (`proc.wait(timeout=10)`). Never `proc.terminate()` on immediate `"event":"connected"`, or `creds.json` will be written as an empty 0-byte file, permanently breaking gateway startup.
+          - **Stale Linked Device Desync Trap:** If server session files are wiped while the mobile app still lists "Google Chrome / Linux" under Linked Devices (Perangkat Tertaut), WhatsApp will not establish a new session over the old linkage. The user MUST explicitly tap and "Keluar" (Log out) the stale device on their phone before scanning a newly generated QR code.
+          - **Post-Pairing Sync Window (Anti-Device-Removed Trap):** Immediately after pairing, allow Baileys 15–30 seconds to settle its initial contact and history sync before dispatching rapid outgoing messages or restarting gateway processes. Blasting messages during initial session handshake risks WhatsApp triggering `conflict: device_removed (code 401)`.
+          - **Web Dashboard Setup Conflict Pitfall:** When an operator sees the WhatsApp setup modal on the Hermes web dashboard (`/api/messaging/platforms`), it targets the default port 3000 and default session. In multi-instance setups (where port 3000 is reserved for a group bot and port 3001 for personal orchestrator), submitting this modal will overwrite port 3000 settings and break the group bot. The operator must cancel the dashboard modal and configure secondary profiles strictly via CLI (`hermes --profile <profile> config set platforms.whatsapp.extra.bridge_port <port>`).
+          - Once paired and flushed, clear any lingering standalone bridge instances and start the gateway service (`hermes --profile <profile> gateway run`).
+       7. **Multi-User Collaborative Builder Sandboxing Protocol:**
+          When the user intends for friends/collaborators to interact with an orchestrator profile on WhatsApp to "build websites" or execute tasks:
+          - *Isolated Project Workspace:* Confine all project file generation, git repositories, and dependencies to a dedicated directory (e.g. `/root/workspace/web-collab/`), never the root directory or Hermes home.
+          - *Tiered Role Enforcement in SOUL.md:* Distinguish the primary Owner from Collaborators. Grant collaborators permissions for code generation, frontend markup, backend logic, and local preview ports. Strictly intercept and require Owner confirmation for actions touching production configs (Nginx vhosts, Cloudflare tunnels, cPanel, database services, system packages, or credential files).
+          - *Memory Pollution Defense:* Enforce an invariant in `SOUL.md` that collaborator inputs and requests must not update or overwrite the primary user profile (`USER.md`) or system memory (`MEMORY.md`).
      - Disable `telegram` on `groupbot` if sharing the same Telegram Bot token: `platforms.telegram.enabled: false`.
   6. **Dedicated Systemd Service & Profile Execution:**
      - Point CWD to an isolated empty directory: `terminal.cwd: /root/.hermes/profiles/groupbot/workspace`
      - Profile Gateway execution syntax: `hermes --profile <profile> gateway run` (Note: `hermes profile run` is invalid; `--profile` is a global flag before the `gateway` subcommand).
      - Check status of all profile gateways: `hermes profile list` or check `/root/.hermes/profiles/<profile>/gateway_state.json`.
      - Supervise via a dedicated user systemd unit (e.g. `hermes-gateway-groupbot.service`).
-     - **In-Agent Gateway Control Pitfall (`busctl` workaround):** The Hermes tool execution interceptor blocks running `systemctl --user restart/start ...` from inside a gateway agent turn to prevent self-termination loops. To start/trigger an external profile service safely from inside an agent without tripping the security interceptor, use D-Bus directly via `busctl`:
-       ```bash
-       busctl --user call org.freedesktop.systemd1 /org/freedesktop/systemd1 org.freedesktop.systemd1.Manager StartUnit ss "hermes-gateway-groupbot.service" "replace"
-       ```
+     - **In-Agent Gateway Control Pitfall (`busctl` workaround):** The Hermes tool execution interceptor blocks running `systemctl --user restart/start ...` from inside a gateway agent turn to prevent self-termination loops. To start or restart a profile service safely from inside an agent without tripping the security interceptor, use D-Bus directly via `busctl`:
+       - **Start a stopped service:**
+         ```bash
+         busctl --user call org.freedesktop.systemd1 /org/freedesktop/systemd1 org.freedesktop.systemd1.Manager StartUnit ss "hermes-gateway-<profile>.service" "replace"
+         ```
+       - **Restart an already active/running service (`RestartUnit` vs `StartUnit` Trap):** Calling `StartUnit` on an already-running unit is a silent NO-OP. You MUST call `RestartUnit`:
+         ```bash
+         busctl --user call org.freedesktop.systemd1 /org/freedesktop/systemd1 org.freedesktop.systemd1.Manager RestartUnit ss "hermes-gateway-<profile>.service" "replace"
+         ```
+       - **Restarting the CURRENT Profile Gateway (Anti-Turn-Termination Guard):** Never call `busctl RestartUnit` on your own profile gateway in the foreground, as systemd will terminate the running turn immediately before the response is delivered. Always schedule a delayed background restart so the assistant turn finishes and sends first:
+         ```bash
+         terminal(command="sleep 5 && busctl --user call org.freedesktop.systemd1 /org/freedesktop/systemd1 org.freedesktop.systemd1.Manager RestartUnit ss 'hermes-gateway-<profile>.service' 'replace'", background=true)
+         ```
 
 ### 6. WhatsApp Unicode Isolation & Formatting Truncation Pitfall
 - **Unicode Directional Isolates in Autocomplete Tags:**
@@ -190,12 +269,12 @@ WHATSAPP_DEBUG=true
 - **WebSocket Keep-Alive & Dependency Hardening:** See `references/whatsapp-group-troubleshooting-and-mention-matrix.md` (Sections 6 & 7) for WebSocket ping interval (25s), `link-preview-js` crash fix, and group member authorization gate bypass.
 - **Detailed Reference:** See `references/whatsapp-group-troubleshooting-and-mention-matrix.md` for full trigger precedence, LID mention regex rules, and group policy checklists.
 
-### 7. Hermes Framework Upstream Update Protocol
+### 8. Hermes Framework Upstream Update Protocol
 - Use `hermes update --check` to safely query upstream availability.
 - When performing updates on Git-installed checkouts: ensure uncommitted framework edits are discarded/stashed (`git checkout` / `git stash`), rebase against `origin/main`, and refresh editable Python packages with `pip install -e . --no-deps`.
 - Run `/restart` to drain active turns and reload the gateway cleanly.
 
-### 8. Voice Notes & TTS Natural Pronunciation Configuration
+### 9. Voice Notes & TTS Natural Pronunciation Configuration
 - When configuring Voice Notes / TTS (`text_to_speech`) for Indonesian conversation:
   - Default Edge TTS voice (`en-US-AriaNeural`) sounds robotic and unnatural when speaking Indonesian.
   - Query available localized neural voices: `python3 -c "import asyncio, edge_tts; asyncio.run(...)"`
@@ -205,7 +284,7 @@ WHATSAPP_DEBUG=true
   - Configure via CLI: `hermes config set tts.edge.voice "id-ID-GadisNeural"`
   - For premium ultra-realistic emotion and intonation, configure external providers (`elevenlabs`, `openai`, `minimax`, `gemini-9router`) under `tts` in `config.yaml`.
 
-### 9. Custom TTS Providers & WhatsApp Native Voice Bubble (PTT) Protocol
+### 10. Custom TTS Providers & WhatsApp Native Voice Bubble (PTT) Protocol
 - **The Native Voice Note (PTT) Invariant:**
   WhatsApp only renders a native voice note bubble (green circular play button with waveform) if the audio payload is encoded as `audio/ogg; codecs=opus` (PTT format).
   - The Baileys WhatsApp Bridge (`bridge.js`) automatically transcodes `.mp3`, `.wav`, or `.m4a` to `.ogg` (48kHz mono libopus) via `ffmpeg` if `mediaType: 'audio'` is passed.

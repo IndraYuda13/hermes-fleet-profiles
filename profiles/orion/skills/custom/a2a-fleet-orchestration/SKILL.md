@@ -16,7 +16,31 @@ Orchestrating work across fleet specialists via A2A calls — UI build pipelines
 
 ## A2A Timeout Management
 
-Large prompts (>500 words with embedded specs, code samples, or multi-step instructions) frequently cause A2A agent timeouts. Proven countermeasures:
+Large prompts (>500 words with embedded specs, code samples, or multi-step instructions) and long-running execution (headless browser audits, extensive test suites) frequently cause A2A agent timeouts. Proven countermeasures and architectural rules:
+
+### Dual-Timeout Architecture (Outbound Client vs Inbound Gateway Server)
+A2A timeouts operate across two independent boundaries:
+1. **Outbound Client Timeout (`config.yaml`):** Set under `a2a_agents.<peer>.timeout` on the calling profile. Dictates how long `urllib.request.urlopen` in `tools.py` waits before raising `[agent did not reply in time]`.
+2. **Inbound Gateway Deadline (`.env`):** Evaluated by `_reply_timeout()` in `plugins/platforms/a2a/adapter.py` on the receiving profile, reading `os.getenv("A2A_REPLY_TIMEOUT", "300")`. If the receiving gateway's worker turn does not finish within this deadline, the adapter returns `protocol.STATE_FAILED` with `[agent did not reply in time]`.
+3. **Queue Wait Accumulation Pitfall:** Inbound deadline is computed as `pending["started"] + _reply_timeout()` where `started` is timestamped immediately upon HTTP `SendMessage` receipt. Time spent waiting in queue while the gateway process finishes prior turns or acquires locks counts directly against the timeout budget.
+4. **Symmetric Target Matrix Invariant:** Setting outbound timeout to 1800s while inbound `A2A_REPLY_TIMEOUT` remains 300s causes failure at exactly 300s. Whenever timeouts are adjusted, synchronize BOTH caller `config.yaml` (`a2a_agents.<target>.timeout`) AND receiver `.env` (`A2A_REPLY_TIMEOUT=<target>`). Target baseline:
+   - LENS / PRISM / SENTINEL / ORION: 1800s (30m)
+   - FORGE / FRAME / AURORA: 1200s (20m)
+   - ATLAS / RADAR / QUANT: 900s (15m)
+   - NEXUS: 600s (10m)
+
+### Fleet Gateway Rolling Restart Protocol
+Outbound tools reload config dynamically via `_load_config()`, but inbound gateway adapters read `os.environ` and bind listeners during startup. Changes to inbound timeouts require gateway process restarts.
+- **Zero Fleet Blackout:** Never stop or restart all gateways concurrently. Never touch the model provider/router (`localhost:20128`).
+- **Sequential Rolling Step:**
+  1. Restart single user unit: `systemctl --user restart hermes-gateway-<profile>.service`.
+  2. Poll `GET http://127.0.0.1:<port>/health` until response JSON contains `{"status": "ok"}` (typically 3–15s).
+  3. Confirm port listening before advancing to the next peer.
+- **Supervised Gateway Self-Restart Invariant:**
+  An agent session running inside its own gateway (e.g. ORION running on `hermes-gateway-orion.service`) is blocked by `terminal_tool_guards.py` from directly invoking `systemctl restart hermes-gateway-<self>` because SIGTERM would kill the calling turn and subshell mid-flight.
+  - To safely restart the orchestrating gateway, request graceful restart via control socket (`{"verb": "pause-for-update"}` to `gateway.sock`) or trigger it via a detached helper that waits for active turns to drain, or prompt the human operator before session close.
+- **Two-Way A2A Reverse Smoke Test Invariant:**
+  Never assume bidirectional connectivity from outbound pings alone (e.g. ORION -> LENS passing does not prove LENS -> ORION is healthy). Always verify the reverse direction (LENS -> ORION, PRISM -> ORION, etc.) using direct A2A JSON-RPC `SendMessage` calls to ensure the inbound receiver loop, context dispatch, and reply serializers function without effective 300s timeout or socket errors.
 
 ### Progressive decomposition (preferred)
 Break a large specialist task into a multi-turn A2A conversation using `context_id` continuation:

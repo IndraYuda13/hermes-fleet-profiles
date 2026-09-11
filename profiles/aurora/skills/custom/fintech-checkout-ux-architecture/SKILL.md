@@ -1,7 +1,7 @@
 ---
 name: fintech-checkout-ux-architecture
 description: High-converting fintech checkout and real-time topup UX.
-version: 1.1.0
+version: 1.2.0
 metadata:
   hermes:
     tags: [fintech, checkout, ux-architecture, state-machine, payment-drawer, anti-slop, topup, brand-assets]
@@ -14,6 +14,7 @@ Standardized patterns and state machines for building high-conversion, real-time
 
 > **Supporting References:**
 > - `references/tactile-interactivity-patterns.md` — Dynamic micro-interactions and tactile feedback.
+> - `references/macro-composition-gaming-storefront.md` — Macro-composition 3-tier staging, asymmetric Bento storefront grids, CSS 3D parallax, optical haptics, and responsive mobile dock transitions.
 > - `references/brand-artwork-integration.md` — 3:4 aspect ratio brand poster cards, spotlight thumbnails, ledger hero banners, and zero-CLS fallback strategies.
 > - `references/ingame-items-nominal-cards.md` — In-game item thumbnail box system, glowing pass badges, tabular pricing, and tactile micro-interactions.
 > - `references/digital-license-marketplace-patterns.md` — Inline duration/type micro-configurators, 4-stage QRIS state machine, credential vaults, and mobile bottom pill dock ergonomics.
@@ -97,9 +98,18 @@ Requiring mandatory login before checkout ruins guest conversion, while treating
 ---
 
 ## 4. Anti-AI Slop & Visual Performance Rules
-* **Avoid Heavy 3D WebGL Heroes:** Replace 300KB+ Three.js canvas backgrounds with SVG vector graphics and GPU-accelerated CSS glow (`contain: strict;`) to keep FCP < 800ms on 4G mobile.
+* **Procedural In-Memory WebGL vs Heavy External GLTF Assets:** For flagship ("MAHAL" / Awwwards-grade) storefronts, avoid heavy multi-megabyte GLTF/GLB models or Draco decoders. Instead, use lightweight **procedural Three.js geometry** (e.g. Crystalline Polyhedron: Icosahedron outer shell + Octahedron relic + Torus nano-rings, <2,200 triangles total) compiled in-memory with zero asset download. Enforce dual culling: `document.hidden` culling via `visibilitychange` and viewport culling via `IntersectionObserver` (pause render loop when user scrolls down to checkout wizard). Clamp device pixel ratio to `Math.min(window.devicePixelRatio, 1.5)` on mobile and `2.0` on desktop.
+* **Controlled Specular Sheen vs Macro Tilting:** In fintech checkout and voucher cards, avoid aggressive 3D macro-wobble (>8 deg) that compromises numeric readability. Restrict 3D perspective to micro-tilt ($R < 0.65^\circ$) and focus delight on a sharp specular sheen ray (`mix-blend-mode: overlay`, radial gradient following cursor `--pointer-x`, `--pointer-y`) that sleeps immediately when the cursor idles.
+* **Strict Zero-Audio Invariant & Pure Optical Haptics:** Unless explicitly mandated otherwise by the user, consumer storefronts strictly **FORBID audio clicks, beeps, or Web Audio synthesis** (Zero-Audio Invariant). Tactile feedback must be 100% optical: moving specular glints, 1px gold rim highlights, smooth micro-elevations, and Android `navigator.vibrate(6)` if permitted. Zero noise pollution, zero layout shift (CLS = 0.000 via `tabular-nums`), and INP < 8ms.
 * **Surface Discipline & Specular Rims:** High-contrast dark surfaces with vibrant citrus accents strictly reserved for active states, CTA, and verified feedback. Replace 4px hard black offset shadows (`box-shadow: 4px 4px 0 #000`) with 1px specular rim borders (`rgba(255, 255, 255, 0.08)`) and layered luminance depth.
 * **Zero Jitter via Tabular Numerics:** Enforce `font-variant-numeric: tabular-nums` on all pricing calculations, fee breakdowns, and `MM:SS` countdown timers to eliminate layout shifts during polling updates.
+* **Non-Blocking Pointer-Events Discipline:** When embedding interactive 3D WebGL canvases in the hero stage, isolate canvas hitboxes (`pointer-events: none` on ambient overlays, `pointer-events: auto` on canvas bounds) and preserve `z-index: 10` on form inputs, search bars, and cartridge reels to prevent intercepting critical transactional event listeners.
+* **5-Layer Stacking Architecture for 3D Hero Spotlight Decks:** When combining procedural 3D WebGL canvases with 2D game cover artwork in a card, never place opaque 2D artwork on top of the 3D canvas wrap (which causes total visual occlusion of the 3D core). Enforce strict depth stacking:
+  - *Layer 0 (Aura):* Card Ambient Backlight Halo (`translateZ(0)`).
+  - *Layer 1 (Base):* Brushed Dark Obsidian Metallic Base & Specular Sheen (`translateZ(10px)`).
+  - *Layer 2 (Media Tint):* Translucent Media Cover (`z-index: 2`, `opacity: 0.25–0.30`, radial scrim mask `radial-gradient(circle at 50% 45%, rgba(9, 10, 14, 0.15) 0%, rgba(9, 10, 14, 0.96) 100%)`).
+  - *Layer 3 (Showcase Canvas):* Interactive 3D Canvas Stage (`z-index: 3`, `pointer-events: auto`, explicit raycast cursor feedback: idle `default`, hover `grab`, active drag `grabbing`).
+  - *Layer 4 (Tactile HUD):* Floating Badges & Express CTAs (`z-index: 4`, container `pointer-events: none` with interactive buttons `pointer-events: auto`).
 
 ---
 
@@ -110,9 +120,13 @@ Requiring mandatory login before checkout ruins guest conversion, while treating
 * **Dual-Mode Order Ledger Transformation:**
   * **Desktop (>=1024px):** 2-column split grid with sticky live order ledger on the right rail.
   * **Mobile (<768px):** Transform ledger into a floating bottom action summary bar with a swipeable/tap-to-expand bottom sheet drawer. Never force multi-column stacking beneath the primary wizard.
+* **Anti-Silent-Clipping Mobile Layout Rule:** Never use `overflow-x: clip` or `overflow-x: hidden` on root containers (`.app-shell`, `.hero-panel`) to mechanically force zero horizontal scroll. Doing so silently slices off visible headings, body text, and quick tags on 320px–390px viewports. Instead:
+  - Use fluid typography with `clamp()` (e.g. `clamp(1.125rem, 4.5vw, 2.25rem)`).
+  - Apply `flex-wrap: wrap` on badge rows and status indicators.
+  - Wrap quick-filter chips in a horizontal scrolling track (`overflow-x: auto`) with a gradient fade mask (`mask-image: linear-gradient(to right, black 85%, transparent 100%)`).
 * **Touch Target & Viewport Floor:**
   * Maintain strict 44x44px minimum hit bounding boxes for all interactive chips, payment channels, and pills.
   * Pad floating mobile action bars with `bottom: calc(12px + env(safe-area-inset-bottom, 0px));` to prevent collision with iOS/Android OS gesture navigation bars.
-  * Provide bottom buffer padding on main scroll containers (`padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));`) to prevent floating dock occlusion over bottom-most receipts or action buttons.
+  * Provide bottom buffer padding on main scroll containers (`padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));` on mobile, `padding-bottom: 110px` on 768px tablet) to prevent floating docks or cartridge reels from colliding with or occluding sticky action bars.
   * Hide or collapse floating action bars when text inputs are focused (`focusin`/`focusout`) to prevent virtual keyboard occlusion.
   * Wrap all ambient glow and background grids in `overflow: hidden; contain: paint; pointer-events: none;` to eliminate horizontal scrollbar defects on 360px–390px viewports.

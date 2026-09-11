@@ -71,3 +71,88 @@ When deploying background processing pipelines (e.g., video renderers, crawler w
      * Update database records with explicit audit markers (e.g. `[UPLOADED_AND_CLEANED]`) while preserving pending/failed artifacts for manual review.
    - **Starlette / Jinja2 TemplateResponse Signature Compatibility**:
      * Modern Starlette (v0.28+ / 1.0+) requires `templates.TemplateResponse(request=request, name="index.html", context={...})` with explicit `request` or keyword arguments. Positional `(name, context)` raises `TypeError: unhashable type: 'dict'`.
+   - **Dual-Target Logging & Interruptible Micro-Sleep for Daemons**:
+     * Configure root logging with both `StreamHandler(sys.stdout)` (for `journalctl -u service`) and `FileHandler(log_path, mode="a", encoding="utf-8")` (for real-time SSE dashboard streaming).
+     * Never use large blocking sleeps (`time.sleep(300)`) in daemon loops; sleeping in 1-second interruptible ticks (`for _ in range(interval): if not RUNNING: break; time.sleep(1)`) ensures `systemctl stop` or `SIGTERM` shuts down cleanly in <1s instead of hanging until the full interval expires.
+     * Execute periodic WAL checkpoints (`PRAGMA wal_checkpoint(TRUNCATE)`) in the daemon loop after each processing cycle to prevent unbounded SQLite WAL journal file growth while web dashboards continuously read the DB.
+
+---
+
+## 5. Telemetry & Dashboard Database Schema Adapters (Zero-500 Invariant)
+
+### Symptom
+A web dashboard or API status endpoint returns `500 Internal Server Error` after a backend schema migration (e.g. migrating from a monolithic flat table like `clips` to normalized relational entities `uploads` JOIN `renders` JOIN `candidates` JOIN `videos`).
+Common stack trace:
+```text
+sqlite3.OperationalError: no such column: processed_at
+```
+or queries return empty rows despite active processing records.
+
+### Root Cause
+1. Route handlers or background status inspectors execute raw SQL ordering by columns that only existed in legacy schemas (e.g. `ORDER BY processed_at DESC` vs `updated_at` / `discovered_at`).
+2. Status inspection functions (e.g. `get_daemon_status()`) do not contain database exceptions; an unexpected schema mismatch or temporary lock bubbles up directly to Starlette middleware as an unhandled 500 error.
+
+### Solution & Best Practices
+1. **Dynamic Column & Table Detection**:
+   Inspect available columns via `PRAGMA table_info(table)` and tables via `sqlite_master` before executing queries that vary across versions:
+   ```python
+   cursor.execute("PRAGMA table_info(videos)")
+   cols = {row["name"] for row in cursor.fetchall()}
+   order_col = "updated_at" if "updated_at" in cols else ("processed_at" if "processed_at" in cols else "discovered_at")
+   ```
+2. **Multi-Table Relational Adapter with Dual-Compatibility**:
+   Check if modern normalized tables exist; if present, query the relational JOIN with COALESCE defaults; if absent, fall back gracefully to legacy tables:
+   ```python
+   cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='uploads'")
+   if cursor.fetchone():
+       # Query uploads JOIN renders JOIN candidates JOIN videos
+       ...
+   else:
+       # Fallback to legacy clips table
+       ...
+   ```
+3. **Fail-Safe Dashboard Inspection (Degrade Instead of 500)**:
+   Live status inspectors must catch `Exception` around database telemetry calls and log warnings, returning a safe default state (`Active / Scanning` or `Offline / Stopped`) so transient database locks or schema updates never take down the web dashboard.
+
+---
+
+## 4. Direct Route Handler Invocation Pitfall (FastAPI `Query` / `Path` Default Objects)
+
+### Symptom
+When calling a FastAPI route handler function directly in Python unit tests or background scripts without passing all arguments:
+```python
+@app.get("/api/catalog")
+async def get_catalog(
+    page: int = Query(1, ge=1),
+    sort: str = Query("title"),
+    q: Optional[str] = Query(None)
+): ...
+
+# Direct test call:
+res = await get_catalog(sort="rating")
+```
+Python raises runtime errors:
+- `TypeError: unsupported operand type(s) for -: 'Query' and 'int'` (at `(page - 1) * pagesize`)
+- `AttributeError: 'Query' object has no attribute 'strip'` (at `q.strip()`)
+
+### Root Cause
+When FastAPI handles an HTTP request through ASGI, its dependency injection mechanism inspects `Query(...)`, extracts and validates query parameters, and passes actual primitive values (`int`, `str`, `None`) into the handler.
+However, when calling the async function directly in Python, omitted arguments evaluate to their default Python expressions—which are `fastapi.params.Query` descriptor objects rather than the underlying primitive defaults.
+
+### Solution & Best Practices
+1. **Defensive Parameter Normalization (In Handler)**:
+   If a route handler may be invoked directly by internal helpers or unit tests, defensively sanitize parameter types:
+   ```python
+   page_val = page if isinstance(page, int) else 1
+   pagesize_val = pagesize if isinstance(pagesize, int) else 24
+   q_val = q if isinstance(q, str) else None
+   sort_val = (sort if isinstance(sort, str) else "title").strip().lower()
+   ```
+2. **Use ASGI Test Clients for Route Testing**:
+   Prefer calling FastAPI routes through `TestClient` or `httpx.AsyncClient` with `ASGITransport(app=app)` so FastAPI's full parameter injection and validation pipeline executes:
+   ```python
+   from httpx import AsyncClient, ASGITransport
+   async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+       res = await ac.get("/api/catalog?type=anime")
+   ```
+

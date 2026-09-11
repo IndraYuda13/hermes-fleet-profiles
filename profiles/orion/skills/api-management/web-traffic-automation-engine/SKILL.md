@@ -25,6 +25,7 @@ Standardized architecture, reverse-engineering methodology, and execution protoc
 - Designing self-healing multi-worker scaling architectures (10-100+ accounts) with non-blocking error isolation and adaptive backoffs.
 - Building real-time multi-account web telemetry dashboards with interactive withdrawal readiness hubs, search filters, and dense table views.
 - Extracting and proxying video/audio media streams from protected web platforms (e.g. Bstation DASH video/audio CDN, yt-dlp stream remuxing, WebVTT subtitle conversion).
+- Reverse-engineering Web AI and SPA chat platforms with anti-bot PoW challenges, WASM bytecode, dynamic token pollers, and streaming SSE protocols.
 
 ## Prerequisites
 - Python 3.9+ with standard library (`urllib.request`, `urllib.parse`, `threading`, `json`, `time`, `http.server`).
@@ -46,6 +47,12 @@ Standardized architecture, reverse-engineering methodology, and execution protoc
    - Use 1-second step-checked loops (`while remaining > 0 and not stop_event`) instead of monolithic blocking sleeps.
 6. **Public Git Sanitization Invariant:**
    - Always untrack `config.json`, provide sanitized `config.example.json`, and squash/scrub credentials from git history before making repositories public.
+7. **Smart Session Pool & Multi-Tenant Isolation Invariant:**
+   - Reverse-engineered web chat proxies must NEVER use a single global session across all requests (which causes context pollution and leaks conversations across independent scripts/users) NOR create a new session on every turn (which spams the web sidebar with dozens of orphaned chats).
+   - Implement a **Smart Session Pool** with Conversation Fingerprinting (`hash(messages[0].content)` or standard OpenAI `user` parameter) and bounded LRU capacity (default max 10 sessions).
+   - When the pool reaches capacity, automatically evict the least recently used conversation and delete it from upstream via `POST /api/v0/chat_session/delete` (`chat_session_id`) to keep the web account sidebar clean while maintaining 100% client isolation and multi-turn continuity.
+8. **Reverse-Engineering Repository Discretion (OpSec Invariant):**
+   - When creating repositories for reverse-engineered gateways, scrapers, or token proxies, NEVER use overt proprietary vendor/brand names in repository titles (use discrete naming like `ds-gateway`). Repository visibility must strictly be `--private` by default. Descriptions must remain neutral, and all documentation (`README.md`, docstrings, `.env.example`) must be authored in professional English.
 
 ## Quick Reference Commands
 
@@ -93,6 +100,7 @@ Standardized architecture, reverse-engineering methodology, and execution protoc
 - `references/visual_icon_captcha_and_dataset_flywheel.md`: SOP for 3-icon sequence captchas, Vision LLM integration, latency constraints, coordinate math, and self-training dataset harvesting.
 - `references/turnstile_and_session_lifecycle.md`: Turnstile token resolution, datacenter IP bypass strategies, cross-node solving fallback, security challenge resolution (`checkSecurity`), and session cookie caching.
 - `references/bstation_video_streaming_pipeline.md`: Architecture for Bstation/yt-dlp web streaming, on-the-fly zero-transcode FFmpeg remuxing, direct CDN bypass, and dynamic SRT-to-WebVTT subtitle conversion.
+- `references/anti_bot_pow_and_sse_streaming.md`: Playbook for reversing SPA / Web AI chat APIs, solving `DeepSeekHashV1` PoW (WASM bridge vs custom Keccak word-swap Python), token pollers (`x-hif-leim`), and parsing SSE thinking/response state machines.
 - `references/multi_account_architecture_and_telemetry.md`: 1-Account-1-Proxy isolation, infinite dynamic stream loop, precision sub-minute rollover, FaucetPay USDT TRC20 wallet manager, live email verification detection, official Nuxt payout status codes (`"1"` = PAID), and Apple-grade telemetry dashboard with withdrawal readiness hub.
 - `templates/multi_account_bot_template.py`: Runnable template for multi-worker daemons with dynamic limit handling.
 - `templates/icon_captcha_solver_client.py`: Complete standalone microservice template for Vision LLM icon captcha solving.

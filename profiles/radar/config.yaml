@@ -279,7 +279,8 @@ onboarding:
     busy_input_prompt: true
     openclaw_residue_cleanup: true
     profile_build_offered: true
-_config_version: 40
+    tool_progress_prompt: true
+_config_version: 41
 custom_providers:
   - api_key: REDACTED
     base_url: https://9router.indrayuda.my.id/v1
@@ -319,34 +320,34 @@ plugins:
 a2a_agents:
   orion:
     url: http://127.0.0.1:9901
-    timeout: 300
+    timeout: 1800
   atlas:
     url: http://127.0.0.1:9902
-    timeout: 300
+    timeout: 900
   aurora:
     url: http://127.0.0.1:9903
-    timeout: 300
+    timeout: 1200
   forge:
     url: http://127.0.0.1:9904
-    timeout: 300
+    timeout: 1200
   frame:
     url: http://127.0.0.1:9905
-    timeout: 300
+    timeout: 1200
   lens:
     url: http://127.0.0.1:9906
-    timeout: 300
+    timeout: 1800
   nexus:
     url: http://127.0.0.1:9907
-    timeout: 300
+    timeout: 600
   prism:
     url: http://127.0.0.1:9908
-    timeout: 300
+    timeout: 1800
   quant:
     url: http://127.0.0.1:9909
-    timeout: 300
+    timeout: 900
   sentinel:
     url: http://127.0.0.1:9911
-    timeout: 300
+    timeout: 1800
 platform_toolsets:
   a2a:
   - a2a
@@ -441,41 +442,3 @@ browser:
   use_real_profile: true
   real_profile_autoclose: true
   cdp_url: http://127.0.0.1:9222
-
-# ── Security ──────────────────────────────────────────────────────────
-# Secret redaction is ON by default — strings that look like API keys,
-# tokens, and passwords are masked in tool output, logs, and chat
-# responses before the model or user ever sees them. Set redact_secrets
-# to false to disable (e.g. when developing the redactor itself).
-# tirith pre-exec scanning is enabled by default when the tirith binary
-# is available. Configure via security.tirith_* keys or env vars
-# (TIRITH_ENABLED, TIRITH_BIN, TIRITH_TIMEOUT, TIRITH_FAIL_OPEN).
-#
-# security:
-#   redact_secrets: true
-#   tirith_enabled: true
-#   tirith_path: "tirith"
-#   tirith_timeout: 5
-#   tirith_fail_open: true
-
-# ── Fallback Model ────────────────────────────────────────────────────
-# Automatic provider failover when primary is unavailable.
-# Uncomment and configure to enable. Triggers on rate limits (429),
-# overload (529), service errors (503), or connection failures.
-#
-# Supported providers:
-#   openrouter   (OPENROUTER_API_KEY)  — routes to any model
-#   openai-codex (OAuth — hermes auth) — OpenAI Codex
-#   nous         (OAuth — hermes auth) — Nous Portal
-#   zai          (ZAI_API_KEY)         — Z.AI / GLM
-#   kimi-coding  (KIMI_API_KEY)        — Kimi / Moonshot
-#   kimi-coding-cn (KIMI_CN_API_KEY)   — Kimi / Moonshot (China)
-#   minimax      (MINIMAX_API_KEY)     — MiniMax
-#   minimax-cn   (MINIMAX_CN_API_KEY)  — MiniMax (China)
-#   bedrock      (AWS IAM / boto3)     — AWS Bedrock (Converse API)
-#
-# For custom OpenAI-compatible endpoints, add base_url and key_env.
-#
-# fallback_model:
-#   provider: openrouter
-#   model: anthropic/claude-sonnet-4
