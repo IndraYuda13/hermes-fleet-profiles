@@ -23,10 +23,12 @@ stages:
 
   - id: candidate-hypotheses
     owner: aurora
+    inputs: [PRODUCT_CONTEXT.md, CONTENT_MAP.md, REFERENCE_LEDGER.md]
     outputs: [CANDIDATE_HYPOTHESES.md]
     gate:
       - at least three materially different macro-hypotheses (spatial logic, information density, signature device)
       - each hypothesis justified by product context and user goals
+      - candidate specifications specify geometric and spatial constraints (grid track ratios, line measure budgets, density tiers)
       - candidate specifications are decoupled from candidate pitch or promotional text
       - no premature token locking; candidates specify structural qualities, not rigid component recipes
 
@@ -35,7 +37,9 @@ stages:
     inputs: [CANDIDATE_HYPOTHESES.md, CONTENT_MAP.md]
     outputs: [spikes-source, SPIKE_MANIFEST.json]
     gate:
-      - lightweight standalone rendered spikes for each candidate (hero desktop, 2nd fold, mobile hero, 1 signature interaction)
+      - lightweight standalone rendered spikes for each candidate
+      - mandatory candidate evidence: desktop composition evidence (1440px), second-fold / narrative evidence, and static mobile composition evidence around 390px
+      - mobile candidate evidence may be static layout composition without complete interactive state engine (complex responsive DOM behavior validated at vertical slice)
       - realistic copy lengths and domain-authentic data used; no undeclared placeholders
       - candidate assets follow brief constraints (supplied, generated, procedural, or typography-led)
       - spikes anonymized and randomized before evaluation to eliminate candidate ID bias
@@ -44,12 +48,17 @@ stages:
     owner: lens
     inputs: [spikes-source, PRODUCT_CONTEXT.md, CONTENT_MAP.md, SPIKE_MANIFEST.json]
     outputs: [VISUAL_TOURNAMENT.json]
+    bounds:
+      max_regeneration_rounds: 2
+      max_candidate_rework_per_round: 1
+      max_total_tournament_attempts: 4
     gate:
       - blind perceptual evaluation against product requirements without candidate pitch/rationale anchoring
       - pairwise differential comparison across candidates and baseline (if available)
-      - taste rubric scored under CALIBRATION_V0 schema
-      - bounded exploration: max 2 regeneration rounds on NO_WINNER before ORION arbitrates (best available, depth downgrade, or escalation)
-      - outcome is explicitly WINNER or NO_WINNER with concrete gap analysis
+      - taste rubric scored under CALIBRATION_V0 schema with observable submetrics
+      - verdicts restricted to WINNER, REWORK_CANDIDATE (max 1 rework per candidate), or NO_WINNER
+      - bounded exploration: max 2 regeneration rounds on NO_WINNER and max 4 total evaluations before ORION arbitrates
+      - if exploration budget exhausted, ORION produces explicit arbitration (best available with documented trade-offs, depth downgrade, or escalation record); silent selection below quality floor is forbidden
 
   - id: contract
     owner: aurora
@@ -57,6 +66,7 @@ stages:
     outputs: [DESIGN_DNA.md, DESIGN_CONTRACT.md, INTERACTION_CONTRACT.json]
     gate:
       - AURORA authors contract based on tournament winner; LENS reviews and issues ACCEPT, REJECT, or REQUEST_REWORK
+      - LENS evaluates rendered evidence and does not write or co-author the contract (Creator != Certifier)
       - information architecture, responsive behavior, and state machines defined
       - typography, color, spacing, and interaction tokens bound to rendered evidence
       - stable test selectors (data-testid) specified for all critical surfaces
@@ -100,22 +110,24 @@ stages:
   - id: functional-verification
     owner: prism
     inputs: [frontend-source, BUILD_MANIFEST.json, INTERACTION_CONTRACT.json]
-    outputs: [FUNCTIONAL_QA.md, PRISM_VERIFICATION_REPORT.json]
+    outputs: [FUNCTIONAL_QA.md, PRISM_VERIFICATION_REPORT.json, DEFECT_LEDGER.json]
     gate:
       - deterministic state machine, form boundary (if forms present), and route contracts verified
       - normative WCAG 2.2 AA accessibility mechanics verified (keyboard trap only if modal/dialog present)
       - automated regex/DOM scan passes: 0 undeclared mock data leakage (Lorem ipsum, undefined, NaN)
+      - executed in isolated browser context to prevent state contamination with concurrent perceptual audits
       - exact build SHA bound to report; independent veto authority maintained
 
   - id: rendered-verification
     owner: lens
     inputs: [frontend-source, BUILD_MANIFEST.json, DESIGN_CONTRACT.md]
-    outputs: [VISUAL_QA.md, LENS_REVIEW_REPORT.json]
+    outputs: [VISUAL_QA.md, LENS_REVIEW_REPORT.json, DEFECT_LEDGER.json]
     gate:
       - rendered inspection across all 5 canonical viewports (320, 390, 768, 1440, 1920)
       - deterministic universal hard gates pass (0 console errors, 0 network 4xx/5xx, 0 unintended overflow)
       - feature-conditional gates respected (focus trap only if modal exists; 44x44 mobile touch as Hermes UX target)
-      - taste dimensions evaluated under CALIBRATION_V0 schema
+      - taste dimensions evaluated under CALIBRATION_V0 schema with observable submetrics
+      - executed in isolated browser context to prevent state contamination
       - exact build SHA bound to report; independent veto authority maintained
 
   - id: remediation
@@ -123,9 +135,15 @@ stages:
     when: any verifier reports a material defect
     inputs: [DEFECT_LEDGER.json, BUILD_MANIFEST.json]
     outputs: [remediated-source, remediation-ledger]
+    bounds:
+      max_remediation_cycles: 2
     gate:
-      - every change maps to a specific defect ID
+      - every change maps to a specific defect ID; defects partitioned into DESIGN_DEFECT (aurora) and CODE_DEFECT (frame)
       - no verifier edits production source directly
+      - LENS evaluates perceptual regression against BEST_BUILD_SHA via pairwise comparison; material regression is valid with or without geometry drift (typography, hierarchy, contrast, color relationship, asset quality)
+      - deterministic regression signals (bounding-box drift, overflow, clipping, runtime errors) trigger immediate rejection
+      - NEGLIGIBLE_DELTA requires zero deterministic regression and zero material perceptual degradation
+      - model-noise threshold is classified as CALIBRATION_HYPOTHESIS / UNMEASURED; no arbitrary 4.0 deadband permitted
       - ORION arbitrates PROMOTE / KEEP_CURRENT_BEST / ROLLBACK on regression; FRAME executes git operations
 
   - id: retest
@@ -137,9 +155,10 @@ stages:
 
   - id: closure
     owner: orion
+    inputs: [FUNCTIONAL_QA.md, PRISM_VERIFICATION_REPORT.json, VISUAL_QA.md, LENS_REVIEW_REPORT.json]
     outputs: [CLOSURE_REPORT.md, RELEASE_DECISION_RECORD.md]
     gate:
-      - both PRISM and LENS report PASS on the exact identical BUILD_SHA (dual-gate requirement)
+      - both PRISM and LENS report PASS on the exact identical BUILD_SHA (dual-gate independent veto requirement)
       - no unresolved blocker or high-severity defect
       - internal release gate marked PASS; owner acceptance explicitly set to PENDING_REVIEW
 

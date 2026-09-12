@@ -62,6 +62,242 @@ def tracked_files(root: Path) -> list[str]:
         return [str(path.relative_to(root)) for path in root.rglob("*") if path.is_file()]
 
 
+ARTIFACT_SCOPE_MAP: dict[str, str] = {
+    "PRODUCT_CONTEXT.md": "research-evidence",
+    "CONTENT_MAP.md": "content-map",
+    "REFERENCE_LEDGER.md": "research-evidence",
+    "CANDIDATE_HYPOTHESES.md": "candidate-hypotheses",
+    "spikes-source": "visual-spikes",
+    "SPIKE_MANIFEST.json": "spike-manifest",
+    "VISUAL_TOURNAMENT.json": "visual-tournament",
+    "DESIGN_DNA.md": "design-dna",
+    "DESIGN_CONTRACT.md": "design-contract",
+    "INTERACTION_CONTRACT.json": "interaction-contract",
+    "ASSET_MANIFEST.json": "asset-manifest",
+    "vertical-slice-source": "vertical-slice",
+    "slice-evidence": "vertical-slice",
+    "VERTICAL_SLICE_REPORT.md": "slice-report",
+    "frontend-source": "frontend-source",
+    "BUILD_MANIFEST.json": "build-manifest",
+    "FUNCTIONAL_QA.md": "functional-qa-report",
+    "PRISM_VERIFICATION_REPORT.json": "prism-verification-report",
+    "VISUAL_QA.md": "qa-evidence",
+    "LENS_REVIEW_REPORT.json": "lens-review-report",
+    "DEFECT_LEDGER.json": "defect-report",
+    "remediated-source": "frontend-source",
+    "remediation-ledger": "build-artifacts",
+    "RETEST_REPORT.md": "defect-report",
+    "CLOSURE_REPORT.md": "closure-report",
+    "RELEASE_DECISION_RECORD.md": "release-decision-record",
+}
+
+
+def validate_ui_workflow(root: Path, roles: dict[str, Any], result: Validation) -> None:
+    workflow_path = root / "governance/workflows/ui-prototype.yaml"
+    result.require(workflow_path.is_file(), "missing governance/workflows/ui-prototype.yaml")
+    if not workflow_path.is_file():
+        return
+    try:
+        workflow = yaml.safe_load(workflow_path.read_text(encoding="utf-8")) or {}
+    except yaml.YAMLError as exc:
+        result.errors.append(f"invalid YAML {workflow_path.relative_to(root)}: {exc}")
+        return
+
+    stages = workflow.get("stages", [])
+    result.require(len(stages) >= 10, "UI workflow must contain at least 10 stages")
+
+    # Invariant 1: all stage IDs unique
+    stage_ids = [s.get("id") for s in stages if s.get("id")]
+    result.require(len(stage_ids) == len(stages), "UI workflow has stages without an id")
+    result.require(len(set(stage_ids)) == len(stage_ids), f"duplicate stage IDs in UI workflow: {stage_ids}")
+
+    # Invariant 2: all stage owners valid
+    valid_owners = set(FLEET) | {"original-verifier"}
+    for stage in stages:
+        owner = stage.get("owner")
+        result.require(owner in valid_owners, f"stage {stage.get('id')}: invalid owner {owner!r}")
+
+    # Invariant 3: Entry owner is orion
+    result.require(workflow.get("entry", {}).get("owner") == "orion", "UI workflow entry owner must be orion")
+
+    # Invariant 4: Initial stage sequence
+    owners = [stage.get("owner") for stage in stages]
+    result.require(
+        owners[:4] == ["aurora", "aurora", "frame", "lens"],
+        "UI workflow must begin AURORA discovery/candidates -> FRAME visual spikes -> LENS blind tournament",
+    )
+
+    # Invariant 5: Artifact producer permissions and consumer precedence
+    produced_artifacts: set[str] = set()
+    stage_by_id = {s.get("id"): s for s in stages}
+
+    for stage in stages:
+        owner = stage.get("owner")
+        stage_id = stage.get("id")
+        outputs = stage.get("outputs", [])
+
+        if owner == "original-verifier":
+            owner_scopes = set(roles.get("lens", {}).get("allowed_write_scopes", [])) & set(roles.get("prism", {}).get("allowed_write_scopes", []))
+        elif owner in roles:
+            owner_scopes = set(roles[owner].get("allowed_write_scopes", []))
+        else:
+            owner_scopes = set()
+
+        for out in outputs:
+            required_scope = ARTIFACT_SCOPE_MAP.get(out)
+            if required_scope:
+                result.require(
+                    required_scope in owner_scopes,
+                    f"stage {stage_id} owner {owner} produces {out} without scope {required_scope}",
+                )
+
+        inputs = stage.get("inputs", [])
+        for inp in inputs:
+            result.require(
+                inp in produced_artifacts,
+                f"stage {stage_id} consumes unproduced artifact: {inp}",
+            )
+
+        for out in outputs:
+            produced_artifacts.add(out)
+
+    # Invariant 6: Creator != Certifier
+    blind_tournament = stage_by_id.get("blind-tournament", {})
+    result.require(
+        blind_tournament.get("owner") != "aurora",
+        "Creator != Certifier violation: AURORA cannot certify its own direction in blind-tournament",
+    )
+    result.require(
+        blind_tournament.get("owner") == "lens",
+        "LENS must be the certifier/auditor of blind-tournament",
+    )
+
+    vertical_slice_gate = stage_by_id.get("vertical-slice-gate", {})
+    result.require(
+        vertical_slice_gate.get("owner") != "frame",
+        "Creator != Certifier violation: FRAME cannot certify its own vertical slice",
+    )
+    result.require(
+        vertical_slice_gate.get("owner") == "lens",
+        "LENS must verify vertical-slice-gate",
+    )
+
+    impl_stage = stage_by_id.get("implementation", {})
+    result.require(impl_stage.get("owner") == "frame", "FRAME must own implementation")
+
+    # Invariant 7: Verifiers cannot mutate Git / production source
+    for verifier in ("lens", "prism"):
+        v_role = roles.get(verifier, {})
+        result.require(
+            v_role.get("production_write") is False,
+            f"Verifier {verifier} must have production_write: false",
+        )
+        for forbidden in ("frontend-source", "backend-source", "infrastructure"):
+            result.require(
+                forbidden not in v_role.get("allowed_write_scopes", []),
+                f"Verifier {verifier} cannot have {forbidden} write scope",
+            )
+
+    # Invariant 8: FRAME is checkpoint producer
+    result.require(
+        roles.get("frame", {}).get("production_write") is True,
+        "FRAME must have production_write: true to create git checkpoints",
+    )
+
+    # Invariant 9: Dual Independent Release Veto
+    closure_stage = stage_by_id.get("closure", {})
+    result.require(closure_stage.get("owner") == "orion", "ORION must own closure")
+    closure_gate_text = " ".join(closure_stage.get("gate", []))
+    result.require(
+        "PRISM and LENS" in closure_gate_text or ("PRISM" in closure_gate_text and "LENS" in closure_gate_text),
+        "Closure stage must require dual PRISM and LENS verification (independent veto)",
+    )
+    result.require(
+        "identical BUILD_SHA" in closure_gate_text or "identical" in closure_gate_text,
+        "Closure stage must require identical BUILD_SHA parity",
+    )
+
+    # Invariant 10: Bounded NO_WINNER and REWORK exploration loops
+    bt_bounds = blind_tournament.get("bounds", {})
+    result.require(
+        isinstance(bt_bounds.get("max_regeneration_rounds"), int) and bt_bounds["max_regeneration_rounds"] <= 2,
+        "blind-tournament must bound max_regeneration_rounds <= 2",
+    )
+    result.require(
+        isinstance(bt_bounds.get("max_total_tournament_attempts"), int) and bt_bounds["max_total_tournament_attempts"] <= 4,
+        "blind-tournament must bound max_total_tournament_attempts <= 4",
+    )
+
+    remediation_stage = stage_by_id.get("remediation", {})
+    rem_bounds = remediation_stage.get("bounds", {})
+    result.require(
+        isinstance(rem_bounds.get("max_remediation_cycles"), int) and rem_bounds["max_remediation_cycles"] <= 2,
+        "remediation stage must bound max_remediation_cycles <= 2",
+    )
+
+    # Invariant 11: ORION authority for rollback/promote
+    rem_gate_text = " ".join(remediation_stage.get("gate", []))
+    result.require(
+        "ORION arbitrates" in rem_gate_text or "ORION" in rem_gate_text,
+        "ORION must be explicit authority for PROMOTE / KEEP_CURRENT_BEST / ROLLBACK",
+    )
+
+
+def validate_canonical_skills(root: Path, result: Validation) -> None:
+    # 1. visual-authoring-core parity between global and profiles/aurora
+    global_vac = root / "global/skills/visual-authoring-core/SKILL.md"
+    aurora_vac = root / "profiles/aurora/skills/custom/visual-authoring-core/SKILL.md"
+    result.require(global_vac.is_file(), "missing global/skills/visual-authoring-core/SKILL.md")
+    result.require(aurora_vac.is_file(), "missing profiles/aurora/skills/custom/visual-authoring-core/SKILL.md")
+    if global_vac.is_file() and aurora_vac.is_file():
+        result.require(
+            global_vac.read_bytes() == aurora_vac.read_bytes(),
+            "visual-authoring-core SKILL.md checksum drift between global and aurora",
+        )
+
+    # 2. anti-ai-slop-universal-principles parity across all 6 locations
+    global_upr = root / "global/skills/anti-ai-slop-web-design/references/anti-ai-slop-universal-principles.md"
+    result.require(global_upr.is_file(), "missing global anti-ai-slop-universal-principles.md")
+    if global_upr.is_file():
+        global_upr_bytes = global_upr.read_bytes()
+        for prof in ("aurora", "frame", "lens", "orion", "prism"):
+            prof_upr = root / f"profiles/{prof}/skills/custom/anti-ai-slop-web-design/references/anti-ai-slop-universal-principles.md"
+            result.require(prof_upr.is_file(), f"missing {prof} anti-ai-slop-universal-principles.md")
+            if prof_upr.is_file():
+                result.require(
+                    prof_upr.read_bytes() == global_upr_bytes,
+                    f"anti-ai-slop-universal-principles.md checksum drift in profile {prof}",
+                )
+
+    # 3. lens-review-contract parity across all 6 locations
+    global_lrc = root / "global/skills/anti-ai-slop-web-design/references/lens-review-contract.md"
+    result.require(global_lrc.is_file(), "missing global lens-review-contract.md")
+    if global_lrc.is_file():
+        global_lrc_bytes = global_lrc.read_bytes()
+        for prof in ("aurora", "frame", "lens", "orion", "prism"):
+            prof_lrc = root / f"profiles/{prof}/skills/custom/anti-ai-slop-web-design/references/lens-review-contract.md"
+            result.require(prof_lrc.is_file(), f"missing {prof} lens-review-contract.md")
+            if prof_lrc.is_file():
+                result.require(
+                    prof_lrc.read_bytes() == global_lrc_bytes,
+                    f"lens-review-contract.md checksum drift in profile {prof}",
+                )
+
+    # 4. anti-ai-slop-web-design/SKILL.md parity across all 6 locations
+    global_slop_skill = root / "global/skills/anti-ai-slop-web-design/SKILL.md"
+    result.require(global_slop_skill.is_file(), "missing global anti-ai-slop-web-design/SKILL.md")
+    if global_slop_skill.is_file():
+        global_slop_bytes = global_slop_skill.read_bytes()
+        for prof in ("aurora", "frame", "lens", "orion", "prism"):
+            prof_slop = root / f"profiles/{prof}/skills/custom/anti-ai-slop-web-design/SKILL.md"
+            result.require(prof_slop.is_file(), f"missing {prof} anti-ai-slop-web-design/SKILL.md")
+            if prof_slop.is_file():
+                result.require(
+                    prof_slop.read_bytes() == global_slop_bytes,
+                    f"anti-ai-slop-web-design/SKILL.md checksum drift in profile {prof}",
+                )
+
+
 def validate(root: Path) -> Validation:
     result = Validation()
     manifest_path = root / "governance/roles.yaml"
@@ -131,10 +367,8 @@ def validate(root: Path) -> Validation:
     orion = configs.get("orion") or {}
     result.require((orion.get("kanban") or {}).get("review_dispatch") is True, "orion: review_dispatch must be enabled")
 
-    workflow = yaml.safe_load((root / "governance/workflows/ui-prototype.yaml").read_text(encoding="utf-8"))
-    owners = [stage.get("owner") for stage in workflow.get("stages", [])]
-    result.require(owners[:4] == ["aurora", "aurora", "frame", "lens"], "UI workflow must begin AURORA discovery/candidates -> FRAME visual spikes -> LENS blind tournament")
-    result.require("lens" in owners, "UI workflow requires independent LENS verification")
+    validate_ui_workflow(root, roles, result)
+    validate_canonical_skills(root, result)
 
     runtime_pack_path = root / "governance/runtime-smoke.yaml"
     result.require(runtime_pack_path.is_file(), "missing governance/runtime-smoke.yaml")

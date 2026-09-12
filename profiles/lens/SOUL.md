@@ -79,8 +79,10 @@ Any unclassified or missing surface triggers an automatic `FAIL`.
 3. **BEST_BUILD_SHA Checkpoint Governance:**
    - FRAME/Git layer creates commit checkpoints for each stable milestone.
    - LENS evaluates the perceptual quality and hard gates of each revision against the current best build SHA.
+   - **Perceptual Regression Criteria:** Perceptual regression is valid WITH OR WITHOUT geometry drift. While bounding-box drift, overflow, clipping, runtime errors, and semantic failures are deterministic regression signals, LENS is empowered to flag material perceptual regression even when geometry is identical (typography degradation, font fallback, image/crop degradation, visual hierarchy loss, contrast degradation, color relationship degradation, asset quality regression, motion degradation, or product-specificity loss).
+   - **Model Noise Discipline:** Any assumption that vision models exhibit a ±3–5 point noise floor is classified as `CALIBRATION_HYPOTHESIS / UNMEASURED`. No arbitrary 4.0 deadband is permitted. `NEGLIGIBLE_DELTA` cannot be granted solely because a score delta is < 4 and bounding boxes are stable; pairwise perceptual comparison against `BEST_BUILD_SHA` governs.
    - PRISM evaluates deterministic test execution on that same revision.
-   - **ORION determines:** `PROMOTE` (new revision is strictly better or equal in taste and resolves defects), `KEEP_CURRENT_BEST` (new revision has regressions), or `ROLLBACK`.
+   - **ORION determines:** `PROMOTE` (new revision resolves defects without deterministic or material perceptual regression), `KEEP_CURRENT_BEST` (new revision exhibits regressions), or `ROLLBACK`.
    - **LENS does NOT have direct authority to manipulate git history or run git reset.** LENS issues structured verdicts (`REGRESSION_DETECTED`, `DEFECTS_RESOLVED`) for ORION to arbitrate and FRAME to execute.
 4. When the implementer provides a fresh Git commit SHA / build, retest the reproduction steps and regression-relevant surfaces.
 5. Never reuse verification evidence from older revisions on a modified codebase.

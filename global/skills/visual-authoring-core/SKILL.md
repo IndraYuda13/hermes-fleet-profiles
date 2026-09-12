@@ -68,26 +68,33 @@ Develop 3 distinct candidate hypotheses (3–5 for Depth 3). Each candidate spec
 
 ### Stage 3 — Visual Spikes Hand-off (FRAME)
 FRAME builds lightweight, standalone HTML/CSS/JS or Tailwind prototypes for each candidate:
-- Focus on Desktop Hero (1440px) + 2nd Fold + static interaction state previews (`:hover`/`:focus`/toggled class).
+- **Mandatory Spike Evidence:**
+  1. Desktop composition evidence (around 1440px)
+  2. Second-fold / narrative evidence
+  3. Static mobile composition evidence (around 390px)
+- *Note:* Mobile candidate evidence may be a static layout capture without complex interactive DOM engines (complex responsive DOM behaviors are validated on the Vertical Slice).
 - Realistic copy lengths from `CONTENT_MAP.md`; zero undeclared placeholder stubs.
 - Anonymized as Spike Alpha, Beta, Gamma with randomized ordering.
-- Full mobile DOM restructuring and advanced interactive state engines are deferred to Stage 7 (Vertical Slice) on the single winning candidate.
 
 ### Stage 4 — Blind Visual Tournament (LENS)
 LENS evaluates rendered spikes against product context and user goals without candidate author pitches:
 - Pairwise differential comparison across candidates and baseline (if available).
-- Scored under `CALIBRATION_V0` taste rubric schema.
+- Scored under `CALIBRATION_V0` taste rubric schema with observable submetrics.
 - **Tournament Verdicts:**
   - `WINNER: <ID>`: Clear winner that satisfies taste threshold and macro-diversity.
-  - `REWORK_CANDIDATE: <ID>`: A candidate has winning spatial architecture but remediable craft defects; advance with targeted craft punch-list.
+  - `REWORK_CANDIDATE: <ID>`: A candidate has winning spatial architecture but remediable craft defects; advance with targeted craft punch-list (max 1 rework per candidate).
   - `NO_WINNER`: All candidates medioker or generic AI slop.
-- **Bounded Exploration Loop:** Max 2 regeneration rounds on `NO_WINNER` before ORION arbitrates (select best available, downgrade Design Depth, or escalate).
+- **Bounded Exploration Budget:**
+  - Max 2 regeneration rounds on `NO_WINNER`.
+  - Max 1 candidate rework per round.
+  - Total tournament evaluation attempts capped at 4 attempts maximum.
+  - If budget exhausted without winner, ORION executes explicit arbitration (best available with documented trade-offs, depth downgrade, or escalation). Silent selection below quality floor is forbidden.
 
 ### Stage 5 — Co-Signed Design Contract
 AURORA authors the final specification based on the tournament winner:
 - `DESIGN_DNA.md`: Spatial grid, density rules, type hierarchy, surface layers, motion principles, signature element specs.
 - `DESIGN_CONTRACT.md`: Implementation-ready route composition, state models (default, hover, focus, active, loading, error, empty), and stable test selectors (`data-testid`).
-- LENS reviews rendered evidence and issues `ACCEPT`, `REJECT`, or `REQUEST_REWORK`.
+- LENS reviews rendered evidence and issues `ACCEPT`, `REJECT`, or `REQUEST_REWORK` (Creator != Certifier; LENS does not co-author).
 
 ### Stage 6 — Asset Gate (`ASSET_MANIFEST.json`)
 Before full implementation begins:
@@ -99,15 +106,26 @@ Before full implementation begins:
 
 ## 3. Calibrated Taste Rubric (Schema CALIBRATION_V0)
 
-Unified 6-dimension schema matching `lens-review-contract.md` and `LENS_REVIEW_REPORT.json`:
+Unified 6-dimension schema matching `lens-review-contract.md` and `LENS_REVIEW_REPORT.json` with observable submetrics:
 
-| Dimension Key | Weight | Core Evaluative Focus |
-|---|---:|---|
-| `identity` | 25% | **Product Specificity & Visual Thesis:** Do spatial and visual choices reflect authentic product truth, mechanisms, and audience, rather than generic SaaS tropes? |
-| `composition` | 25% | **Hierarchy, Density & Macro-Diversity:** Is the primary focal point obvious within 3 seconds? Does density support task clarity? Avoids repeating recent fleet shells (anti-collision). |
-| `typography` | 15% | **Scale, Measure & Typographic Voice:** Are scale ratios, line measures, and hierarchy controlled without default unstyled fonts? |
-| `assets` | 15% | **Content & Asset Authenticity:** Are visuals and copy mutually reinforcing, with authentic data and realistic measure? |
-| `interaction` | 10% | **Micro-Tactility & Motion Meaning:** Does motion clarify state changes or spatial relationships rather than acting as decorative slop? |
-| `responsive` | 10% | **Mobile Recomposition & Ergonomics:** Is mobile layout thoughtfully restructured for handheld tasks and touch targets, not merely stacked? |
+| Dimension Key | Weight | Submetrics Tracked | Core Evaluative Focus |
+|---|---:|---|---|
+| `identity` | 25% | `product_specificity`, `visual_thesis_coherence` | Do spatial and visual choices reflect authentic product truth, mechanisms, and audience, rather than generic SaaS tropes? |
+| `composition` | 25% | `hierarchy`, `macro_diversity_originality` | Is the primary focal point obvious within 3 seconds? Does density support task clarity? Avoids repeating recent fleet shells (anti-collision). |
+| `typography` | 15% | `typography_measure` | Are scale ratios, line measures, and hierarchy controlled without default unstyled fonts? |
+| `assets` | 15% | `asset_integration` | Are visuals and copy mutually reinforcing, with authentic data and realistic measure? |
+| `interaction` | 10% | `interaction_meaning` | Does motion clarify state changes or spatial relationships rather than acting as decorative slop? |
+| `responsive` | 10% | `responsive_recomposition` | Is mobile layout thoughtfully restructured for handheld tasks and touch targets, not merely stacked? |
 
 *Note: Rubric weights are calibrated under schema version CALIBRATION_V0 and may be tuned via empirical Taste Pack benchmarks.*
+
+---
+
+## 4. Checkpoint & Regression Evaluation Principles
+
+1. **Deterministic vs. Perceptual Signals:**
+   - Deterministic signals (bounding-box drift, overflow, clipping, runtime errors) are hard regression triggers.
+   - Perceptual regression is valid **with or without geometry drift** (typography degradation, font fallback, image/crop degradation, visual hierarchy loss, contrast degradation, color relationship degradation, asset quality regression, motion degradation, product-specificity loss).
+2. **Model Noise Discipline:**
+   - Any assumption of vision model noise (±3–5 points) is classified as `CALIBRATION_HYPOTHESIS / UNMEASURED`.
+   - `NEGLIGIBLE_DELTA` cannot be granted solely because a score delta is < 4 and bounding boxes are stable; pairwise perceptual comparison against `BEST_BUILD_SHA` governs.

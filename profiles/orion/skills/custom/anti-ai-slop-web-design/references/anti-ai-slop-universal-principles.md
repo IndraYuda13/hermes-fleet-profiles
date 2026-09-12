@@ -28,7 +28,7 @@ These invariants apply to ALL surfaces and products regardless of visual style, 
 
 5. **Feature-Conditional Accessibility (WCAG 2.2 AA Baseline):**
    - Normative WCAG 2.2 AA contrast ratios and keyboard operability with visible focus rings.
-   - *Feature-Conditional Check:* Keyboard focus traps are tested ONLY if modal dialogs or flyout drawers are present. Form validation boundaries are tested ONLY if input forms are present. Never fail a surface for absent components.
+   - *Feature-Conditional Check:* Keyboard focus traps are tested ONLY if modal dialogs or flyout drawers are present. Form validation boundaries are tested ONLY if input forms are present. Never fail a surface for absent components unless required by user journeys.
    - *Hermes UX Quality Target:* Touch targets >= 44x44px on mobile viewports are enforced as a Hermes UX quality target (not mislabeled as a normative WCAG AA requirement). APCA may be recorded as a supplementary perceptual signal.
 
 6. **Contextual Motifs (No Universal Syntax Bans):**
@@ -63,9 +63,9 @@ The following patterns represent proven solutions for specific surface modes (e.
 ## Part C: The V4 Orchestration Pipeline & Separation of Duties
 
 1. **Brief & Grounding (AURORA):** Extract product truth, user jobs, and constraints. Construct `PRODUCT_CONTEXT.md` and `CONTENT_MAP.md` with explicit copy budgets before touching layout.
-2. **Candidate Hypotheses (AURORA):** Develop 3 distinct macro-hypotheses (3–5 for Depth 3) specifying spatial logic, information density, and signature devices—omitting component recipes and persuasive pitch text.
-3. **Visual Spikes (FRAME):** Implement lightweight, standalone rendered prototypes (Desktop Hero, 2nd Fold, Mobile Hero, 1 Signature Interaction) with realistic copy lengths and randomized/anonymized IDs.
-4. **Blind Visual Tournament (LENS):** LENS evaluates rendered spikes against product context and user goals blind to candidate pitch/rationale. Pairwise comparison; bounded `NO_WINNER` circuit breaker (max 2 regeneration rounds before ORION arbitrates).
+2. **Candidate Hypotheses (AURORA):** Develop 3 distinct macro-hypotheses (3–5 for Depth 3) specifying spatial logic, grid track proportions, and signature devices—omitting component recipes and persuasive pitch text.
+3. **Visual Spikes (FRAME):** Implement lightweight, standalone rendered prototypes producing mandatory evidence: Desktop Hero (1440px), 2nd Fold, and static Mobile Hero (390px). Mobile evidence may be static layout captures without complex interactive DOM engines.
+4. **Blind Visual Tournament (LENS):** LENS evaluates rendered spikes against product context and user goals blind to candidate pitch/rationale. Pairwise comparison; bounded exploration: max 2 regeneration rounds on `NO_WINNER`, max 1 candidate rework per round, max 4 total tournament attempts before ORION arbitrates.
 5. **Contract Authoring (AURORA) & Review (LENS):** AURORA authors `DESIGN_DNA.md` and `DESIGN_CONTRACT.md`. LENS reviews rendered evidence and issues `ACCEPT`, `REJECT`, or `REQUEST_REWORK` (Creator != Certifier).
 6. **Asset Gate (AURORA):** Verify `ASSET_MANIFEST.json` ensuring no undeclared placeholders.
 7. **Vertical Slice (FRAME) & Gate (LENS):** Build production-grade Hero + 1 narrative section + mobile responsive. LENS audits and must issue PASS before full implementation begins.
@@ -73,6 +73,7 @@ The following patterns represent proven solutions for specific surface modes (e.
 9. **Dual-Plane QA (PRISM & LENS):** PRISM independently audits the deterministic execution plane (state machine, forms, accessibility semantics, regex sweep); LENS audits the perceptual rendered plane. Dual PASS required for release gate.
 10. **Remediation & Rollback Governance:**
     - FRAME creates Git commit checkpoints.
-    - LENS evaluates perceptual regression; PRISM evaluates functional regression.
+    - LENS evaluates perceptual regression against `BEST_BUILD_SHA` (material regression is valid with or without geometry drift; model noise classified as `CALIBRATION_HYPOTHESIS / UNMEASURED`).
+    - PRISM evaluates functional regression.
     - ORION arbitrates `PROMOTE` / `KEEP_CURRENT_BEST` / `ROLLBACK`. LENS does not directly manipulate git history.
 11. **Retest & Closure (ORION):** Retest only against the identical final `BUILD_SHA`. Record results in `CLOSURE_REPORT.md` and `RELEASE_DECISION_RECORD.md`.

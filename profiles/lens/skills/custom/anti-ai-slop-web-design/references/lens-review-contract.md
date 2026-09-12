@@ -44,7 +44,7 @@ Pemeriksaan berikut bersifat wajib pada seluruh antarmuka:
 Pemeriksaan ini bersyarat terhadap keberadaan fitur:
 - **Keyboard Focus Trap:** Hanya diuji jika elemen modal dialog atau flyout drawer benar-benar ada pada halaman tersebut.
 - **Form Boundary Validation:** Hanya diuji jika ada form input aktif pada halaman tersebut.
-- *Aturan:* Jangan pernah menggagalkan pengujian untuk komponen yang memang tidak ada pada surface yang diuji.
+- *Aturan:* Jangan pernah menggagalkan pengujian untuk komponen yang memang tidak ada pada surface yang diuji. Namun, jika journey pada brief mensyaratkan interaksi tersebut, ketiadaan komponen merupakan pelanggaran kontrak.
 
 ### C. Pemisahan Standar Aksesibilitas
 - **Normative Baseline:** WCAG 2.2 AA pada elemen yang dapat dijangkau (kontras warna yang terbaca dan fokus keyboard yang tampak).
@@ -59,7 +59,7 @@ Pemeriksaan ini bersyarat terhadap keberadaan fitur:
 
 ## 3. Calibrated Taste Rubric (Schema: CALIBRATION_V0)
 
-Skor berkisar 0–10 per dimensi dengan bobot total 100%. Versi schema: `CALIBRATION_V0` (bobot dapat disesuaikan melalui kalibrasi Taste Pack tanpa merombak workflow).
+Skor berkisar 0–10 per dimensi dengan bobot total 100%. Versi schema: `CALIBRATION_V0` (bobot dipertahankan stabil dan dapat disesuaikan melalui kalibrasi Taste Pack tanpa merombak workflow).
 
 | Dimensi | Bobot | Pertanyaan Pembuktian |
 |---|---:|---|
@@ -85,21 +85,48 @@ Skor berkisar 0–10 per dimensi dengan bobot total 100%. Versi schema: `CALIBRA
 
 ---
 
-## 4. Protokol Turnamen Visual & Bounded NO_WINNER (Stage 4)
+## 4. Protokol Turnamen Visual & Bounded Exploration Budget (Stage 4)
 
-Pada tahap evaluasi spike visual:
-1. LENS membandingkan seluruh kandidat secara pairwise ($A \text{ vs } B \rightarrow \text{Pemenang vs } C \rightarrow \text{Pemenang vs Baseline}$).
-2. Jika ada kandidat yang menembus ambang batas selera dan bebas benturan makro, LENS menerbitkan vonis `WINNER: <Candidate_ID>`.
-3. **`NO_WINNER` Circuit Breaker:** Jika seluruh kandidat medioker atau terjebak dalam klise AI slop, LENS wajib menerbitkan vonis `NO_WINNER` disertai alasan defek struktural konkret.
-4. **Batas Eksplorasi:** Maksimal 2 putaran regenerasi kandidat. Jika setelah 2 putaran tetap tidak ada pemenang, ORION mengambil alih arbitrase (memilih kandidat terbaik yang tersedia, menurunkan Design Depth, atau mencatat eskalasi). Tidak boleh terjadi infinite aesthetic loop.
+1. **Bukti Visual Wajib per Kandidat Spike:**
+   - Komposisi Desktop (sekitar 1440px)
+   - Komposisi Fold Kedua / Naratif
+   - Komposisi Mobile Statis (sekitar 390px)
+   - *Catatan:* Bukti mobile kandidat boleh berupa layout statis tanpa implementasi interaksi penuh (rekomposisi DOM responsif kompleks diuji penuh pada Vertical Slice).
+2. **Evaluasi Pairwise:**
+   - LENS membandingkan seluruh kandidat secara pairwise ($A \text{ vs } B \rightarrow \text{Pemenang vs } C \rightarrow \text{Pemenang vs Baseline}$).
+3. **Pilihan Vonis Turnamen:**
+   - `WINNER: <Candidate_ID>`: Lolos seluruh ambang selera dan bebas tabrakan makro.
+   - `REWORK_CANDIDATE: <Candidate_ID>`: Kandidat memiliki tesis spasial unggul namun memiliki defek craft minor (maksimal 1 putaran rework per kandidat).
+   - `NO_WINNER`: Seluruh kandidat gagal menembus standar selera atau terjebak AI slop.
+4. **Bounded Exploration Budget (Batas Eksplorasi):**
+   - Maksimal 2 putaran regenerasi `NO_WINNER`.
+   - Maksimal 1 rework kandidat per putaran.
+   - Total evaluasi turnamen dibatasi maksimal 4 kali percobaan secara kumulatif.
+   - Jika budget habis tanpa pemenang, ORION wajib menghasilkan status arbitrase eksplisit:
+     * Memilih kandidat terbaik yang tersedia dengan dokumentasi trade-off (hanya jika memenuhi floor fungsional & a11y),
+     * Menurunkan Design Depth (Depth 3 $\rightarrow$ Depth 1 dengan delta spec), ATAU
+     * Menerbitkan `ESCALATION_RECORD.md` kepada owner.
+     * Pemilihan diam-diam terhadap kandidat di bawah standar kualitas dilarang keras.
 
 ---
 
-## 5. Tata Kelola Checkpoint BEST_BUILD_SHA
+## 5. Tata Kelola Checkpoint BEST_BUILD_SHA & Logika Regresi
 
 1. **Pembuatan Checkpoint:** FRAME dan lapisan Git membuat commit hash untuk setiap milestone stabil yang lolos uji.
-2. **Evaluasi Delta:** Lens menguji commit baru terhadap `BEST_BUILD_SHA` yang aktif.
-3. **Hak Arbitrase Orkestrator:**
+2. **Kriteria Regresi Perseptual:**
+   - **Perceptual regression is valid with or without geometry drift.**
+   - Sinyal deterministik (bounding-box drift, overflow, clipping, runtime error, broken state) memicu penolakan otomatis.
+   - Namun, LENS tetap berwenang menyatakan regresi perseptual material meskipun geometri identik, meliputi:
+     * Degradasi tipografi atau font fallback tidak terduga,
+     * Degradasi crop atau kualitas gambar/aset,
+     * Kehilangan hierarki visual atau fokus kontras,
+     * Degradasi relasi warna atau saturasi,
+     * Hilangnya spesifisitas karakter produk.
+3. **Disiplin Model Noise:**
+   - Asumsi noise model visual $\pm 3\text{--}5$ poin diklasifikasikan sebagai `CALIBRATION_HYPOTHESIS / UNMEASURED`.
+   - Angka 4.0 dilarang dijadikan deadband absolut universal sampai pengujian render identik mengukur varians riil.
+   - Status `NEGLIGIBLE_DELTA` dilarang diberikan hanya karena delta skor $< 4$ dan bounding box stabil. Penilaian wajib didasarkan pada bukti deterministik dan komparasi perseptual pairwise.
+4. **Hak Arbitrase Orkestrator:**
    - Lens menerbitkan vonis perseptual (`ACCEPT_AS_NEW_BEST` atau `REJECT_REGRESSION`).
    - PRISM menerbitkan vonis fungsional deterministik.
    - **ORION menentukan keputusan akhir:** `PROMOTE` (menjadikan commit baru sebagai baseline terbaik), `KEEP_CURRENT_BEST` (menolak regresi), atau `ROLLBACK`.
@@ -107,7 +134,7 @@ Pada tahap evaluasi spike visual:
 
 ---
 
-## 6. Format Laporan Mesin (`LENS_REVIEW_REPORT.json`)
+## 6. Format Laporan Mesin Observabel (`LENS_REVIEW_REPORT.json`)
 
 ```json
 {
@@ -136,10 +163,22 @@ Pada tahap evaluasi spike visual:
     "responsive": null,
     "weighted_total": null
   },
+  "submetrics": {
+    "product_specificity": null,
+    "visual_thesis_coherence": null,
+    "macro_diversity_originality": null,
+    "hierarchy": null,
+    "typography_measure": null,
+    "asset_integration": null,
+    "interaction_meaning": null,
+    "responsive_recomposition": null
+  },
   "findings": [],
   "best_build_comparison": {
     "current_best_sha": null,
     "candidate_sha": null,
+    "deterministic_regression": null,
+    "perceptual_regression": null,
     "delta_status": null
   },
   "next_action": "Collect evidence before issuing a verdict."
