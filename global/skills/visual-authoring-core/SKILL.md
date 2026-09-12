@@ -76,19 +76,28 @@ FRAME builds lightweight, standalone HTML/CSS/JS or Tailwind prototypes for each
 - Realistic copy lengths from `CONTENT_MAP.md`; zero undeclared placeholder stubs.
 - Anonymized as Spike Alpha, Beta, Gamma with randomized ordering.
 
-### Stage 4 — Blind Visual Tournament (LENS)
+### Stage 4 — Blind Visual Tournament & Exploration Semantics (LENS)
 LENS evaluates rendered spikes against product context and user goals without candidate author pitches:
 - Pairwise differential comparison across candidates and baseline (if available).
 - Scored under `CALIBRATION_V0` taste rubric schema with observable submetrics.
-- **Tournament Verdicts:**
-  - `WINNER: <ID>`: Clear winner that satisfies taste threshold and macro-diversity.
-  - `REWORK_CANDIDATE: <ID>`: A candidate has winning spatial architecture but remediable craft defects; advance with targeted craft punch-list (max 1 rework per candidate).
-  - `NO_WINNER`: All candidates medioker or generic AI slop.
-- **Bounded Exploration Budget:**
-  - Max 2 regeneration rounds on `NO_WINNER`.
-  - Max 1 candidate rework per round.
-  - Total tournament evaluation attempts capped at 4 attempts maximum.
-  - If budget exhausted without winner, ORION executes explicit arbitration (best available with documented trade-offs, depth downgrade, or escalation). Silent selection below quality floor is forbidden.
+- **Exploration Counter Semantics:**
+  * `round`: Satu siklus perancangan 3 hipotesis oleh AURORA dan pembuatan spike oleh FRAME.
+  * `regeneration`: Perancangan set 3 hipotesis kandidat baru setelah vonis `NO_WINNER` (maksimal 2 regeneration rounds).
+  * `candidate rework`: Penyempurnaan craft terarah untuk 1 kandidat setelah vonis `REWORK_CANDIDATE: <ID>` (maksimal 1 rework per kandidat per round).
+  * `tournament attempt`: Setiap kali LENS mengevaluasi set kandidat atau kandidat yang dirework (total evaluasi turnamen dibatasi maksimal 4 kali percobaan kumulatif).
+- **Deterministic State Machine Termination:**
+  State machine turnamen dijamin selalu berhenti pada salah satu dari tiga state akhir:
+  1. `WINNER: <Candidate_ID>` -> Lanjut ke Stage 5 (Contract Authoring).
+  2. `ORION_ARBITRATION` -> Terjadi saat budget habis.
+  3. `ESCALATION` -> Eskalasi ke human owner melalui `ESCALATION_RECORD.md`.
+- **Arbitration Quality Floor (`PERCEPTUAL_FLOOR_UNCALIBRATED`):**
+  Saat budget eksplorasi habis tanpa pemenang:
+  - ORION dilarang memilih kandidat hanya karena lolos fungsi dan aksesibilitas.
+  - Karena ambang batas numerik selera belum memiliki bukti empiris terkalibrasi di armada ini, status lantai selera diklasifikasikan secara eksplisit sebagai `PERCEPTUAL_FLOOR_UNCALIBRATED`.
+  - Dalam status `PERCEPTUAL_FLOOR_UNCALIBRATED`, ORION hanya diizinkan:
+    1. Menurunkan Design Depth (misal Depth 3 -> Depth 1 dengan delta design spec), ATAU
+    2. Menerbitkan `ESCALATION_RECORD.md` kepada owner.
+  - ORION dilarang mengklaim bahwa kandidat memenuhi standar kualitas visual minimum yang belum pernah dikalibrasi.
 
 ### Stage 5 — Co-Signed Design Contract
 AURORA authors the final specification based on the tournament winner:
@@ -104,9 +113,9 @@ Before full implementation begins:
 
 ---
 
-## 3. Calibrated Taste Rubric (Schema CALIBRATION_V0)
+## 3. Calibrated Taste Rubric & Submetrics Observability (Schema CALIBRATION_V0)
 
-Unified 6-dimension schema matching `lens-review-contract.md` and `LENS_REVIEW_REPORT.json` with observable submetrics:
+Unified 6-dimension schema matching `lens-review-contract.md` and `LENS_REVIEW_REPORT.json`:
 
 | Dimension Key | Weight | Submetrics Tracked | Core Evaluative Focus |
 |---|---:|---|---|
@@ -117,7 +126,13 @@ Unified 6-dimension schema matching `lens-review-contract.md` and `LENS_REVIEW_R
 | `interaction` | 10% | `interaction_meaning` | Does motion clarify state changes or spatial relationships rather than acting as decorative slop? |
 | `responsive` | 10% | `responsive_recomposition` | Is mobile layout thoughtfully restructured for handheld tasks and touch targets, not merely stacked? |
 
-*Note: Rubric weights are calibrated under schema version CALIBRATION_V0 and may be tuned via empirical Taste Pack benchmarks.*
+### Submetric Observability Contract (Benchmark Depth 2/3)
+- Nilai `null` diizinkan untuk kompatibilitas hanya jika status field adalah `not_applicable`.
+- Untuk misi Depth 2 dan Depth 3, seluruh submetrik tidak boleh secara diam-diam dibiarkan `null`.
+- Setiap submetrik yang berlaku wajib memiliki:
+  * `score`: nilai numerik (0–10) sesuai rubrik CALIBRATION_V0,
+  * `status`: `"applicable"` atau `"not_applicable"`,
+  * `evidence`: ringkasan bukti konkret yang dapat diinspeksi.
 
 ---
 

@@ -98,15 +98,23 @@ Skor berkisar 0–10 per dimensi dengan bobot total 100%. Versi schema: `CALIBRA
    - `WINNER: <Candidate_ID>`: Lolos seluruh ambang selera dan bebas tabrakan makro.
    - `REWORK_CANDIDATE: <Candidate_ID>`: Kandidat memiliki tesis spasial unggul namun memiliki defek craft minor (maksimal 1 putaran rework per kandidat).
    - `NO_WINNER`: Seluruh kandidat gagal menembus standar selera atau terjebak AI slop.
-4. **Bounded Exploration Budget (Batas Eksplorasi):**
-   - Maksimal 2 putaran regenerasi `NO_WINNER`.
-   - Maksimal 1 rework kandidat per putaran.
-   - Total evaluasi turnamen dibatasi maksimal 4 kali percobaan secara kumulatif.
-   - Jika budget habis tanpa pemenang, ORION wajib menghasilkan status arbitrase eksplisit:
-     * Memilih kandidat terbaik yang tersedia dengan dokumentasi trade-off (hanya jika memenuhi floor fungsional & a11y),
-     * Menurunkan Design Depth (Depth 3 $\rightarrow$ Depth 1 dengan delta spec), ATAU
-     * Menerbitkan `ESCALATION_RECORD.md` kepada owner.
-     * Pemilihan diam-diam terhadap kandidat di bawah standar kualitas dilarang keras.
+4. **Bounded Exploration Budget & Counter Semantics:**
+   - **Semantics Counter Mesin:**
+     * `round`: Satu siklus perancangan 3 hipotesis oleh AURORA dan pembuatan spike oleh FRAME.
+     * `regeneration`: Perancangan set 3 hipotesis kandidat baru setelah vonis `NO_WINNER` (maksimal 2 regeneration rounds).
+     * `candidate rework`: Penyempurnaan craft terarah untuk 1 kandidat setelah vonis `REWORK_CANDIDATE: <ID>` (maksimal 1 rework per kandidat per round).
+     * `tournament attempt`: Setiap kali LENS mengevaluasi set kandidat atau kandidat yang dirework (total evaluasi turnamen dibatasi maksimal 4 kali percobaan kumulatif).
+   - **Terminasi Deterministik:** State machine turnamen dijamin selalu berhenti pada salah satu dari tiga state akhir:
+     * `WINNER: <Candidate_ID>` -> Lanjut ke Stage 5.
+     * `ORION_ARBITRATION` -> Terjadi saat budget habis.
+     * `ESCALATION` -> Eskalasi ke human owner melalui `ESCALATION_RECORD.md`.
+   - **Arbitration Quality Floor (`PERCEPTUAL_FLOOR_UNCALIBRATED`):**
+     * Saat budget eksplorasi habis tanpa pemenang, ORION dilarang memilih kandidat hanya karena lolos fungsi dan aksesibilitas.
+     * Karena ambang batas numerik selera belum memiliki bukti empiris terkalibrasi di armada ini, status lantai selera diklasifikasikan secara eksplisit sebagai `PERCEPTUAL_FLOOR_UNCALIBRATED`.
+     * Dalam status `PERCEPTUAL_FLOOR_UNCALIBRATED`, ORION hanya diizinkan:
+       1. Menurunkan Design Depth (misal Depth 3 $\rightarrow$ Depth 1 dengan delta design spec), ATAU
+       2. Menerbitkan `ESCALATION_RECORD.md` kepada owner.
+     * ORION dilarang mengklaim bahwa kandidat memenuhi standar kualitas visual minimum yang belum pernah dikalibrasi.
 
 ---
 
@@ -164,14 +172,46 @@ Skor berkisar 0–10 per dimensi dengan bobot total 100%. Versi schema: `CALIBRA
     "weighted_total": null
   },
   "submetrics": {
-    "product_specificity": null,
-    "visual_thesis_coherence": null,
-    "macro_diversity_originality": null,
-    "hierarchy": null,
-    "typography_measure": null,
-    "asset_integration": null,
-    "interaction_meaning": null,
-    "responsive_recomposition": null
+    "product_specificity": {
+      "score": null,
+      "status": "applicable",
+      "evidence": null
+    },
+    "visual_thesis_coherence": {
+      "score": null,
+      "status": "applicable",
+      "evidence": null
+    },
+    "macro_diversity_originality": {
+      "score": null,
+      "status": "applicable",
+      "evidence": null
+    },
+    "hierarchy": {
+      "score": null,
+      "status": "applicable",
+      "evidence": null
+    },
+    "typography_measure": {
+      "score": null,
+      "status": "applicable",
+      "evidence": null
+    },
+    "asset_integration": {
+      "score": null,
+      "status": "applicable",
+      "evidence": null
+    },
+    "interaction_meaning": {
+      "score": null,
+      "status": "applicable",
+      "evidence": null
+    },
+    "responsive_recomposition": {
+      "score": null,
+      "status": "applicable",
+      "evidence": null
+    }
   },
   "findings": [],
   "best_build_comparison": {
@@ -184,3 +224,12 @@ Skor berkisar 0–10 per dimensi dengan bobot total 100%. Versi schema: `CALIBRA
   "next_action": "Collect evidence before issuing a verdict."
 }
 ```
+
+### Kontrak Observabilitas Submetrik (Benchmark Depth 2/3)
+- Nilai `null` diizinkan untuk kompatibilitas hanya jika status field adalah `not_applicable`.
+- Untuk misi Depth 2 dan Depth 3, seluruh submetrik tidak boleh secara diam-diam dibiarkan `null`.
+- Setiap submetrik yang berlaku wajib memiliki:
+  * `score`: nilai numerik (0–10) sesuai rubrik CALIBRATION_V0,
+  * `status`: `"applicable"` atau `"not_applicable"`,
+  * `evidence`: ringkasan bukti konkret yang dapat diinspeksi.
+- Tujuannya agar benchmark P1 dapat menganalisis *mengapa* sebuah rancangan menang atau kalah, bukan hanya membaca skor agregat.

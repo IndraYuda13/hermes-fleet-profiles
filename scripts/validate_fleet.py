@@ -92,6 +92,24 @@ ARTIFACT_SCOPE_MAP: dict[str, str] = {
 }
 
 
+CANONICAL_LIFECYCLE_STAGES: tuple[str, ...] = (
+    "discovery",
+    "candidate-hypotheses",
+    "visual-spikes",
+    "blind-tournament",
+    "contract",
+    "asset-gate",
+    "vertical-slice",
+    "vertical-slice-gate",
+    "implementation",
+    "functional-verification",
+    "rendered-verification",
+    "remediation",
+    "retest",
+    "closure",
+)
+
+
 def validate_ui_workflow(root: Path, roles: dict[str, Any], result: Validation) -> None:
     workflow_path = root / "governance/workflows/ui-prototype.yaml"
     result.require(workflow_path.is_file(), "missing governance/workflows/ui-prototype.yaml")
@@ -106,10 +124,14 @@ def validate_ui_workflow(root: Path, roles: dict[str, Any], result: Validation) 
     stages = workflow.get("stages", [])
     result.require(len(stages) >= 10, "UI workflow must contain at least 10 stages")
 
-    # Invariant 1: all stage IDs unique
+    # Invariant 1: all stage IDs unique and strictly match canonical lifecycle
     stage_ids = [s.get("id") for s in stages if s.get("id")]
     result.require(len(stage_ids) == len(stages), "UI workflow has stages without an id")
     result.require(len(set(stage_ids)) == len(stage_ids), f"duplicate stage IDs in UI workflow: {stage_ids}")
+    result.require(
+        tuple(stage_ids) == CANONICAL_LIFECYCLE_STAGES,
+        f"UI workflow stages must strictly match canonical lifecycle: {CANONICAL_LIFECYCLE_STAGES}, got: {tuple(stage_ids)}",
+    )
 
     # Invariant 2: all stage owners valid
     valid_owners = set(FLEET) | {"original-verifier"}

@@ -191,6 +191,46 @@ class UIWorkflowV4InvariantTests(unittest.TestCase):
             validate_canonical_skills(temp_root, drift_val)
             self.assertTrue(any("checksum drift in profile frame" in err for err in drift_val.errors))
 
+    def test_negative_duplicate_stage_id(self):
+        wf = copy.deepcopy(self.workflow)
+        wf["stages"][1]["id"] = "discovery"
+        val = self._validate_with_override(wf)
+        self.assertTrue(any("duplicate stage IDs in UI workflow" in err for err in val.errors))
+
+    def test_negative_invalid_stage_owner(self):
+        wf = copy.deepcopy(self.workflow)
+        wf["stages"][0]["owner"] = "rogue-agent"
+        val = self._validate_with_override(wf)
+        self.assertTrue(any("invalid owner 'rogue-agent'" in err for err in val.errors))
+
+    def test_negative_invalid_entry_owner(self):
+        wf = copy.deepcopy(self.workflow)
+        wf["entry"]["owner"] = "aurora"
+        val = self._validate_with_override(wf)
+        self.assertTrue(any("UI workflow entry owner must be orion" in err for err in val.errors))
+
+    def test_negative_missing_canonical_lifecycle_stage(self):
+        wf = copy.deepcopy(self.workflow)
+        # Remove vertical-slice-gate stage
+        wf["stages"] = [s for s in wf["stages"] if s.get("id") != "vertical-slice-gate"]
+        val = self._validate_with_override(wf)
+        self.assertTrue(any("UI workflow stages must strictly match canonical lifecycle" in err for err in val.errors))
+
+    def test_negative_checkpoint_producer_not_frame(self):
+        roles = copy.deepcopy(self.roles)
+        roles["frame"]["production_write"] = False
+        val = self._validate_with_override(self.workflow, roles)
+        self.assertTrue(any("FRAME must have production_write: true to create git checkpoints" in err for err in val.errors))
+
+    def test_negative_rollback_authority_not_orion(self):
+        wf = copy.deepcopy(self.workflow)
+        wf["stages"][11]["gate"] = [
+            "every change maps to defect ID",
+            "FRAME arbitrates rollback and reset",
+        ]
+        val = self._validate_with_override(wf)
+        self.assertTrue(any("ORION must be explicit authority for PROMOTE / KEEP_CURRENT_BEST / ROLLBACK" in err for err in val.errors))
+
 
 if __name__ == "__main__":
     unittest.main()

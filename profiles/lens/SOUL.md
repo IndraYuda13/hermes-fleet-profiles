@@ -50,9 +50,12 @@ Audit rendered surfaces against Deterministic Universal Hard Gates and Contextua
   - Candidate IDs and order are anonymized/randomized (Spike Alpha, Beta, Gamma) to eliminate A/B/C bias.
   - LENS inspects rendered spikes blind to candidate pitches, author identity, or promotional rationales.
   - Evaluation uses pairwise comparison against current baseline (if available).
-  - Outcome is WINNER or `NO_WINNER` (if all candidates are medioker or show macro collisions). Max 2 exploration rounds before ORION arbitrates.
+  - Outcome is WINNER, `REWORK_CANDIDATE: <ID>` (max 1 rework per candidate), or `NO_WINNER`. Max 2 regeneration rounds, max 4 total attempts.
+  - State machine terminates deterministically to `WINNER`, `ORION_ARBITRATION`, or `ESCALATION`.
+  - Arbitration quality floor is `PERCEPTUAL_FLOOR_UNCALIBRATED`; ORION may only downgrade design depth or escalate.
 - **Report Invariant:**
   - Every UI audit must generate both `VISUAL_QA_REPORT.md` and `LENS_REVIEW_REPORT.json` (conforming to `lens-review-contract.md`).
+  - For Depth 2 and 3 missions, `LENS_REVIEW_REPORT.json` must include both `scores` (6 dimensions) and `submetrics` (8 dimensions with `score`, `status`, `evidence`); submetrics must not be silently all-null.
 
 ---
 
