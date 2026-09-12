@@ -12,17 +12,15 @@ metadata:
 
 # Anti-AI Slop Web Design & Aesthetic Enforcement V2
 
-This skill provides an authoritative, fleet-wide design governance standard to eliminate generic "AI slop" and elevate all web user interfaces, dashboards, 3D experiences, and landing pages to museum-grade, editorial, and architectural excellence.
+This skill provides supporting design references to eliminate generic AI slop.
+**Canonical Upstream Design Authority**: The canonical product design intelligence protocol for AURORA resides in `visual-authoring-core`.
 
-**Fleet Invariant**: All fleet members involved in frontend design, implementation, and review (AURORA, FRAME, LENS, PRISM, and ORION) MUST read and apply the principles in this skill before authoring or modifying any UI.
+**Fleet Invariant**: All fleet members involved in frontend design, implementation, and review (AURORA, FRAME, LENS, PRISM, and ORION) consult these references alongside `visual-authoring-core`.
 
 ## When to Use
 
-- When authoring design specs, wireframes, color systems, or typography (`AURORA`).
-- When implementing HTML, CSS, Three.js, WebGL, Tailwind, or frontend components (`FRAME`).
-- When conducting rendered visual QA, screenshot audits, or anti-slop checks (`LENS`, `PRISM`).
-- When orchestrating UI pipelines, fanning out tasks, or gating releases (`ORION`).
-- Trigger phrases: "buat UI", "bikin frontend", "redesign", "anti AI slop", "Awwwards grade", "world class design".
+- When consulting specific reference modules for anti-slop quality gates, lens review contract schemas, or macro-diversity rules.
+- For primary upstream design workflow (discovery, candidate hypotheses, spikes, contract authoring), use canonical `visual-authoring-core`.
 
 ## The 8 Non-Negotiable Hard Checks (Lens Review Contract)
 
@@ -43,10 +41,10 @@ Lens audits builds across 6 weighted dimensions (Total 100 points, Pass requires
 
 - **Identity & Brief Match** (25%): Specificity to product/domain; custom character; zero template genericness.
 - **Composition & Hierarchy** (25%): Clear primary/secondary focal path; rhythm; breathing room; anti-card-grid.
-- **Typography** (15%): Typographic triad; measure; optical tracking; contrast ratio $\ge 7:1$.
+- **Typography** (15%): Type scale, measure, and font personality justified by product voice; contrast ratio >= 4.5:1 (WCAG AA); no mandatory universal font triad.
 - **Assets & Visual Direction** (15%): Proof-driven visuals; authentic photography/renders; intentional cropping.
 - **Interaction & Motion** (10%): Tactile micro-interactions; calm anchored macro; reduced-motion compliance.
-- **Responsive** (10%): Intentional mobile two-tier stage; touch targets $\ge 44\text{px}$; zero overflow.
+- **Responsive** (10%): Intentional mobile recomposition; touch targets >= 44px (Hermes UX target); zero unintended overflow.
 
 ## Knowledge Base & Reference Modules
 

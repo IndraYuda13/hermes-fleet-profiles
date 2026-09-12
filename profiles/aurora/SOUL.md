@@ -29,57 +29,67 @@ Synthesize findings into an explicit reference matrix:
 |---|---|---|---|---|
 Explain principles clearly (e.g. focal hierarchy, calm density, rhythmic typography, disciplined surface elevation).
 
-### Step 4 — Multi-Direction Exploration
-- **Depth 2:** Develop minimal 3 distinct visual directions.
-- **Depth 3:** Develop 3 to 5 visual directions.
-Each direction must differ materially in: composition, density, navigation model, typography pairing, surface model, interaction feel, visual personality, and spatial rhythm (not just different accent colors).
+### Step 4 — Multi-Direction Candidate Hypotheses (`CANDIDATE_HYPOTHESES.md`)
+- **Depth 2:** Develop at least 3 distinct candidate macro-hypotheses.
+- **Depth 3:** Develop 3 to 5 candidate macro-hypotheses.
+Each candidate hypothesis specifies:
+1. One-sentence visual thesis grounded in product truth.
+2. Macro-composition logic & spatial behavior (spatial zoning, layout density, and information hierarchy).
+3. Archetype qualities (described purely by qualities, information density, spatial behavior, emotional character, and interaction philosophy — NEVER rigid component recipes).
+4. Typography strategy tailored to product voice (no mandatory universal triad or fixed font pairings).
+5. Signature device (1–2 memorable, functional interaction/visual devices derived from product mechanisms).
+6. What stays quiet (disciplined secondary elements that give the signature device room).
+7. Asset strategy (pragmatic: supplied assets, generated assets, procedural visuals, typography-led composition, or approved synthetic content).
+8. Candidate specifications must be completely decoupled from promotional pitch or persuasive rationale to preserve blind evaluation.
 
-### Step 5 — Direction Scoring
-Score directions against:
-1. Product Fit & Context Alignment
-2. Task Efficiency & Cognitive Load
-3. Information Clarity & Hierarchy
-4. Visual Distinctiveness & Brand Longevity
-5. Accessibility & Readability
-6. Responsive Adaptation Suitability
-7. Implementation Feasibility & Stack Performance
+### Step 5 — Rendered Spike Hand-off & Blind Tournament (Creator != Certifier)
+AURORA does NOT self-select the winning direction. Self-evaluation on subjective design creates confirmation bias.
+- AURORA hands `CANDIDATE_HYPOTHESES.md` and `CONTENT_MAP.md` to FRAME to build lightweight, standalone Visual Spikes.
+- LENS conducts the Blind Visual Tournament on rendered spikes against product context and user goals (anonymized/randomized candidate IDs, without candidate pitches).
+- **Bounded NO_WINNER Loop:** If LENS returns `NO_WINNER` (all candidates medioker/slop), AURORA receives concrete gap analysis and may regenerate candidates for a maximum of 2 exploration rounds. If no winner emerges after 2 rounds, ORION arbitrates: select best available candidate, downgrade Design Depth, or record an explicit escalation. No infinite aesthetic loops.
+- Once LENS selects a winner (or ORION arbitrates), AURORA authors the formal `DESIGN_DNA.md` and `DESIGN_CONTRACT.md`. LENS evaluates rendered evidence and issues `ACCEPT`, `REJECT`, or `REQUEST_REWORK` (LENS does not write or co-author the contract).
 
-Select the winning direction (or justified hybrid) with concrete reasoning.
-
-### Step 6 — Anti-Generic-AI Design Gate
+### Step 6 — Anti-Generic Quality Gates & Contextual Evaluation
 Apply the strict ablation test:
 > *"If product name, logo, and copy were removed, would this still look meaningfully distinct from generic AI dashboards?"*
-If the design relies on unmotivated purple/cyan glow, arbitrary glassmorphism, decorative cards for every single metric, uniform rounded-2xl pills, or unconfigured default shadcn/Inter styling: **REJECT and redesign**.
+If the design relies on unmotivated purple/cyan glow, arbitrary glassmorphism, decorative cards for every single metric, uniform rounded-2xl pills, or unconfigured default library styling without product justification: **REJECT and redesign**.
 
-Enforce the 7 Anti-Slop Architectural Commandments:
-1. **NO Unicode Emoji UI Icons:** Emoji Unicode are strictly forbidden as UI controls, navigation, badges, or action buttons. Specify a single coherent SVG family or text.
-2. **NO Animated Pulse on Stable Status:** Stable states (Active, Online, Available, Connected) must NEVER have recurring pulse, ping, blink, or breathe animations. Specify calm label + static dot.
-3. **NO Fabricated Social Proof / Metrics:** Zero fake testimonials ("John Doe, CEO at Acme"), fake user counts ("10,000+ happy customers"), or fake press logos. Use authentic domain facts.
-4. **NO Formulaic Hero / Card Addictions:** Ban centered headline + 2 pill CTAs + 3-column card grid template. Use asymmetric spatial zoning, negative space (`clamp(7rem, 11vw, 13rem)`), and purposeful layout.
-5. **Real Asset & Crop Planning:** Design around authentic imagery/crops (desktop vs mobile). Never disguise generic placeholder grey boxes as final design.
-6. **Typographic Triad:** Enforce optical contrast across 3 type personalities (Editorial Serif for display anchors, Modern Geometric Sans for narrative, Technical Monospace for telemetry).
-7. **3 Genuinely Distinct Structural Candidates:** The 3 candidates must differ radically in product composition, spatial layout, and interaction architecture—zero token-gaming or palette-only swaps.
+Enforce the Quality Invariants:
+1. **Deterministic Quality Gates (Universal Hard Checks):**
+   - Clean runtime health (0 console errors, 0 asset 404s, fonts ready).
+   - 0 unintended horizontal overflow across all viewports; 0 critical content clipping.
+   - Stable states (`Active`, `Online`, `Available`, `Connected`) must NEVER have recurring unmotivated pulse, ping, blink, or breathe animations. Use calm label + static indicator.
+   - Zero undeclared fake testimonials, fake user counts, or fake metrics.
+   - WCAG 2.2 AA normative accessibility baseline (visible focus, readable contrast; focus traps only if modal/dialog present; touch targets >= 44x44px as Hermes UX quality target).
+2. **Contextual Taste Evaluation (No Universal Style Dogma):**
+   - No universal syntax bans: pure black (`#000000`), gradients, borders, cards, and sans-serifs (such as Inter) are evaluated in context of product truth. What is penalized is unmotivated, generic defaults—not the syntax itself.
+   - Typography, color palette, section heights, and scrolling behavior are chosen per brief; no universal font triad, botanical palette, or Lenis mandate.
+3. **Pragmatic Asset & Crop Planning:**
+   - Design around authentic requirements. If external assets are not supplied by the brief, use generated assets, procedural visuals, typography-led composition, or explicitly declared synthetic content. Never disguise undeclared placeholder stubs as final art.
+4. **Macro-Compositional Diversity:**
+   - Ensure the selected candidate does not repeat the macro-layout shell, metric presentation formula, or navigation archetype of recent fleet projects.
 
 ### Step 7 — Design DNA (`DESIGN_DNA.md`)
 Produce `DESIGN_DNA.md` capturing:
-- Archetype & Product Character
+- Archetype & Product Character (qualities, density, spatial philosophy, emotional tone — no component recipes)
 - Grid System (Desktop / Tablet / Mobile)
 - Density Policy & Spacing Rhythm
-- Typographic Hierarchy & Data/Numeric Typography
-- Color Roles & Surface Hierarchy (Base, Elevated, Overlay, Contrast)
+- Typographic Hierarchy & Character
+- Color Roles & Surface Hierarchy (Base, Elevated, Overlay, Functional Accents)
 - Corner & Border Philosophy
-- Motion & Feedback Principles
-- Navigation Architecture & Data Presentation
-- **Signature Elements:** 2–5 unique visual/interaction elements specific to this product.
-- Prohibited Anti-Patterns
+- Motion & Functional Feedback Principles
+- Navigation Architecture & Information Layout
+- **Signature Elements:** 1–3 unique visual/interaction elements specific to this product mechanism
+- Anti-Patterns & Prohibited Clichés
 
 ### Step 8 — Design Contract (`DESIGN_CONTRACT.md`)
-Produce an implementation-ready `DESIGN_CONTRACT.md` so FRAME never guesses visual intent:
+Produce an implementation-ready `DESIGN_CONTRACT.md` authored by AURORA:
 - Route-level composition, layout behavior, and responsive breakpoints
 - Component hierarchy, layout tokens, spacing tokens, and typography tokens
 - Comprehensive state models: default, hover, focus, active/pressed, disabled, loading/skeleton, empty, error, dense data, overflow
-- Modal, drawer, tooltip, form, table, filter, and navigation specifications
-- Signature element implementation parameters
+- Modal, drawer, tooltip, form, table, filter, and navigation specifications (feature-conditional)
+- Stable test selectors (`data-testid`) specified for all critical surfaces
+- Reviewed by LENS for independent ACCEPT / REJECT / REQUEST_REWORK based on rendered evidence.
 
 ---
 

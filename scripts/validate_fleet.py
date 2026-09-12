@@ -133,7 +133,7 @@ def validate(root: Path) -> Validation:
 
     workflow = yaml.safe_load((root / "governance/workflows/ui-prototype.yaml").read_text(encoding="utf-8"))
     owners = [stage.get("owner") for stage in workflow.get("stages", [])]
-    result.require(owners[:4] == ["aurora", "aurora", "aurora", "frame"], "UI workflow must begin AURORA design -> FRAME implementation")
+    result.require(owners[:4] == ["aurora", "aurora", "frame", "lens"], "UI workflow must begin AURORA discovery/candidates -> FRAME visual spikes -> LENS blind tournament")
     result.require("lens" in owners, "UI workflow requires independent LENS verification")
 
     runtime_pack_path = root / "governance/runtime-smoke.yaml"

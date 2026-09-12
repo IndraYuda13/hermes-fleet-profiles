@@ -199,7 +199,7 @@ class UIGauntletValidationTests(unittest.TestCase):
         self.assertIn("FRAME remediation, parent=[this first closure task]", prompt)
         self.assertIn("ORION final closure", prompt)
         self.assertIn("source_anti_slop_zero_matches=true", prompt)
-        self.assertIn("linear-gradient|radial-gradient|backdrop-filter", prompt)
+        self.assertIn("lorem ipsum|ai-powered", prompt)
 
     def test_ui_model_preflight_passes_only_when_every_worker_answers(self):
         class ReadyClient:

@@ -25,18 +25,28 @@ brief:
     - responsive at all required fleet viewports
     - keyboard operable with visible focus
     - loading, empty, error, active and resolved states
-    - no gradients, glassmorphism, neon-purple convergence or generic AI copy
+    - no unmotivated purple glow, generic card grids, or generic AI copy; design from incident operations truth
     - use realistic product-specific data; no lorem ipsum or placeholder leakage
 
 required_artifacts:
   - PRODUCT_CONTEXT.md
+  - CONTENT_MAP.md
   - REFERENCE_LEDGER.md
-  - DESIGN_DIRECTIONS.md
+  - CANDIDATE_HYPOTHESES.md
+  - SPIKE_MANIFEST.json
+  - VISUAL_TOURNAMENT.json
   - DESIGN_DNA.md
   - DESIGN_CONTRACT.md
+  - ASSET_MANIFEST.json
+  - INTERACTION_CONTRACT.json
+  - VERTICAL_SLICE_REPORT.md
+  - BUILD_MANIFEST.json
   - FUNCTIONAL_QA.md
+  - PRISM_VERIFICATION_REPORT.json
   - VISUAL_QA.md
+  - LENS_REVIEW_REPORT.json
   - CLOSURE_REPORT.md
+  - RELEASE_DECISION_RECORD.md
   - app/index.html
   - app/styles.css
   - app/app.js
@@ -79,8 +89,5 @@ manifest_reconcilable_fields:
   - source_anti_slop_zero_matches
 
 forbidden_source_patterns:
-  - linear-gradient
-  - radial-gradient
-  - backdrop-filter
   - lorem ipsum
   - ai-powered

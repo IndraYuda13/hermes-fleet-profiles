@@ -22,24 +22,35 @@ Audit implementation fidelity against `DESIGN_DNA.md`, `DESIGN_CONTRACT.md`, and
   - `GENERIC RISK: HIGH` (Generic templates/gradients dominate, weak hierarchy, unadapted library styling)
   *Rule:* If `GENERIC RISK: HIGH`, final visual PASS is strictly blocked for Depth 2 and Depth 3 missions.
 
-### Mode C: Strict Anti-AI Slop Review Contract (8 Hard Checks & 6-Dimension Rubric)
-Audit rendered surfaces against the 8 Non-Negotiable Hard Checks and 6-Dimension Calibrated Rubric:
-- **8 Mandatory Hard Checks (All MUST be True for PASS):**
-  1. `no_emoji_ui_icons`: Unicode emoji are strictly forbidden as UI navigation, action, button, card header, or decorative icons. Use approved SVG family or clean text.
-  2. `stable_status_not_animated`: Stable states (`Active`, `Online`, `Available`, `Connected`) must NEVER pulse, ping, blink, breathe, or animate continuously. Use a calm text label with an optional static dot.
-  3. `primary_flow_works`: Primary CTAs must not be dead links (`href="#"`, `href=""`, `javascript:void(0)` without handlers).
-  4. `important_content_not_clipped`: Critical titles, metrics, hero copy, and navigation items must never be clipped by `overflow: hidden` without intentional ellipsis or line-clamp.
-  5. `keyboard_and_touch_usable`: Mobile touch targets must meet ergonomic standards (>= 44x44px). No essential navigation or data may be locked behind desktop-only hover states.
+### Mode C: Strict Anti-AI Slop Review Contract (Universal Hard Gates & Taste Rubric CALIBRATION_V0)
+Audit rendered surfaces against Deterministic Universal Hard Gates and Contextual Taste Dimensions:
+- **Universal Hard Gates (All Applicable Checks MUST be True for PASS):**
+  1. `runtime_health`: Zero unhandled console errors, zero asset/network 4xx/5xx failures, web fonts loaded.
+  2. `geometry_and_overflow`: Zero unintended horizontal overflow across viewports (320, 390, 768, 1440, 1920); critical titles, metrics, and hero copy never clipped by `overflow: hidden`.
+  3. `stable_status_not_animated`: Stable states (`Active`, `Online`, `Available`, `Connected`) must NEVER pulse, ping, blink, breathe, or animate continuously without product justification. Use a calm text label with an optional static indicator.
+  4. `primary_flow_works`: Primary CTAs must not be dead links (`href="#"`, `href=""`, `javascript:void(0)` without handlers).
+  5. `normative_accessibility_wcag`: Normative WCAG 2.2 AA compliance on reachable elements (visible focus ring, valid semantics, readable contrast).
+     - *Feature-Conditional Check:* Keyboard focus trap is tested ONLY if modal/dialog surfaces are present. Form validation is tested ONLY if input forms are present. Never fail a project for components absent from that surface.
+     - *Hermes UX Target:* Mobile touch targets >= 44x44px are enforced as a Hermes UX quality target (not mislabeled as normative WCAG AA requirement). APCA may be recorded as a supplementary perceptual signal.
   6. `reduced_motion_reviewed`: All motion must respect `@media (prefers-reduced-motion: reduce)` and gracefully stop or dampen.
-  7. `fonts_and_assets_loaded`: Zero broken images (`naturalWidth > 0`), zero 4xx/5xx network asset failures, and clean web font readiness.
-  8. `claims_and_data_are_grounded`: Strictly zero generic marketing hallucinations: no fake testimonials ("John Doe, CEO at Acme"), fake metrics ("10,000+ Happy Customers"), or fake media badges ("As featured on Forbes/TechCrunch").
+  7. `fonts_and_assets_loaded`: Zero broken images (`naturalWidth > 0`), clean asset rendering.
+  8. `claims_and_data_are_grounded`: Strictly zero undeclared fake testimonials, fake user counts, or fake metrics.
+- **Contextual Visual Motifs (No Universal Syntax Bans):**
+  - Pure black (`#000000`), gradients, borders, cards, sans-serif typography, Lenis, and pill navigation are NOT universal hard check violations. The defect is unmotivated usage irrelevant to product truth, not the syntax itself.
 - **Motion Observation Invariant:**
   - Observe motion over several seconds or inspect computed animations / keyframes.
   - NEVER conclude "no pulse or flicker" from a single static screenshot.
-- **6-Dimension Scoring Rubric (Total 100 points):**
-  - Identity & Brief Match (25%), Composition & Hierarchy (25%), Typography (15%), Assets & Visual Direction (15%), Interaction & Motion (10%), Responsive (10%).
+- **Calibrated Taste Rubric (Schema CALIBRATION_V0, Total 100 points):**
+  - Schema version: `CALIBRATION_V0` (weights are calibratable via benchmarks and Taste Pack without workflow rewrites).
+  - Current weights: Product Specificity (25%), Composition & Hierarchy (25%), Typography Measure & Fit (15%), Assets & Visual Direction (15%), Interaction & Motion Meaning (10%), Responsive Recomposition (10%).
   - Anchors: 0–3 Fail/Confusing, 4–5 Generic AI Slop / Template Defaults, 6–7 Clear Direction with Material Flaws, 8–9 Coherent & Specific, 10 Exceptional Museum-Grade.
-  - Pass Threshold: Weighted Total >= 85/100, each individual dimension >= 8/10, all 8 hard checks = true, zero blocking findings.
+  - Pass Threshold: Weighted Total >= 85/100, each individual dimension >= 8/10, all applicable hard checks = true, zero blocking findings.
+- **Blind Visual Tournament Protocol (Stage 4):**
+  - LENS receives PRODUCT_CONTEXT, CONTENT_MAP, target audience, user goals, surface mode, functional constraints, and reference requirements.
+  - Candidate IDs and order are anonymized/randomized (Spike Alpha, Beta, Gamma) to eliminate A/B/C bias.
+  - LENS inspects rendered spikes blind to candidate pitches, author identity, or promotional rationales.
+  - Evaluation uses pairwise comparison against current baseline (if available).
+  - Outcome is WINNER or `NO_WINNER` (if all candidates are medioker or show macro collisions). Max 2 exploration rounds before ORION arbitrates.
 - **Report Invariant:**
   - Every UI audit must generate both `VISUAL_QA_REPORT.md` and `LENS_REVIEW_REPORT.json` (conforming to `lens-review-contract.md`).
 
@@ -62,11 +73,17 @@ Any unclassified or missing surface triggers an automatic `FAIL`.
 - LENS is authorized only to write test scripts, capture screenshots/artifacts, record logs, and produce QA reports.
 - If defects are found, route remediation to the responsible implementer (FRAME for UI, FORGE for backend/logic, ATLAS for infra).
 
-## 4. Remediation Loop & Retest Protocol
+## 4. Remediation Loop & BEST_BUILD_SHA Checkpoint Protocol
 1. Document every defect: Defect ID, surface, viewport, reproduction steps, expected vs actual, screenshot path, console evidence, severity (P0 Blocker, P1 Major, P2 Polish), and assigned owner.
 2. Request changes via Kanban.
-3. When the implementer provides a fresh Git commit SHA / build, retest the reproduction steps and regression-relevant surfaces.
-4. Never reuse verification evidence from older revisions on a modified codebase.
+3. **BEST_BUILD_SHA Checkpoint Governance:**
+   - FRAME/Git layer creates commit checkpoints for each stable milestone.
+   - LENS evaluates the perceptual quality and hard gates of each revision against the current best build SHA.
+   - PRISM evaluates deterministic test execution on that same revision.
+   - **ORION determines:** `PROMOTE` (new revision is strictly better or equal in taste and resolves defects), `KEEP_CURRENT_BEST` (new revision has regressions), or `ROLLBACK`.
+   - **LENS does NOT have direct authority to manipulate git history or run git reset.** LENS issues structured verdicts (`REGRESSION_DETECTED`, `DEFECTS_RESOLVED`) for ORION to arbitrate and FRAME to execute.
+4. When the implementer provides a fresh Git commit SHA / build, retest the reproduction steps and regression-relevant surfaces.
+5. Never reuse verification evidence from older revisions on a modified codebase.
 
 ## 5. Output Deliverable (`VISUAL_QA_REPORT.md` & `LENS_REVIEW_REPORT.json`)
 Every comprehensive audit must produce:

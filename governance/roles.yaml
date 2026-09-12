@@ -7,7 +7,7 @@ profiles:
     model: ag-opus-pool
     a2a_port: 9901
     production_write: false
-    allowed_write_scopes: [mission-ledger, decision-ledger, closure-report]
+    allowed_write_scopes: [mission-ledger, decision-ledger, closure-report, release-decision-record]
     allowed_root_toolsets: [kanban, memory, todo, clarify, session_search, skills]
     allowed_platform_toolsets: [a2a, clarify, hermes-a2a, kanban, memory, session_search, skills, todo]
     forbidden_toolsets: [browser, code_execution, computer_use, cronjob, delegation, file, terminal]
@@ -27,7 +27,7 @@ profiles:
     model: gemini-flash
     a2a_port: 9903
     production_write: false
-    allowed_write_scopes: [design-dna, design-contract, research-evidence]
+    allowed_write_scopes: [design-dna, design-contract, research-evidence, candidate-hypotheses, content-map, asset-manifest, interaction-contract]
     allowed_root_toolsets: [web, browser, vision, file, skills, kanban]
     allowed_platform_toolsets: [a2a, browser, clarify, file, hermes-a2a, image_gen, kanban, session_search, skills, vision, web]
     forbidden_toolsets: [code_execution, computer_use, cronjob, delegation, terminal]
@@ -47,7 +47,7 @@ profiles:
     model: gemini-flash
     a2a_port: 9905
     production_write: true
-    allowed_write_scopes: [frontend-source, frontend-tests, build-artifacts]
+    allowed_write_scopes: [frontend-source, frontend-tests, build-artifacts, visual-spikes, spike-manifest, build-manifest, vertical-slice]
     allowed_root_toolsets: [coding, kanban]
     allowed_platform_toolsets: [a2a, browser, clarify, code_execution, file, hermes-a2a, image_gen, kanban, session_search, skills, terminal, vision, web]
     forbidden_toolsets: [computer_use, delegation]
@@ -57,7 +57,7 @@ profiles:
     model: ag-opus-pool
     a2a_port: 9906
     production_write: false
-    allowed_write_scopes: [qa-evidence, screenshots, defect-report]
+    allowed_write_scopes: [qa-evidence, screenshots, defect-report, visual-tournament, slice-report, lens-review-report]
     allowed_root_toolsets: [browser, vision, web, file, terminal, code_execution, kanban]
     allowed_platform_toolsets: [a2a, browser, clarify, code_execution, file, hermes-a2a, kanban, session_search, skills, terminal, vision, web]
     forbidden_toolsets: [computer_use, delegation, image_gen]
@@ -77,7 +77,7 @@ profiles:
     model: ag-opus-pool
     a2a_port: 9908
     production_write: false
-    allowed_write_scopes: [test-source, test-results, benchmark-evidence, defect-report]
+    allowed_write_scopes: [test-source, test-results, benchmark-evidence, defect-report, functional-qa-report, prism-verification-report]
     allowed_root_toolsets: [file, terminal, code_execution, web, kanban]
     allowed_platform_toolsets: [a2a, clarify, code_execution, file, hermes-a2a, kanban, session_search, skills, terminal, web]
     forbidden_toolsets: [computer_use, delegation]
@@ -121,4 +121,3 @@ profiles:
     allowed_root_toolsets: [web, vision, tts]
     allowed_platform_toolsets: [web, vision, tts]
     forbidden_toolsets: [a2a, code_execution, computer_use, delegation, file, terminal]
-

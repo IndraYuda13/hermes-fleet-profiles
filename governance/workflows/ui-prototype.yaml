@@ -14,65 +14,119 @@ entry:
 stages:
   - id: discovery
     owner: aurora
-    outputs: [PRODUCT_CONTEXT.md, REFERENCE_LEDGER.md]
+    outputs: [PRODUCT_CONTEXT.md, CONTENT_MAP.md, REFERENCE_LEDGER.md]
     gate:
-      - product context is explicit
+      - product context is explicit with domain-grounded scope
+      - content map establishes copy budgets and narrative structure before visual exploration
       - references are inspected rather than name-dropped
       - assumptions and unknowns are recorded
 
-  - id: direction
+  - id: candidate-hypotheses
     owner: aurora
-    outputs: [DESIGN_DIRECTIONS.md]
+    outputs: [CANDIDATE_HYPOTHESES.md]
     gate:
-      - at least three materially different macro-directions
-      - each direction is justified by product context
-      - no default neon-purple, glass-card, gradient-hero convergence without evidence
+      - at least three materially different macro-hypotheses (spatial logic, information density, signature device)
+      - each hypothesis justified by product context and user goals
+      - candidate specifications are decoupled from candidate pitch or promotional text
+      - no premature token locking; candidates specify structural qualities, not rigid component recipes
+
+  - id: visual-spikes
+    owner: frame
+    inputs: [CANDIDATE_HYPOTHESES.md, CONTENT_MAP.md]
+    outputs: [spikes-source, SPIKE_MANIFEST.json]
+    gate:
+      - lightweight standalone rendered spikes for each candidate (hero desktop, 2nd fold, mobile hero, 1 signature interaction)
+      - realistic copy lengths and domain-authentic data used; no undeclared placeholders
+      - candidate assets follow brief constraints (supplied, generated, procedural, or typography-led)
+      - spikes anonymized and randomized before evaluation to eliminate candidate ID bias
+
+  - id: blind-tournament
+    owner: lens
+    inputs: [spikes-source, PRODUCT_CONTEXT.md, CONTENT_MAP.md, SPIKE_MANIFEST.json]
+    outputs: [VISUAL_TOURNAMENT.json]
+    gate:
+      - blind perceptual evaluation against product requirements without candidate pitch/rationale anchoring
+      - pairwise differential comparison across candidates and baseline (if available)
+      - taste rubric scored under CALIBRATION_V0 schema
+      - bounded exploration: max 2 regeneration rounds on NO_WINNER before ORION arbitrates (best available, depth downgrade, or escalation)
+      - outcome is explicitly WINNER or NO_WINNER with concrete gap analysis
 
   - id: contract
     owner: aurora
-    outputs: [DESIGN_DNA.md, DESIGN_CONTRACT.md]
+    inputs: [VISUAL_TOURNAMENT.json, PRODUCT_CONTEXT.md, CONTENT_MAP.md]
+    outputs: [DESIGN_DNA.md, DESIGN_CONTRACT.md, INTERACTION_CONTRACT.json]
     gate:
-      - information architecture and hierarchy defined
-      - responsive behavior and interaction states defined
-      - typography, color, spacing, motion and component rules defined
-      - required routes, data states and accessibility expectations defined
+      - AURORA authors contract based on tournament winner; LENS reviews and issues ACCEPT, REJECT, or REQUEST_REWORK
+      - information architecture, responsive behavior, and state machines defined
+      - typography, color, spacing, and interaction tokens bound to rendered evidence
+      - stable test selectors (data-testid) specified for all critical surfaces
+
+  - id: asset-gate
+    owner: aurora
+    inputs: [DESIGN_CONTRACT.md]
+    outputs: [ASSET_MANIFEST.json]
+    gate:
+      - all required visual assets declared with source (supplied, generated, procedural, typography-led, or approved synthetic)
+      - no undeclared fake placeholders or broken assets
+      - desktop and mobile crop/display plans verified
+
+  - id: vertical-slice
+    owner: frame
+    inputs: [DESIGN_CONTRACT.md, ASSET_MANIFEST.json, INTERACTION_CONTRACT.json]
+    outputs: [vertical-slice-source, slice-evidence]
+    gate:
+      - production-grade implementation of hero + 1 narrative/core section + navigation shell + mobile responsive
+      - core interaction signature exercised in real browser
+      - stable test selectors attached
+
+  - id: vertical-slice-gate
+    owner: lens
+    inputs: [vertical-slice-source]
+    outputs: [VERTICAL_SLICE_REPORT.md]
+    gate:
+      - independent verification of vertical slice against contract and universal hard gates
+      - verdict is PASS, REVISE, or PIVOT before proceeding to full implementation
 
   - id: implementation
     owner: frame
-    inputs: [DESIGN_DNA.md, DESIGN_CONTRACT.md]
-    outputs: [frontend-source, implementation-evidence]
+    inputs: [DESIGN_CONTRACT.md, ASSET_MANIFEST.json, INTERACTION_CONTRACT.json, VERTICAL_SLICE_REPORT.md]
+    outputs: [frontend-source, BUILD_MANIFEST.json]
     gate:
-      - no unauthorized design-direction substitution
-      - loading, empty, error, success and disabled states implemented
-      - keyboard and reduced-motion behavior implemented
-      - responsive behavior verified during implementation
+      - full surface implementation faithfully adhering to approved vertical slice and design contract
+      - loading, empty, error, active, and resolved states implemented
+      - stable selectors and feature-conditional keyboard/interaction behaviors in place
+      - git checkpoint recorded as potential candidate for BEST_BUILD_SHA
 
   - id: functional-verification
     owner: prism
-    when: material interactions or application state exist
-    outputs: [FUNCTIONAL_QA.md]
+    inputs: [frontend-source, BUILD_MANIFEST.json, INTERACTION_CONTRACT.json]
+    outputs: [FUNCTIONAL_QA.md, PRISM_VERIFICATION_REPORT.json]
     gate:
-      - primary journeys pass
-      - regression suite passes
-      - report references exact implementation revision
+      - deterministic state machine, form boundary (if forms present), and route contracts verified
+      - normative WCAG 2.2 AA accessibility mechanics verified (keyboard trap only if modal/dialog present)
+      - automated regex/DOM scan passes: 0 undeclared mock data leakage (Lorem ipsum, undefined, NaN)
+      - exact build SHA bound to report; independent veto authority maintained
 
   - id: rendered-verification
     owner: lens
-    outputs: [VISUAL_QA.md, visual-evidence-manifest]
+    inputs: [frontend-source, BUILD_MANIFEST.json, DESIGN_CONTRACT.md]
+    outputs: [VISUAL_QA.md, LENS_REVIEW_REPORT.json]
     gate:
-      - required routes, states and viewports captured
-      - no overflow, clipping, broken assets or placeholder leakage
-      - hierarchy, density, typography and interaction match the contract
-      - macro-composition is product-specific, not template convergence
-      - report references exact implementation revision
+      - rendered inspection across all 5 canonical viewports (320, 390, 768, 1440, 1920)
+      - deterministic universal hard gates pass (0 console errors, 0 network 4xx/5xx, 0 unintended overflow)
+      - feature-conditional gates respected (focus trap only if modal exists; 44x44 mobile touch as Hermes UX target)
+      - taste dimensions evaluated under CALIBRATION_V0 schema
+      - exact build SHA bound to report; independent veto authority maintained
 
   - id: remediation
     owner: frame
     when: any verifier reports a material defect
+    inputs: [DEFECT_LEDGER.json, BUILD_MANIFEST.json]
     outputs: [remediated-source, remediation-ledger]
     gate:
-      - every change maps to a defect ID
-      - no verifier edits production source
+      - every change maps to a specific defect ID
+      - no verifier edits production source directly
+      - ORION arbitrates PROMOTE / KEEP_CURRENT_BEST / ROLLBACK on regression; FRAME executes git operations
 
   - id: retest
     owner: original-verifier
@@ -83,12 +137,11 @@ stages:
 
   - id: closure
     owner: orion
-    outputs: [CLOSURE_REPORT.md]
+    outputs: [CLOSURE_REPORT.md, RELEASE_DECISION_RECORD.md]
     gate:
+      - both PRISM and LENS report PASS on the exact identical BUILD_SHA (dual-gate requirement)
       - no unresolved blocker or high-severity defect
-      - no UNKNOWN affecting the core objective
-      - implementation and all PASS reports reference the same revision
-      - owner acceptance is explicit or state remains ACCEPTANCE_PENDING
+      - internal release gate marked PASS; owner acceptance explicitly set to PENDING_REVIEW
 
 minimum_viewports:
   - {name: mobile-small, width: 320}
@@ -96,4 +149,3 @@ minimum_viewports:
   - {name: tablet, width: 768}
   - {name: desktop, width: 1440}
   - {name: desktop-wide, width: 1920}
-
