@@ -40,9 +40,17 @@ First run its non-mutating plan while gateways are still online:
 git pull --ff-only
 python3 -m pip install -r requirements-policy.txt
 python3 scripts/sanitize_config.py --check profiles/*/config.yaml
+python3 scripts/validate_contracts.py
 python3 scripts/validate_fleet.py
 python3 scripts/deploy_role_policy.py --hermes-home "$HOME/.hermes"
 ```
+
+`validate_contracts.py` is the narrow machine-contract check. It cross-checks
+the role/runtime/workflow/gauntlet declarations, evidence-schema capabilities,
+quality floors, remediation budget, manifest ownership, revision-parity set,
+probe paths and viewport evidence without depending on exact prose. The broader
+`validate_fleet.py` also runs these checks, so the standalone command is useful
+when diagnosing contract drift in CI or during a governance edit.
 
 Review the field-only plan. Stop every default/profile gateway. The apply mode
 will refuse if any declared A2A port is still listening, then create a mode-0600
@@ -88,6 +96,10 @@ hermes status --deep
 - A UI mission follows AURORA → FRAME → LENS and binds evidence to one revision.
 - A deliberately stale verifier report cannot close the mission.
 - A dangerous command triggers smart approval rather than auto-executing.
+- Machine-readable quality contracts agree on release vetoes, acceptance floors,
+  remediation limits and exact-revision proof requirements.
+- Evidence fields required by the gauntlet exist with compatible types in the
+  canonical evidence schema; workflow viewport requirements match capture widths.
 
 ## Rollback
 

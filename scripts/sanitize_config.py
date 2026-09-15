@@ -19,6 +19,7 @@ DROP_ENV_KEYS = {
     "FIRECRAWL_API_KEY",
     "POSTMAN_API_KEY",
 }
+BEARER_AUTH_KEY = "authorization"
 
 
 def sanitize_text(text: str) -> str:
@@ -27,6 +28,7 @@ def sanitize_text(text: str) -> str:
 
     output: list[str] = []
     top_level = ""
+    mcp_server_name = ""
     skipping_dashboard_basic = False
 
     for raw in text.splitlines(keepends=True):
@@ -43,7 +45,11 @@ def sanitize_text(text: str) -> str:
 
         if indent == 0:
             top_level = key
+            mcp_server_name = ""
             skipping_dashboard_basic = False
+
+        if top_level == "mcp_servers" and indent == 2:
+            mcp_server_name = key
 
         if skipping_dashboard_basic:
             if indent > 2:
@@ -68,6 +74,19 @@ def sanitize_text(text: str) -> str:
         if SECRET_KEY.search(key):
             newline = "\r\n" if raw.endswith("\r\n") else "\n" if raw.endswith("\n") else ""
             output.append(f"{match.group('indent')}{key}: REDACTED{newline}")
+            continue
+
+        if key.lower() == BEARER_AUTH_KEY and value.lower().startswith("bearer "):
+            token = value[7:].strip().strip('"\'')
+            if token.startswith("${") and token.endswith("}"):
+                output.append(raw)
+                continue
+            connector = re.sub(r"[^A-Za-z0-9]+", "_", mcp_server_name).strip("_").upper()
+            env_key = f"{connector}_MCP_TOKEN" if connector else "MCP_BEARER_TOKEN"
+            newline = "\r\n" if raw.endswith("\r\n") else "\n" if raw.endswith("\n") else ""
+            output.append(
+                f'{match.group("indent")}{key}: "Bearer ${{{env_key}}}"{newline}'
+            )
             continue
 
         output.append(raw)

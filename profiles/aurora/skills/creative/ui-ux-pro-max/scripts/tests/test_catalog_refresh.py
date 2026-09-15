@@ -10,17 +10,18 @@ import tempfile
 import unittest
 from pathlib import Path
 
-REPO = next(
+REPO = next((
     parent for parent in Path(__file__).resolve().parents
     if all((parent / "scripts" / script).is_file() for script in (
         "refresh-google-fonts.py", "refresh-icon-catalog.py",
     ))
-)
+), None)
 FIXTURES = Path(__file__).parent / "fixtures" / "catalogs"
-FONT_SCRIPT = REPO / "scripts" / "refresh-google-fonts.py"
-ICON_SCRIPT = REPO / "scripts" / "refresh-icon-catalog.py"
+FONT_SCRIPT = REPO / "scripts" / "refresh-google-fonts.py" if REPO else None
+ICON_SCRIPT = REPO / "scripts" / "refresh-icon-catalog.py" if REPO else None
 
 
+@unittest.skipUnless(REPO is not None, "catalog refresh maintenance scripts are not bundled in this Hermes runtime skill")
 class CatalogRefreshTest(unittest.TestCase):
     def run_command(self, *args, env=None):
         return subprocess.run(

@@ -11,6 +11,36 @@ child_task_policy:
   max_retries: 2
   goal_max_turns: 40
 
+quality_contract:
+  creator_may_final_certify: false
+  revise_until_pass_or_escalate: true
+  max_remediation_cycles: 2
+  original_verifier_retest_required: true
+  fresh_revision_per_remediation: true
+  exact_revision_parity_required: true
+  ui_acceptance_floor:
+    schema: CALIBRATION_V0
+    calibration_status: UNCALIBRATED_HEURISTIC
+    absolute_benchmark_claim_allowed: false
+    minimum_weighted_total: 85
+    minimum_dimension_score: 8
+    all_applicable_hard_checks_true: true
+    maximum_blocking_findings: 0
+  functional_acceptance_floor:
+    primary_journeys_verified: all
+    required_states_verified: all
+    maximum_unresolved_p0: 0
+    maximum_unresolved_p1: 0
+  proof_policy:
+    criterion_to_evidence_mapping_required: true
+    exact_revision_required: true
+    artifact_digest_preferred: sha256
+  escalation:
+    exhausted_remediation_budget: BLOCKED
+    mandatory_verifier_unavailable: BLOCKED
+    missing_required_proof: BLOCKED
+    threshold_override_allowed: false
+
 brief:
   product: RelayOps
   objective: Build a production-shaped incident and service-operations dashboard prototype.
@@ -27,6 +57,11 @@ brief:
     - loading, empty, error, active and resolved states
     - no unmotivated purple glow, generic card grids, or generic AI copy; design from incident operations truth
     - use realistic product-specific data; no lorem ipsum or placeholder leakage
+    - LENS visual PASS requires CALIBRATION_V0 weighted score >= 85/100, every applicable dimension >= 8/10, all applicable hard checks true, and zero blocking findings
+    - PRISM PASS requires every primary journey and required loading, empty, error, active and resolved state exercised with zero unresolved P0/P1 defects
+    - any verifier failure must name defect IDs, severity, concrete evidence/reproduction, responsible owner and objective acceptance conditions before remediation
+    - remediation must create a fresh commit and the original verifier must retest failed criteria plus invalidated regressions on that exact revision
+    - if remediation budget is exhausted, mandatory proof is missing, or a mandatory verifier cannot run, closure is BLOCKED; ORION may not lower thresholds or substitute its own certification
 
 required_artifacts:
   - PRODUCT_CONTEXT.md
@@ -83,9 +118,30 @@ manifest_required_true_fields:
   evidence/manifests/prism-functional.json: [source_anti_slop_zero_matches]
   evidence/manifests/lens-rendered.json: [source_anti_slop_zero_matches]
 
+manifest_required_criteria:
+  evidence/manifests/prism-functional.json:
+    - journey:assess-current-service-health
+    - journey:open-incident-and-assign-owner
+    - journey:inspect-event-timeline-and-affected-services
+    - journey:close-incident-with-auditable-summary
+    - state:loading
+    - state:empty
+    - state:error
+    - state:active
+    - state:resolved
+  evidence/manifests/lens-rendered.json:
+    - visual:identity
+    - visual:composition
+    - visual:typography
+    - visual:assets
+    - visual:interaction
+    - visual:responsive
+    - hard:generic-default-cluster
+
 manifest_reconcilable_fields:
   - verifier
   - timestamp
+  - gate_verdict
   - source_anti_slop_zero_matches
 
 forbidden_source_patterns:

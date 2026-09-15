@@ -2,6 +2,42 @@ version: 1
 name: ui-prototype
 purpose: Product-specific, production-shaped UI prototypes without generic AI slop.
 
+quality_policy:
+  gate_verdicts: [PASS, REVISE, BLOCKED]
+  creator_may_final_certify: false
+  predeclared_acceptance_required: true
+  stale_evidence_rejected: true
+  exact_revision_retest_required: true
+  ui_acceptance_floor:
+    schema: CALIBRATION_V0
+    calibration_status: UNCALIBRATED_HEURISTIC
+    absolute_benchmark_claim_allowed: false
+    minimum_weighted_total: 85
+    minimum_dimension_score: 8
+    all_applicable_hard_checks_true: true
+    maximum_blocking_findings: 0
+  functional_acceptance_floor:
+    primary_journeys_verified: all
+    required_states_verified: all
+    maximum_unresolved_p0: 0
+    maximum_unresolved_p1: 0
+  remediation:
+    mode: revise-until-pass-or-escalate
+    max_cycles: 2
+    fresh_revision_each_cycle: true
+    original_verifier_retests: true
+    failed_criteria_plus_invalidated_regressions_rerun: true
+  escalation:
+    exhausted_budget: BLOCKED
+    mandatory_verifier_unavailable: BLOCKED
+    contradictory_evidence: ORION_ARBITRATION
+    threshold_override_allowed: false
+  artifact_proof:
+    criterion_to_evidence_mapping_required: true
+    exact_revision_required: true
+    file_digest_preferred: sha256
+    missing_required_proof: BLOCKED
+
 entry:
   owner: orion
   requires:
@@ -31,6 +67,7 @@ stages:
       - candidate specifications specify geometric and spatial constraints (grid track ratios, line measure budgets, density tiers)
       - candidate specifications are decoupled from candidate pitch or promotional text
       - no premature token locking; candidates specify structural qualities, not rigid component recipes
+      - for Depth 3 Persuade/Experience surfaces, each candidate defines a narrative/product-proof mechanism: what changes as the user progresses, what real product/message truth it reveals, and the reduced-motion fallback
 
   - id: visual-spikes
     owner: frame
@@ -56,6 +93,7 @@ stages:
       - blind perceptual evaluation against product requirements without candidate pitch/rationale anchoring
       - pairwise differential comparison across candidates and baseline (if available)
       - taste rubric scored under CALIBRATION_V0 schema with observable submetrics
+      - candidate can be WINNER only when all applicable candidate hard checks pass and the CALIBRATION_V0 acceptance floor is met; unavailable checks must be explicit N/A with rationale rather than silently omitted
       - verdicts restricted to WINNER, REWORK_CANDIDATE (max 1 rework per candidate), or NO_WINNER
       - bounded exploration: max 2 regeneration rounds on NO_WINNER and max 4 total evaluations before ORION arbitrates
       - if exploration budget exhausted, ORION produces explicit arbitration (best available with documented trade-offs, depth downgrade, or escalation record); silent selection below quality floor is forbidden
@@ -67,6 +105,7 @@ stages:
     gate:
       - AURORA authors contract based on tournament winner; LENS reviews and issues ACCEPT, REJECT, or REQUEST_REWORK
       - LENS evaluates rendered evidence and does not write or co-author the contract (Creator != Certifier)
+      - REQUEST_REWORK/REJECT includes criterion-level defects and acceptance conditions; revised contract returns to the same independent reviewer
       - information architecture, responsive behavior, and state machines defined
       - typography, color, spacing, and interaction tokens bound to rendered evidence
       - stable test selectors (data-testid) specified for all critical surfaces
@@ -96,6 +135,8 @@ stages:
     gate:
       - independent verification of vertical slice against contract and universal hard gates
       - verdict is PASS, REVISE, or PIVOT before proceeding to full implementation
+      - PASS requires CALIBRATION_V0 weighted total >= 85, every applicable dimension >= 8, all applicable hard checks true, and zero blocking findings
+      - REVISE must enumerate defects with severity, evidence and acceptance conditions; PIVOT is required when fixing the slice would preserve a direction that still fails the approved design thesis
 
   - id: implementation
     owner: frame
@@ -114,6 +155,7 @@ stages:
     gate:
       - deterministic state machine, form boundary (if forms present), and route contracts verified
       - normative WCAG 2.2 AA accessibility mechanics verified (keyboard trap only if modal/dialog present)
+      - all declared primary journeys and required loading, empty, error, active and resolved states are exercised; PASS permits zero unresolved P0/P1 defects
       - automated regex/DOM scan passes: 0 undeclared mock data leakage (Lorem ipsum, undefined, NaN)
       - executed in isolated browser context to prevent state contamination with concurrent perceptual audits
       - exact build SHA bound to report; independent veto authority maintained
@@ -127,6 +169,7 @@ stages:
       - deterministic universal hard gates pass (0 console errors, 0 network 4xx/5xx, 0 unintended overflow)
       - feature-conditional gates respected (focus trap only if modal exists; 44x44 mobile touch as Hermes UX target)
       - taste dimensions evaluated under CALIBRATION_V0 schema with observable submetrics
+      - PASS requires weighted total >= 85, every applicable dimension >= 8, all applicable hard checks true, and zero blocking findings; a high generic-risk verdict blocks PASS
       - executed in isolated browser context to prevent state contamination
       - exact build SHA bound to report; independent veto authority maintained
 
@@ -139,12 +182,15 @@ stages:
       max_remediation_cycles: 2
     gate:
       - every change maps to a specific defect ID; defects partitioned into DESIGN_DEFECT (aurora) and CODE_DEFECT (frame)
+      - each defect records severity, reproduction/evidence, responsible owner and an objective acceptance condition before remediation starts
+      - every remediation cycle creates a fresh Git revision; no PASS evidence from a previous revision may be carried forward
       - no verifier edits production source directly
       - LENS evaluates perceptual regression against BEST_BUILD_SHA via pairwise comparison; material regression is valid with or without geometry drift (typography, hierarchy, contrast, color relationship, asset quality)
       - deterministic regression signals (bounding-box drift, overflow, clipping, runtime errors) trigger immediate rejection
       - NEGLIGIBLE_DELTA requires zero deterministic regression and zero material perceptual degradation
       - model-noise threshold is classified as CALIBRATION_HYPOTHESIS / UNMEASURED; no arbitrary 4.0 deadband permitted
       - ORION arbitrates PROMOTE / KEEP_CURRENT_BEST / ROLLBACK on regression; FRAME executes git operations
+      - remediation repeats until both independent release gates PASS or max_remediation_cycles is exhausted; exhaustion escalates to BLOCKED/FAIL without lowering thresholds
 
   - id: retest
     owner: original-verifier
@@ -152,6 +198,8 @@ stages:
     gate:
       - fixed defects are rerun at the new exact revision
       - stale evidence is rejected
+      - original verifier reruns each failed acceptance criterion plus regressions invalidated by the fix and records criterion-to-proof mapping
+      - PASS requires every targeted defect acceptance condition resolved and the current stage acceptance floor still satisfied
 
   - id: closure
     owner: orion
@@ -159,7 +207,9 @@ stages:
     outputs: [CLOSURE_REPORT.md, RELEASE_DECISION_RECORD.md]
     gate:
       - both PRISM and LENS report PASS on the exact identical BUILD_SHA (dual-gate independent veto requirement)
-      - no unresolved blocker or high-severity defect
+      - no unresolved P0/blocker or P1/high-severity defect; any lower-severity accepted risk is named in RELEASE_DECISION_RECORD.md with owner and rationale
+      - closure records a gate ledger linking each mandatory gate to owner, verifier, attempt, exact revision, verdict and proof references
+      - remediation budget exhaustion, missing mandatory proof, or unavailable mandatory verifier blocks closure; ORION cannot override verifier hard gates or CALIBRATION_V0 thresholds
       - internal release gate marked PASS; owner acceptance explicitly set to PENDING_REVIEW
 
 minimum_viewports:

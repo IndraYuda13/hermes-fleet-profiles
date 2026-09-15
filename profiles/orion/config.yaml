@@ -60,7 +60,8 @@ moa:
 skills:
   write_approval: false
   creation_nudge_interval: 4
-  disabled: []
+  disabled:
+  - ui-ux-pro-max
 curator:
   consolidate: true
   prune_builtins: false
@@ -249,7 +250,7 @@ mcp_servers:
   monetag:
     url: https://mcp.monetag.com/mcp
     headers:
-      Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiJtY3BfZHluXzA1Y2Q5ZTFmZTRlZTZjOTM2YWQ1YjQ2ODUyZjlkNjgxIiwianRpIjoiYTlhYzVjNDQ1ODE5ZjRmNzk5NGRiZmU5MDZjNDQzODEzOGE0Y2IwMjZlMTk4ZmQ1OTljNTI4YjE5ODExYWRmMjQ3MmM1ZmM3ZmIwYWZlNmIiLCJpYXQiOjE3ODg3MTI1MDEuMDU5NzYyLCJuYmYiOjE3ODg3MTI1MDEuMDU5NzY1LCJleHAiOjE3ODg3MTYxMDEuMDUwMzIxLCJzdWIiOiI1ODM2MjUxIiwic2NvcGVzIjpbInB1YmxpY19hcGk6cmVhZF93cml0ZSJdLCJlbWFpbCI6Imx2dHN1bmRlcmVAZ21haWwuY29tIn0.Vf-gDZFjueP_KcJCiJcJkoHK1ycEbfa_oxtmwuIW6BD3DVU526Ku7BTyokSJtIni9bzl15GeIMJ9iQx8bHP77UrMLZQeiu67d2aoJXQKFR3fDhLstqcFkrlKhVJzlzaonftpR4OS0CCYhSGrN7OX0TTgSvIrLdJuhz6MUNnkAoCquDEJtZmUZX_TmjAHy4uAIaY5XklYVC4ja9_7xROWfCUqeS6CqJlSg-qoMSEPHjcAIn3trftiSioFFJQ3rHZUHWtQfWhPDMTUSYJzCef3qA_vVo6jpvxb-xCV6AlFZOtucCR6t-qQaHCicOHxsa_qzAeLZrfs0aSGDl8kPAKpcw
+      Authorization: Bearer ${MONETAG_MCP_TOKEN}
     timeout: 60
 platform_toolsets:
   a2a:

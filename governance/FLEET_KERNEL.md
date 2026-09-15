@@ -6,7 +6,11 @@ or in a workflow pack; do not append another full copy to every profile.
 
 ## 1. Operating principle
 
-**Opus decides → Gemini builds → Opus verifies.**
+**A specialist creates → an independent verifier falsifies → ORION closes.**
+
+The contract is model-agnostic. Model/provider selection belongs to the machine
+role/config manifests and may change without changing role separation or evidence
+requirements.
 
 - ORION classifies, routes, tracks dependencies and closes missions.
 - A specialist owns each material artifact.
@@ -85,4 +89,68 @@ cannot be reproduced.
 Changes to roles, models, tools, A2A topology, evidence schema or closure rules
 must update the machine-readable manifests and pass repository policy checks.
 Direct edits to `main` are forbidden; use a reviewed PR.
+
+## 8. Quality gate contract
+
+Every material handoff is a gate, not an acknowledgement. Before implementation
+starts, the gate owner must declare the acceptance criteria, verification method,
+required proof and blocking severity. A gate may emit `PASS`, `REVISE` or
+`BLOCKED`; `REVISE` is a gate verdict and maps to mission work returning to
+`IN_PROGRESS`, not a terminal mission state.
+
+- `PASS` requires every hard criterion to pass and every declared numeric floor
+  to be met on the exact delivered revision.
+- `REVISE` requires actionable defect IDs, severity, reproduction/evidence,
+  responsible owner and an explicit acceptance condition for each defect.
+- `BLOCKED` requires the missing dependency or proof to be named. Missing proof
+  must never be converted into a quality PASS.
+- Weighted or subjective scores can never compensate for a failed hard gate.
+- Acceptance criteria and thresholds cannot be weakened after seeing a result.
+  Any owner-approved scope reduction must be recorded as a new decision with new
+  acceptance criteria before another build is produced.
+
+For UI work governed by `CALIBRATION_V0`, the fleet quality floor is the
+repository's canonical contract: weighted score `>= 85/100`, every applicable
+dimension `>= 8/10`, all applicable hard checks true and zero blocking findings.
+`CALIBRATION_V0` is currently an **uncalibrated heuristic guardrail**, not an
+empirical claim that a build matches the owner's taste or a world-class benchmark.
+Numeric PASS never overrides rendered evidence, the generic-default cluster gate,
+or an independent verifier's blocking finding.
+
+## 9. Revise-until-pass loop
+
+Material defects enter a bounded, defect-driven loop:
+
+1. The independent verifier records failing criteria and defect acceptance
+   conditions against revision `N`.
+2. The responsible implementation owner fixes only through an authorized write
+   path and produces a fresh revision `N+1`.
+3. The original independent verifier reruns the failed checks plus regression
+   checks invalidated by the change. Evidence from `N` is stale for `N+1`.
+4. ORION promotes the revision only when the required verifier set reports PASS
+   on the same exact revision and all closure gates are satisfied.
+
+The loop continues until PASS or its declared attempt budget is exhausted.
+Exhaustion, repeated unresolved blocker/high-severity defects, contradictory
+verifier evidence that cannot be reconciled, or an unavailable mandatory
+verifier escalates to ORION. ORION may route more investigation, reduce scope by
+an explicit owner decision, or mark the mission `BLOCKED`/`FAIL`; it may not
+override a hard gate, impersonate a verifier or lower a threshold to manufacture
+closure.
+
+## 10. Independent critique and proof
+
+Independent critique must be adversarial enough to falsify the creator's claim,
+not merely restate it. The creator supplies implementation rationale; the
+verifier supplies its own reproduction, inspection or measurement method.
+Release-critical UI work requires both PRISM functional verification and LENS
+rendered/perceptual verification. Security-sensitive work additionally requires
+SENTINEL when the mission scope triggers a security gate.
+
+Each material gate should bind its decision to inspectable proof. Evidence may
+include source/test output, browser captures, recordings, logs, measurements or
+research sources, but it must identify what criterion it proves. Where practical,
+record a digest for file artifacts so later closure can detect replacement or
+drift. ORION closure must be explainable as a gate ledger: required gate, owner,
+verifier, attempt, exact revision, verdict, proof references and unresolved risk.
 

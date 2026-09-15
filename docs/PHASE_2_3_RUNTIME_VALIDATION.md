@@ -169,6 +169,14 @@ PASS requires:
 - no missing state/viewport disguised as PASS;
 - fixture-specific anti-slop source checks passing.
 
+Every UI evidence manifest is parsed against
+`governance/schemas/evidence-manifest.schema.json` by the runtime harness before
+its mission-specific checks run. Unknown properties, invalid timestamps, invalid
+field types, out-of-range quality scores, malformed artifact digests and invalid
+nested criterion/proof structures therefore fail closed. Quality/proof fields
+remain optional where the canonical schema marks them optional, but any field an
+agent emits must satisfy that schema exactly.
+
 The final `CLOSURE_REPORT.md` and ORION manifest are deterministically
 materialized from the ORION closure task's completion summary and metadata.
 This preserves ORION ownership while keeping production filesystem tools out of

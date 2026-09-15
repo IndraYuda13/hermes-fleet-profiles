@@ -35,9 +35,9 @@ Before any UI build can receive a PASS verdict, all 8 hard checks must be verifi
 7. **`fonts_and_assets_loaded`**: Zero broken images (`naturalWidth > 0`), zero 4xx/5xx network asset failures, and clean web font readiness before capture.
 8. **`claims_and_data_are_grounded`**: Strictly zero generic marketing hallucinations: no fake testimonials ("John Doe, CEO at Acme"), fake metrics ("10,000+ Happy Customers"), or fake media badges ("As featured on Forbes/TechCrunch").
 
-## The 6-Dimension Calibrated Scoring Rubric
+## The 6-Dimension Heuristic Scoring Rubric (`CALIBRATION_V0`)
 
-Lens audits builds across 6 weighted dimensions (Total 100 points, Pass requires $\ge 85$ total and $\ge 8$ per dimension):
+Lens audits builds across 6 weighted dimensions (Total 100 points, Pass requires $\ge 85$ total and $\ge 8$ per dimension). `CALIBRATION_V0` is deliberately labeled an **uncalibrated heuristic** until repeated owner-rated examples establish empirical anchors. The score is a strict internal floor, not proof that the result is world-class or matches the owner's taste.
 
 - **Identity & Brief Match** (25%): Specificity to product/domain; custom character; zero template genericness.
 - **Composition & Hierarchy** (25%): Clear primary/secondary focal path; rhythm; breathing room; anti-card-grid.
@@ -54,13 +54,14 @@ Load the relevant reference module on demand using `skill_view`:
 - `skill_view("anti-ai-slop-web-design", "references/hermes-design-research.md")`: Root-cause diagnosis of AI slop, OFF+BRAND study, and operational design rules.
 - `skill_view("anti-ai-slop-web-design", "references/anti-ai-slop-universal-principles.md")`: Complete 7 universal anti-slop laws, 8 hard checks, and scoring rubric.
 - `skill_view("anti-ai-slop-web-design", "references/macro-compositional-diversity-gate.md")`: 12-dimension macro fingerprinting and anti-token-gaming rules.
-- `skill_view("anti-ai-slop-web-design", "references/archetypes-reference.md")`: 88+ non-slop design archetypes catalog.
+- `skill_view("anti-ai-slop-web-design", "references/archetypes-reference.md")`: Retrieval vocabulary for spatial/aesthetic qualities. It is not a menu for choosing a finished style.
 - `skill_view("anti-ai-slop-web-design", "references/mobile-zero-overflow-discipline.md")`: Strict viewport constraint invariants.
 - `skill_view("anti-ai-slop-web-design", "references/exhaustive-audit-protocol.md")`: LENS/PRISM multi-viewport inspection procedure.
 
 ## Verification
 
 To verify that an interface adheres to this skill:
-1. Run `python3 /root/.hermes/fleet_v2_system/core/lens_engine_v2.py <URL> <OUT_DIR> <BUILD_SHA>`
-2. Inspect `LENS_REVIEW_REPORT.json` for `verdict == "pass"` and `all(hard_checks.values()) == true`.
-3. Confirm that weighted score $\ge 85$ and all individual dimensions $\ge 8$.
+1. Bind the review to the exact `BUILD_SHA` and inspect rendered evidence at every canonical viewport required by the active workflow.
+2. Produce `LENS_REVIEW_REPORT.json` using the current fleet contract; do not depend on a hard-coded legacy runtime path.
+3. Confirm all applicable hard checks are true, weighted score $\ge 85$, every applicable dimension $\ge 8$, zero blocking findings, and `GENERIC RISK != HIGH`.
+4. Treat the numeric result as a heuristic gate only. Rendered evidence and blocking verifier findings remain authoritative.

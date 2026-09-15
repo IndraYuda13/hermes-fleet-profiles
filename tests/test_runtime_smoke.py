@@ -262,6 +262,7 @@ class UIGauntletValidationTests(unittest.TestCase):
                 "revision": head,
                 "method": "deterministic fixture",
                 "result": "PASS",
+                "gate_verdict": "PASS",
                 "timestamp": "2026-09-02T00:00:00Z",
             }
             if owner in {"frame", "prism", "lens"}:
@@ -273,6 +274,25 @@ class UIGauntletValidationTests(unittest.TestCase):
         self.smoke.validate_ui_gauntlet(root, mission_id)
         failures = [record.detail for record in self.smoke.records if record.result != "PASS"]
         self.assertEqual(failures, [])
+
+    def test_manifest_validation_uses_canonical_schema(self):
+        path = self.base / "manifest.json"
+        path.write_text(json.dumps({
+            "mission_id": "UI-TEST-schema",
+            "task_id": "task-lens",
+            "owner": "lens",
+            "verifier": "lens",
+            "revision": "abcdef123456",
+            "method": "rendered inspection",
+            "result": "PASS",
+            "gate_verdict": "PASS",
+            "timestamp": "not-a-date",
+            "unexpected_runtime_field": True,
+        }), encoding="utf-8")
+
+        errors = self.smoke.validate_manifest(path, "UI-TEST-schema")
+        self.assertTrue(any("date-time" in error for error in errors))
+        self.assertTrue(any("unexpected_runtime_field" in error for error in errors))
 
     def test_materializes_orion_closure_from_kanban_metadata(self):
         root = self.base / "closure"
@@ -354,6 +374,7 @@ class UIGauntletValidationTests(unittest.TestCase):
                     "verifier": "frame",
                     "revision": "abc123456789",
                     "result": "PASS",
+                    "gate_verdict": "PASS",
                     "timestamp": "2026-09-02T00:00:00Z",
                     "source_anti_slop_zero_matches": True,
                 }}]}

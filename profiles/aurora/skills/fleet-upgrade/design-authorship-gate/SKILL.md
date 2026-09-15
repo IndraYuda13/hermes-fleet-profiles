@@ -16,15 +16,17 @@ Use for any open-ended UI redesign, new product surface, landing page, dashboard
 
 ## Procedure
 1. State product, audience, primary job, constraints, and a one-sentence **visual thesis**.
-2. Identify 3–5 product-specific visual/content cues. Avoid decorating with generic SaaS motifs that have no semantic relation to the product.
-3. For open-ended work, produce 2–3 **materially different** directions. Different means composition/type/surface/interaction logic, not just palette swaps.
-4. If using references, extract principles (rhythm, contrast, density, navigation, type behavior). Do not clone another brand's signature layout by default.
-5. Define typography, spacing rhythm, color roles, surfaces, icon language, motion intent, and responsive behavior.
-6. Define empty/loading/error/dense/long-content states that materially affect the surface.
-7. Render and inspect the actual output at representative viewports.
-8. Run the specificity test: **if the product name/logo were replaced, would this still look equally plausible for 20 unrelated AI/SaaS apps?** If yes, reject and redesign.
-9. Check common unjustified AI-slop signals: centered mega-hero, decorative pill/badge soup, purple-blue glow, glassmorphism, repeated rounded cards, arbitrary bento grid, identical fade-ups, generic stock icon rows, default typography with no rationale.
-10. Score 0–5: product specificity, hierarchy, typography, spatial rhythm, visual coherence, interaction intent, responsive completeness, accessibility. Any score <4 in specificity/hierarchy/coherence blocks handoff.
+2. State the **product mechanism/proof** that gives the visual thesis form. Identify 3–5 product-specific visual/content cues. Avoid decorating with generic SaaS motifs that have no semantic relation to the product.
+3. Create a small **default-debt register** for shell, hero, repeated containers, typography, color/effects, navigation and motion: `KEEP_WITH_REASON | REPLACE | N/A`.
+4. For open-ended work, produce 2–3 **materially different** directions. Different means at least two structural axes (reading/focal path, topology, media/content relationship, repetition, density, navigation, interaction), not palette/font/effect swaps.
+5. If using references, give each one a primary job (composition/type/asset/motion/responsive/material), extract one principle and one anti-copy note. Do not average references into a moodboard style.
+6. Define typography roles, spacing rhythm, color/material ownership, effect budget, surfaces, icon language, motion intent, and responsive identity invariant.
+7. Define empty/loading/error/dense/long-content states that materially affect the surface.
+8. Render and inspect the actual output at representative viewports.
+9. Run the specificity test: **if the product name/logo were replaced, would this still look equally plausible for 20 unrelated AI/SaaS apps?** If yes, reject and redesign.
+10. Run squint/grayscale and effect-off probes. Hierarchy must survive reduced detail/color; identity must not depend on glow/blur/gradient/particles doing structural work.
+11. Check common unjustified AI-slop clusters: centered mega-hero + pill/badge soup + feature cards; near-black + purple/cyan glow + glass + mono; cream + editorial serif + red accent; arbitrary bento; generic dashboard shells. A single justified motif is not a failure. `>=3` unexplained dominant defaults blocks handoff.
+12. Score 0–5: product specificity, hierarchy, typography, spatial rhythm, color/material coherence, visual coherence, interaction intent, responsive completeness, accessibility. Any score <4 in specificity/hierarchy/coherence blocks handoff.
 
 ## Pitfalls
 - Treating minimalism as permission for under-designed empty space.

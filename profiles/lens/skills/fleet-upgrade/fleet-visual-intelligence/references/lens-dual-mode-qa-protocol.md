@@ -14,12 +14,20 @@ LENS conducts two mandatory audit modes on every rendered UI deliverable:
 
 ## Mode B: Art Direction QA
 - **Design Contract Compliance:** Compare rendered UI against `DESIGN_DNA.md` and `DESIGN_CONTRACT.md`.
-- **Focal Hierarchy & Visual Calm:** Assert that key metrics/actions stand out without visual noise.
-- **Signature Elements:** Verify that the 2-5 signature elements specified by AURORA are faithfully rendered.
+- **Evidence Pairing:** Judge native whole-viewport desktop + mobile captures for macro composition, then use detail crops for type/material craft. Detail crops alone cannot prove hierarchy.
+- **Product Specificity:** Identify the product mechanism/proof visible in the design. Run a logo-off/copy-swap test: if the shell could serve many unrelated products unchanged, lower identity and flag generic risk.
+- **Focal Hierarchy & Composition:** Run squint/grayscale review. Focal order, rhythm, density and grouping must survive without color/effect detail.
+- **Typography:** Verify role contrast, measure, wrapping, numeric/data treatment and content fit—not merely font-family consistency.
+- **Color / Material / Effects:** Identify spatial color ownership and the purpose/bounds of glow, blur, gradients, glass, particles or 3D. Run an effect-off probe; decoration may reinforce hierarchy but cannot be its only support.
+- **Assets & Motion:** Major visuals must provide product/content proof; motion must express state, causality, continuity or product transformation.
+- **Responsive Identity:** Verify mobile reorders/reframes/crops/simplifies intentionally while preserving the chosen direction's identity invariant.
+- **Signature Device:** Verify the 1-2 functional/memorable devices specified by AURORA are faithfully rendered.
 - **Anti-Generic Risk Assessment:**
   - `GENERIC RISK: LOW` (Distinctive, intentional design system)
-  - `GENERIC RISK: MEDIUM` (Minor framework clichés present)
-  - `GENERIC RISK: HIGH` (Generic templates/gradients dominate — blocks final PASS for Depth 2/3)
+  - `GENERIC RISK: MEDIUM` (Familiar choices present but mostly justified or secondary)
+  - `GENERIC RISK: HIGH` (`>=3` dominant defaults across shell/type/palette-material/repetition/motion lack independent product/brief rationale — blocks final PASS for Depth 2/3)
+
+Token-only remediation (recoloring, font swap, radius adjustment, weaker glow) does not clear a structural generic-risk finding.
 
 ## Coverage Closure Equation
 Enforce mathematical completeness:

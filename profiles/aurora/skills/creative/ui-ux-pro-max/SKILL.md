@@ -46,23 +46,31 @@ If `python` is not found, try `python3`, then `py -3`. Requires Python 3.x, no e
 
 ## Workflow
 
+### Art-direction boundary
+
+The database is a **retrieval aid**, not an art director. For open-ended Depth 2/3 work, establish product truth, product mechanism/proof, candidate composition hypotheses, and likely category defaults through `visual-authoring-core` **before** allowing `--design-system`, style, color, typography, landing, or GSAP results to influence the direction.
+
+Database outputs are candidate ingredients. They may answer a bounded uncertainty, pressure-test a direction, or suggest implementation guidance. They may not select the shell, aesthetic family, palette/effect cluster, or typography pairing merely because the search ranks it highly.
+
 ### Step 1: Analyze User Requirements
 
 Extract from the user request:
 - **Product type**: SaaS, e-commerce, portfolio, dashboard, entertainment, tool, productivity, or hybrid
 - **Target audience & context**: age group, usage context (commute, leisure, work)
-- **Style keywords**: playful, vibrant, minimal, dark mode, content-first, immersive, etc.
+- **Product mechanism/proof**: the real behavior, artifact, content or workflow the interface should make visible
+- **Likely defaults**: shell/hero/card/type/color/motion patterns the category or framework would produce automatically
+- **Tone/style words**: treat playful, vibrant, minimal, dark, immersive, etc. as constraints to interpret after product truth, not as a substitute for a visual thesis
 - **Stack**: detect from the project — check `package.json` deps (react/next/vue/svelte/nuxt/@angular), `pubspec.yaml` (Flutter), `*.xcodeproj`/`Package.swift` (SwiftUI), `composer.json` (Laravel), or React Native markers (`app.json` + `react-native` dep). If nothing is detectable, ask the user or default to `html-tailwind`. **Never assume a stack** — a hardcoded default silently misroutes every recommendation.
 
-### Step 2: Generate Design System (REQUIRED for new pages/projects)
+### Step 2: Query Candidate Design-System Guidance
 
-Always start with `--design-system` to get comprehensive recommendations with reasoning:
+For a new page/project, use `--design-system` **after** the visual thesis/candidate has been framed. For Depth 0/1 or an established product system, it can be the first broad retrieval step because the visual authority already exists.
 
 ```bash
 python "${CLAUDE_PLUGIN_ROOT}/.claude/skills/ui-ux-pro-max/scripts/search.py" "<product_type> <industry> <keywords>" --design-system [-p "Project Name"]
 ```
 
-This searches product/style/color/landing/typography domains in parallel, applies reasoning rules from `ui-reasoning.csv`, and returns pattern, style, colors, typography, effects, and anti-patterns to avoid.
+This searches product/style/color/landing/typography domains in parallel, applies reasoning rules from `ui-reasoning.csv`, and returns **candidate** pattern/style/color/typography/effect guidance plus anti-patterns. Compare the result to product truth and `DEFAULT_DEBT.md`; reject ranked recommendations that simply reproduce category/model defaults.
 
 **Example:**
 ```bash
@@ -71,7 +79,7 @@ python "${CLAUDE_PLUGIN_ROOT}/.claude/skills/ui-ux-pro-max/scripts/search.py" "b
 
 ### Step 2b: Persist Design System (Master + Overrides Pattern)
 
-To save the design system for retrieval across sessions, add `--persist` **and always pass `--output-dir` pointed at the project root** — without it, files are written relative to whatever directory the tool happens to run from:
+Persist only after the guidance has been reconciled with the accepted project direction. For Depth 2/3, do not persist raw search output before rendered direction selection/LENS acceptance. Once accepted, add `--persist` **and always pass `--output-dir` pointed at the project root** — without it, files are written relative to whatever directory the tool happens to run from:
 
 ```bash
 python "${CLAUDE_PLUGIN_ROOT}/.claude/skills/ui-ux-pro-max/scripts/search.py" "<query>" --design-system --persist -p "Project Name" --output-dir "<project-root>"
@@ -107,6 +115,7 @@ python "${CLAUDE_PLUGIN_ROOT}/.claude/skills/ui-ux-pro-max/scripts/search.py" "<
 - `--motion` attaches a ready-to-use GSAP snippet (with framework notes, Do/Don't, and performance notes) pulled from `--domain gsap`, matched to the resolved tier (Subtle/Standard/Complex).
 - `--density` overrides the `--space-*` CSS variable table in the ASCII/markdown/MASTER.md output — use it for dashboards (high) vs. marketing pages (low) without hand-editing tokens.
 - Leaving a dial unset keeps that part of the output exactly as it was before (no behavior change).
+- Dial labels describe **search bias**, not quality. High variance does not mean "use brutalism/bento"; high motion does not mean decorative choreography. Accept a returned style/motion only when the product mechanism and design contract earn it.
 
 **Example:**
 ```bash
@@ -122,7 +131,7 @@ python "${CLAUDE_PLUGIN_ROOT}/.claude/skills/ui-ux-pro-max/scripts/search.py" "<
 | Need | Domain | Example |
 |------|--------|---------|
 | Product type patterns | `product` | `--domain product "entertainment social"` |
-| More style options | `style` | `--domain style "glassmorphism dark"` |
+| More style options | `style` | `--domain style "industrial operations precise dense"` |
 | Color palettes | `color` | `--domain color "entertainment vibrant"` |
 | Font pairings | `typography` | `--domain typography "playful modern"` |
 | Individual Google Fonts | `google-fonts` | `--domain google-fonts "sans serif popular variable"` |
@@ -150,7 +159,7 @@ python "${CLAUDE_PLUGIN_ROOT}/.claude/skills/ui-ux-pro-max/scripts/search.py" "<
 
 Do not fabricate output. Instead:
 1. Retry once with broader or differently-worded keywords (try product + style separately rather than combined).
-2. If still empty, fall back to the priority table above and say explicitly to the user that this recommendation came from the built-in defaults, not a database match (e.g. "no palette match for X, using general SaaS defaults").
+2. If still empty, fall back to the priority table and project/product evidence. Label the guidance as general. **Do not substitute "general SaaS defaults" for a missing match** on open-ended design work; that is exactly where generic output enters.
 3. Never present a 0-result search as if it returned data.
 
 ## Example Workflow
@@ -177,7 +186,7 @@ Then synthesize the design system + detailed searches and implement.
 ## Tips for Better Results
 
 - Use **multi-dimensional keywords** — combine product + industry + tone + density: `"entertainment social vibrant content-dense"`, not just `"app"`
-- Try different phrasings for the same need: `"playful neon"` → `"vibrant dark"` → `"content-first minimal"`
+- Prefer queries that name a product/usage constraint plus the design uncertainty: `"industrial monitoring dense low-fatigue"`, `"consumer creator playful mobile"`, `"editorial archive image-led"`.
 - Use `--design-system` first for full recommendations, then `--domain` to deep-dive any dimension you're unsure about
 - Pass the detected stack explicitly for implementation-specific guidance
 

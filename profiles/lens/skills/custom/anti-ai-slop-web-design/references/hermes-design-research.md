@@ -19,6 +19,18 @@ Bukti tampilan saat pemeriksaan: [desktop](C:/Users/ASUS/Documents/Codex/2026-09
 
 **Interpretasi gue:** kekuatan referensi itu datang dari hubungan ukuran, posisi, ruang, gambar, dan gerak yang punya satu arah. Memindahkan bola, warna, atau animasinya ke setiap proyek akan menghasilkan template baru. Yang layak dijadikan standar adalah kualitas keputusan dan konsistensi pelaksanaannya.
 
+### Kalibrasi case-study OFF+BRAND terbaru — 15 September 2026
+
+Pemeriksaan ulang case study publik memperkuat interpretasi di atas dan menolak gagasan bahwa kualitas OFF+BRAND berasal dari satu estetika neon/glow:
+
+- **Vizcom:** objective eksplisitnya adalah membuat produk langsung dapat dipahami. Hero menjadi cerita pendek `sketch -> transform -> iterate`; motion menunjukkan perubahan produk secara real time, sementara headline memberi konteks. Prinsip transfer: visual utama harus **membuktikan mekanisme**, bukan hanya mengisi hero. https://www.itsoffbrand.com/our-work/vizcom
+- **CMCC:** case study menekankan messaging, pembacaan yang serius, dan animasi subtle tetapi striking dengan prinsip less-is-more. Prinsip transfer: craft level tinggi tidak mensyaratkan visual maximalist atau glow; intensitas mengikuti trust/context. https://www.itsoffbrand.com/our-work/cmcc
+- **Microsoft Windows:** sistemnya memadukan komponen reusable untuk skala enterprise dengan modul everyday dan storytelling WebGL ketika cocok. Prinsip transfer: original art direction dan sistem komponen scalable dapat hidup bersama; design system tidak harus terasa template-led. https://www.itsoffbrand.com/our-work/microsoft-windows
+- **Lando Norris:** motion, type, accent, dan 3D diturunkan dari energi motorsport/personality atlet. Prinsip transfer: vocabulary visual harus berubah ketika subject berubah; studio yang kuat tidak memakai satu house-style untuk semua klien. https://www.itsoffbrand.com/our-work/lando-norris
+- **Aether 1:** OFF+BRAND memang memakai deep palette, gradients, WebGL particles, dan glass-like reflections—tetapi case study mengikatnya ke karakter produk audio dan storytelling 3D, sekaligus menyediakan reduced-motion/performance path. Ini contoh penting bahwa efek bukan dosa; **efek tanpa sebab** yang menjadi slop. https://www.itsoffbrand.com/our-work/aether1
+
+Benchmark yang lebih tepat untuk armada: `mechanism/proof -> composition -> integrated type/assets/motion -> responsive translation -> scalable system`. Jangan membuat checklist "agar seperti OFF+BRAND" yang berisi sphere, WebGL, oversized type, dark palette, glass, atau gradient; itu akan mengubah benchmark menjadi costume pack.
+
 ## 2. Mengapa browser dan multi-agent belum cukup
 
 Anthropic mendokumentasikan kecenderungan output frontend menuju pola umum dan penggunaan skill untuk memberi arahan yang lebih spesifik. Itu mendukung penggunaan instruksi desain yang konkret; artikel tersebut tidak membuktikan semua model akan membaik dengan besaran yang sama. [Riset skill frontend](https://claude.com/blog/improving-frontend-design-through-skills).

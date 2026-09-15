@@ -27,6 +27,11 @@ from typing import Any, Iterable
 
 import yaml
 
+try:
+    from scripts.validate_contracts import load_json_mapping, validate_json_instance
+except ModuleNotFoundError:  # direct execution from the scripts directory
+    from validate_contracts import load_json_mapping, validate_json_instance
+
 
 FLEET = (
     "orion", "atlas", "aurora", "forge", "frame", "lens",
@@ -427,6 +432,9 @@ class RuntimeSmoke:
         self.gauntlet = load_yaml(
             self.repo_root / "governance/gauntlets/ui-prototype.yaml"
         )
+        self.evidence_schema = load_json_mapping(
+            self.repo_root / "governance/schemas/evidence-manifest.schema.json"
+        )
         self.client = A2AClient(host, timeout)
         self.timeout = timeout
         self.revision = revision or config_revision(self.hermes_home)
@@ -735,7 +743,8 @@ as the parents dependencies:
    id, owner=aurora, revision={initial_revision}, a non-empty method, and PASS
    only if the full design contract is complete. The JSON object must contain
    every required key exactly: mission_id, task_id, owner, verifier, revision,
-   method, result, timestamp. Set verifier=aurora and timestamp to an ISO-8601
+   method, result, gate_verdict, timestamp. Set verifier=aurora,
+   gate_verdict=PASS only when this stage's acceptance conditions are met, and timestamp to an ISO-8601
    UTC date-time. It must finish through kanban_complete with matching
    structured metadata.
 
@@ -746,8 +755,9 @@ as the parents dependencies:
    create a real Git commit. After that commit it must write
    evidence/manifests/frame-implementation.json referencing the exact current
    Git HEAD. The JSON object must contain every required key exactly:
-   mission_id, task_id, owner, verifier, revision, method, result, timestamp.
+   mission_id, task_id, owner, verifier, revision, method, result, gate_verdict, timestamp.
    Set owner=frame, verifier=frame and timestamp to an ISO-8601 UTC date-time,
+   set gate_verdict=PASS only when this stage's acceptance conditions are met,
    set source_anti_slop_zero_matches=true only after the deterministic source
    gate below returns zero matches, then kanban_complete with matching
    structured metadata.
@@ -758,7 +768,8 @@ as the parents dependencies:
    evidence/manifests/prism-functional.json bound to the exact Git HEAD, and
    kanban_complete with structured PASS or FAIL metadata. The JSON object must
    contain every required key exactly: mission_id, task_id, owner, verifier,
-   revision, method, result, timestamp. Set owner=prism, verifier=prism and
+   revision, method, result, gate_verdict, timestamp. Set owner=prism, verifier=prism,
+   set gate_verdict=PASS only when this stage's acceptance conditions are met, and
    timestamp to an ISO-8601 UTC date-time. Set
    source_anti_slop_zero_matches=true only after independently running the
    deterministic source gate below. It must not disguise an untested journey
@@ -770,7 +781,8 @@ as the parents dependencies:
    in MISSION.md. It must write VISUAL_QA.md and
    evidence/manifests/lens-rendered.json bound to the exact Git HEAD. The JSON
    object must contain every required key exactly: mission_id, task_id, owner,
-   verifier, revision, method, result, timestamp. Set owner=lens, verifier=lens
+   verifier, revision, method, result, gate_verdict, timestamp. Set owner=lens, verifier=lens,
+   set gate_verdict=PASS only when this stage's acceptance conditions are met,
    and timestamp to an ISO-8601 UTC date-time. Set
    source_anti_slop_zero_matches=true only after independently running the
    deterministic source gate below, then kanban_complete with structured PASS
@@ -998,6 +1010,7 @@ Do not report PASS if a required peer, browser capture, functional check, artifa
             "revision": head,
             "method": str(metadata.get("method") or "ORION Kanban parent-handoff judgment"),
             "result": "PASS",
+            "gate_verdict": "PASS",
             "timestamp": utc_now(),
             "materialized_by": "scripts/runtime_smoke.py",
         }, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -1207,25 +1220,17 @@ Do not report PASS if a required peer, browser capture, functional check, artifa
         self.validate_ui_gauntlet(root, mission_id)
 
     def validate_manifest(self, path: Path, mission_id: str) -> list[str]:
-        errors: list[str] = []
         try:
             value = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as exc:
             return [f"invalid JSON: {exc}"]
         if not isinstance(value, dict):
             return ["manifest is not an object"]
-        required = {"mission_id", "task_id", "owner", "verifier", "revision", "method", "result", "timestamp"}
-        missing = required - set(value)
-        if missing:
-            errors.append(f"missing fields: {sorted(missing)}")
+        errors = validate_json_instance(value, self.evidence_schema)
         if value.get("mission_id") != mission_id:
             errors.append("mission_id mismatch")
         if value.get("result") != "PASS":
             errors.append(f"result is {value.get('result')!r}, expected PASS")
-        if len(str(value.get("revision", ""))) < 7:
-            errors.append("revision is missing or too short")
-        if not isinstance(value.get("method"), str) or not value.get("method"):
-            errors.append("method is empty")
         return errors
 
     def validate_ui_gauntlet(self, root: Path, mission_id: str) -> None:

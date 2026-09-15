@@ -1,5 +1,20 @@
 version: 1
-principle: "Opus decides -> Gemini builds -> Opus verifies"
+principle: "ORION routes -> specialist owners build -> independent verifiers prove"
+
+quality_governance:
+  creator_may_final_certify: false
+  orion_may_substitute_for_verifier: false
+  ui_release_veto_profiles: [prism, lens]
+  security_veto_profile: sentinel
+  remediation_owner_by_domain:
+    design-contract: aurora
+    frontend: frame
+    backend: forge
+    infrastructure: atlas
+  retest_owner: original-verifier
+  escalation_coordinator: orion
+  threshold_override_allowed: false
+  stale_evidence_reuse_allowed: false
 
 profiles:
   orion:

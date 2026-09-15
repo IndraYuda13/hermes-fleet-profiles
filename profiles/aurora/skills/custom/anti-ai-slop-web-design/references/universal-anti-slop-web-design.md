@@ -1,130 +1,154 @@
-# Universal Modern Web Design & Anti-Slop Architecture Reference
+# Universal Anti-Default Visual Authoring Reference
 
-This reference documents the 7 universal principles derived from production landing pages (such as Plety) and modern web design systems that completely eliminate "AI slop" across ANY website category (SaaS, internal tools, e-commerce, portfolios, company profiles, dashboards).
+This reference exists to prevent a common failure mode: replacing one AI template with another. It is subordinate to `visual-authoring-core` and must never be interpreted as a recipe library.
 
----
+The previous generation of anti-slop guidance over-corrected by prescribing combinations such as sans + italic editorial serif, black + glass surfaces, white pill CTAs, marquee masks, and frosted sticky headers. Those can be excellent in the right project, but making them universal merely creates a more fashionable form of generic output.
 
-## 1. Typographic Tension: Dualitas Sans & Editorial Serif Italic
+## 1. What "authored" means
 
-### The AI-Slop Trap
-Defaulting to a single, monotone sans-serif font (Inter, Roboto, Arial) across every section, or using tacky multi-color rainbow gradient text fills.
+An authored interface has a causal chain that can be inspected:
 
-### The Universal Standard
-- **Pairing Architectural Contrast**: Combine a crisp geometric/functional sans-serif (e.g. Plus Jakarta Sans, Outfit, Geist, Inter) for structure, navigation, and badges with an **Editorial High-Contrast Serif Italic** (e.g. Newsreader, Playfair Display, Instrument Serif, Cormorant Garamond).
-- **The Emotional Word Accent**: Wrap exactly 1 key emotional word or philosophical focus per headline in a `span` with `font-serif italic font-normal text-white`.
-  - Example: `"The intelligence layer for clear <span className=\"font-serif italic font-normal\">decisions.</span>"`
-  - Example: `"Ready to automate <span className=\"font-serif italic font-normal\">everything?</span>"`
-- This intentional tension transforms a standard SaaS template into an Awwwards-grade editorial layout.
+`product truth -> content/proof -> hierarchy -> composition -> type/color/material -> interaction -> responsive behavior`
 
----
+If the explanation starts with a style label ("futuristic", "premium", "Awwwards", "glassmorphism", "neo-brutalist", "editorial") and works backward toward the product, the direction is at high risk of being generic.
 
-## 2. Optical Edge Fading (CSS Gradient Masking)
+For Depth 2/3 work, every major visual decision must answer at least one of these questions:
 
-### The AI-Slop Trap
-Carousels, marquees, partner logos, or horizontal data lists that abruptly clip at the container edges, creating visual boxiness and mobile layout jitter.
+- What real product mechanism, artifact, workflow, audience behavior, or brand commitment does this express?
+- What hierarchy or reading-order problem does this solve?
+- What information or state does this make easier to understand?
+- What proof does this provide that copy alone cannot?
+- What interaction causality or spatial relationship does this clarify?
 
-### The Universal Standard
-- **The Infinite Horizon Mask**: Wrap scrolling containers with a linear gradient CSS mask:
-  ```css
-  mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent);
-  -webkit-mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent);
-  ```
-- **Flawless Infinite Marquee Structure**:
-  - Outermost wrapper: `overflow-hidden w-full max-w-5xl mx-auto` with the mask above.
-  - Inner track: `flex width: max-content` with animation `marquee 30s linear infinite` (`transform: translateX(-50%)`).
-  - Partner logos duplicated 3 to 4 times with `flex-shrink-0 px-8` so the track never breaks across ultra-wide viewports.
-  - Pause on hover: `.animate-marquee:hover { animation-play-state: paused; }`.
+"It looks modern/premium/technical" is not sufficient evidence.
 
----
+## 2. OFF+BRAND calibration: learn the relationship, not the costume
 
-## 3. Native Micro-Mechanics (CSS Grid 0fr ➔ 1fr & Geometric Morphing)
+Fleet research in `hermes-design-research.md` and inspected OFF+BRAND case studies show a useful quality bar without yielding a reusable aesthetic template:
 
-### The AI-Slop Trap
-Using bulky JavaScript DOM manipulation or height calculations (`scrollHeight`) that cause layout thrashing, or switching icons abruptly without animation.
+- The strongest hero is usually tied to the subject's mechanism or story. Vizcom demonstrates sketch -> transform -> iterate; motion proves what the product does instead of decorating a generic headline.
+- Typography, scale, position, negative space, imagery, and motion operate as one composition. No single effect carries the identity alone.
+- Technology is selected as a storytelling/tooling consequence: 3D, WebGL, Rive, GSAP, or simpler treatments are used when the idea needs them. They are not quality badges.
+- The visual language changes by client. Restrained enterprise work, expressive athlete/fan work, product-led 3D, and scalable component systems can all meet the same craft bar.
+- Mobile keeps the thesis and priority, then changes framing, crop, order, and interaction as needed. Ambition is translated rather than merely shrunk.
+- Reusable systems can coexist with original art direction: repeated components preserve consistency while the product-specific content, hierarchy, and signature experience carry identity.
 
-### The Universal Standard
-- **CSS Grid Height Transition Trick**: Animate accordion drawers, dropdowns, and collapsible items flawlessly at 60fps without knowing pixel height:
-  ```jsx
-  <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${
-    isOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
-  }`}>
-    <div className="overflow-hidden">
-      <p className="text-gray-400 text-sm pb-6 px-6 leading-relaxed">
-        {answer}
-      </p>
-    </div>
-  </div>
-  ```
-- **Geometric Icon Morphing (Plus to Close)**:
-  - Do NOT unmount the `+` icon and mount an `✕` icon.
-  - Instead, use a single stroke Plus SVG and rotate it 45 degrees:
-  ```jsx
-  <div className={`shrink-0 w-6 h-6 flex items-center justify-center transition-transform duration-300 ease-out ${
-    isOpen ? "rotate-45 text-white" : "rotate-0 text-gray-400"
-  }`}>
-    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-      <line x1="12" y1="5" x2="12" y2="19" strokeLinecap="round" />
-      <line x1="5" y1="12" x2="19" y2="12" strokeLinecap="round" />
-    </svg>
-  </div>
-  ```
+Therefore **do not copy OFF+BRAND's sphere, WebGL, oversized type, color, motion, or typography as a fleet house style**. Copy the discipline: one strong idea, product proof, decisive composition, integrated craft, and breakpoint-specific authorship.
 
----
+## 3. Composition before chrome
 
-## 4. Hyper-Specific Domain Telemetry (Anti-Lorem Ipsum)
+Before adding effects, verify the page in a low-information view (squint, grayscale, or blurred screenshot):
 
-### The AI-Slop Trap
-Empty skeleton boxes, generic placeholder icons, or fake copy ("Lorem ipsum dolor sit amet", "Feature description goes here").
+- one primary focal region is obvious;
+- secondary regions form an intentional reading/task path;
+- repetition reflects equivalent content rather than a component-library habit;
+- negative space separates meaning instead of padding an under-designed page;
+- section rhythm changes when narrative priority changes;
+- the composition remains recognizable when brand name/logo is hidden.
 
-### The Universal Standard
-Mockups must display living, domain-specific telemetry:
-- **Exact Timestamps**: `"11:06 AM – Chris"`, `"Just now"`.
-- **Engineering Metrics**: `"Confidence: 99.8%"`, `"WPM: 148"`, `"Stream: 42 tps"`, `"<200ms latency"`.
-- **Realistic Interactive Visuals**:
-  - Waveforms with active (bright white) and unplayed (dark gray) bars.
-  - Interactive chip pills (`✨ Create image`, `Summarize text`, `Audit code`).
-  - Input fields with specialized affordances (waveform soundwave icon, microphone icon, `CMD + K` shortcut indicator).
+Cards, bento grids, sidebars, split heroes, sticky rails, full-bleed media, and editorial fields are all valid structures. None is a default answer. Choose topology from content relationships and workflow.
 
----
+## 4. Typography is a role system
 
-## 5. Material & Depth Hierarchy: Charcoal Obsidian vs Pure White
+Define the jobs first: display, heading, body, label, data/numeric, code, annotation, or any smaller subset the product actually needs.
 
-### The AI-Slop Trap
-Flat black `#000000` combined with thick `#374151` borders and blown-out cyan/purple glows.
+For each role specify:
 
-### The Universal Standard
-Build an architectural dark elevation system:
-- **Canvas Base**: Pure `#000000` (`bg-black`).
-- **Elevated Surfaces**: Deep charcoal glassmorphism `bg-[#1C1C1E]/90 backdrop-blur-xl`.
-- **Subtle Borders**: Ultra-fine borders `border border-white/10` or `border border-white/5`.
-- **Button Contrast Separation**:
-  - **Primary CTA**: High-contrast solid white pill (`bg-white text-black hover:bg-gray-200 active:scale-95`).
-  - **Secondary Action**: Obsidian pill (`bg-[#1F1F22] hover:bg-[#2A2A2D] text-white border border-white/5`).
+- hierarchy contrast (size, weight, width, case, spacing, style);
+- reading measure and line-height behavior;
+- wrap/truncation/localization behavior;
+- numeric/data features when relevant;
+- fallback and loading behavior;
+- why the chosen face belongs to this subject or operating context.
 
----
+One family can be excellent. Two or more families can be excellent. A sans + italic serif pairing is **not** inherently more authored than a disciplined single-family system. Do not add a serif, mono, all-caps label, or extreme display face merely to signal taste.
 
-## 6. Background Scrim & Contrast Protection
+## 5. Color and material use topology, not swatch decoration
 
-### The AI-Slop Trap
-Placing videos, 3D meshes, or gradients behind text without contrast protection, resulting in unreadable copy that fails WCAG accessibility.
+Write the palette as roles and spatial ownership:
 
-### The Universal Standard
-- **Multi-stop Atmospheric Scrim**: Always overlay video or canvas backgrounds with directional gradient scrims:
-  - Top Hero: `bg-gradient-to-b from-black/30 via-transparent to-black`.
-  - Footer: `bg-gradient-to-b from-black via-black/60 to-black` with video at `opacity-40`.
-- **Text Legibility Shield**: Apply subtle ambient text drop shadows (`drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]`) and ensure headline and subtext maintain high optical contrast ($\ge 7:1$) against moving backgrounds.
+- dominant field/canvas;
+- primary and secondary ink;
+- contrast anchor(s);
+- action/focus/selection;
+- semantic state colors;
+- optional atmospheric/material regions.
 
----
+Then state where each role appears and approximately how much visual area it owns. This prevents "accent color everywhere" and random gradient spraying.
 
-## 7. Dual-Stage Sticky Thresholds (Transparent to Frosted Glass)
+### Effect budget
 
-### The AI-Slop Trap
-Sticky headers that start as opaque blocks, suffocating the hero section, or jump abruptly without smooth transitions.
+Glow, blur, gradient, glass, grain, bloom, particles, 3D lighting, chrome reflections, and shaders are **effects**, not identity by themselves.
 
-### The Universal Standard
-- **Scroll Threshold Transition (>20px)**:
-  - `scrollY <= 20`: Header is `bg-transparent border-transparent py-5` or `py-6`.
-  - `scrollY > 20`: Header transitions via `transition-all duration-300` to `bg-black/80 backdrop-blur-md border-b border-white/10 py-3.5 shadow-xl`.
-- **Mobile Responsive Drawer**:
-  - Tapping hamburger opens a dropdown with `bg-black/95 backdrop-blur-xl border-b border-white/10`.
-  - Auto-close invariant: Tapping any navigation anchor immediately closes the drawer and smoothly scrolls to the target `id`.
+For each effect used, record:
+
+1. its semantic or material purpose;
+2. the bounded region(s) where it may appear;
+3. what the hierarchy looks like with the effect removed;
+4. its reduced-motion/performance fallback when applicable.
+
+If several effects all express the same vague idea ("futuristic", "AI", "premium"), keep the strongest one or remove the cluster.
+
+## 6. Assets carry proof
+
+The largest visual regions deserve the strongest content. Prefer, as available:
+
+- real product UI/data/artifacts;
+- authentic photography or project media;
+- generated/procedural assets designed for the composition;
+- diagrams that explain a mechanism;
+- typography-led composition when type itself is the correct evidence.
+
+Do not fill a missing proof region with glass cards, gradient blobs, generic device mockups, icon tiles, or fake telemetry. Chrome cannot compensate for absent content.
+
+## 7. Motion must have causality
+
+Every motion pattern states `trigger -> change -> meaning -> end state`.
+
+Good uses include demonstrating transformation, preserving spatial continuity, revealing cause/effect, indicating active work, or focusing attention during a narrative transition. Stable status does not pulse. Identical fade-up entrances on every section are not choreography.
+
+For brand/experience surfaces, one authored sequence can be expressive. For operate/read surfaces, interaction feedback and state continuity usually matter more than ambient motion.
+
+## 8. Responsive means re-authoring
+
+For each major region, decide whether narrow layouts should:
+
+- preserve;
+- reorder;
+- reframe/crop;
+- collapse/disclose;
+- change interaction model;
+- simplify decorative complexity;
+- move an action into a reachable position.
+
+Record the identity invariant that must survive. A desktop split composition may become an overlap, crop, sequence, carousel, or linear story on mobile. "Stack all columns" is only acceptable when the resulting priority and narrative remain intentional.
+
+## 9. Default-cluster challenge
+
+These are warning clusters, not banned syntax:
+
+| Familiar cluster | Challenge before accepting |
+|---|---|
+| Near-black canvas + cyan/purple neon + glass cards + mono labels | What product mechanism independently earns each piece? Would a non-AI/non-crypto product use the same shell unchanged? |
+| Warm cream + editorial serif + terracotta/red accent + hairlines | Is this derived from the subject, or a current design-model default? Does type/content still feel specific with the palette removed? |
+| Centered badge + huge gradient headline + two pill CTAs + 3-card feature row | Does the visitor's real decision path actually have this hierarchy? What proof belongs in the first viewport instead? |
+| Arbitrary bento grid of equal rounded tiles | Are the items semantically equivalent and spatially comparable, or was the grid selected because it is easy to generate? |
+| Sidebar + KPI cards + chart cards + generic table | Does the user's operating workflow need these regions in this order, or is this a dashboard starter template? |
+| Full-page WebGL/particles | Does the spatial behavior explain or embody the subject, and is there an equally clear reduced/fallback path? |
+
+If **three or more** dominant choices come from a familiar cluster and have no independent product/brief rationale, classify the direction as generic and redesign at the composition/content level. Changing hue, radius, font, or glow intensity does not clear the finding.
+
+## 10. Final authoring checks
+
+Before hand-off, answer with rendered evidence:
+
+1. **Mechanism:** What product truth visibly shaped the page?
+2. **Composition:** What makes the reading/task path specific to this content?
+3. **Typography:** What are the role contrasts, and why these faces/metrics?
+4. **Color/material:** Which regions own the palette and effects, and why?
+5. **Assets:** What visual proof occupies the major regions?
+6. **Motion:** What changes, why, and when does it stop?
+7. **Responsive:** What was re-authored on mobile, and what identity cue survived?
+8. **Default debt:** Which category/framework defaults were deliberately kept, and why?
+
+If those answers are generic adjectives or CSS descriptions instead of product relationships, the work is not ready for visual PASS.

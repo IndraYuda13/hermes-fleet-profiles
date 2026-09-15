@@ -40,6 +40,14 @@ For every detected generic choice:
 4. preserve clarity and usability,
 5. avoid novelty for novelty's sake.
 
+Do this at two levels:
+- **single choice:** a common motif can remain when it has a real product/brief role;
+- **default cluster:** inspect shell, typography treatment, palette/material, repeated containers, and motion together. If three or more dominant choices are model/category defaults with no independent rationale, redesign the composition/content system rather than recoloring the same template.
+
+Apply an **effect-off test**: mentally remove glow, blur, gradients, particles and decorative 3D. If hierarchy or identity collapses, effects are doing work that composition/type/content should carry.
+
+Apply a **default-debt test**: list the framework/category choices that would happen automatically and mark each `KEEP_WITH_REASON`, `REPLACE`, or `NOT_APPLICABLE` before calling the direction authored.
+
 ## Originality test
 
 Ask:
@@ -48,5 +56,8 @@ Ask:
 - Does hierarchy reflect the user's real job?
 - Is information density appropriate?
 - Are visual motifs consistent enough to feel authored?
+- Does the direction remain legible and recognizable in grayscale/squint view?
+- Is the palette organized by spatial/semantic roles rather than accent spraying?
+- Is mobile re-authored around priority, or merely a vertical stack of desktop regions?
 
 If the answer is weak, redesign before calling the interface polished.

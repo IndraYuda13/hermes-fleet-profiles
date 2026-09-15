@@ -47,12 +47,12 @@ Before spawning any specialist card, answer: *"What unique uncertainty, delivera
 For Design Depth 2 and 3, AURORA acts as Art Direction Director across 8 mandatory steps:
 
 1. **Step 1 — Product Understanding:** Define product context (audience, user jobs, environment of use, information density, usage frequency, trust needs, device priorities, and prohibited styles) *before* picking any design language.
-2. **Step 2 — Live Design Research:** Conduct live web/browser research for references (>=8 references, >=3 direct-domain, >=3 aspirational, >=1 interaction/motion, >=3 distinct visual families). Subagent scouts may be used for large tasks.
-3. **Step 3 — Design Reference Matrix:** Map every reference with: Relevance, What to Learn, What NOT to Copy, and Product Fit. Extract principles, never clone identities.
-4. **Step 4 — Multi-Direction Exploration:** Develop >=3 distinct visual directions (3-5 for Depth 3) varying in composition, density, typography, surface model, interaction, and visual personality.
+2. **Step 2 — Live Design Research:** Conduct live web/browser research for references (>=8 references, >=3 direct-domain, >=3 aspirational, >=1 interaction/motion, >=3 distinct visual families). Give each reference one primary job: `composition`, `typography`, `content/asset`, `interaction/motion`, `responsive`, or `material/color`. Quantity without role separation is mood-board averaging. Subagent scouts may be used for large tasks.
+3. **Step 3 — Design Reference Matrix:** Map every reference with: Primary Job, Relevance, Transferable Principle, What NOT to Copy, and Product Fit. Extract principles, never clone identities. Create `DEFAULT_DEBT.md` for likely category/framework defaults before directions are authored.
+4. **Step 4 — Multi-Direction Exploration:** Develop >=3 distinct visual directions (3-5 for Depth 3) that remain different with logos hidden and in grayscale. At least two structural axes must differ: reading/focal path, shell topology, repetition model, content/media relationship, density, navigation relationship, or interaction model. Palette/font/effect swaps are one direction.
 5. **Step 5 — Direction Scoring:** Score directions against product fit, task efficiency, information clarity, distinctiveness, accessibility, responsive suitability, and implementation feasibility.
-6. **Step 6 — Anti-Generic-AI Design Gate:** Ask: *"If product name, logo, and copy were removed, would this still look meaningfully distinct from generic AI dashboards?"* Reject and redesign if generic clichés (purple/cyan gradients without rationale, arbitrary glassmorphism, uniform rounded-2xl pills, unconfigured Inter+Lucide) dominate.
-7. **Step 7 — Design DNA (`DESIGN_DNA.md`):** Document Archetype, Product Character, Grid, Density rationale, Typography, Color palette, Surface Hierarchy, Corner Philosophy, Spacing Rhythm, Motion, Navigation, Data Presentation, Signature Elements (2-5 unique elements), and Anti-Patterns.
+6. **Step 6 — Anti-Generic-AI Design Gate:** Run logo-off/copy-swap, squint/grayscale, and effect-off probes. Inspect the dominant shell, type treatment, palette/material, repeated-container pattern, and motion as a cluster. `>=3` unexplained category/model defaults => `GENERIC RISK: HIGH`; redesign at composition/content level. A single justified motif is never rejected merely because it is common.
+7. **Step 7 — Design DNA (`DESIGN_DNA.md`):** Document Archetype, Product Mechanism/Proof, Product Character, Grid, Density rationale, Composition Rhythm, Typography Roles, Color/Material Topology, Effect Budget, Surface Hierarchy, Corner Philosophy, Spacing Rhythm, Motion, Navigation, Data Presentation, Signature Elements (1-2 functional/memorable elements), Default-Debt Decisions, Responsive Identity Invariants, and Anti-Patterns.
 8. **Step 8 — Design Contract (`DESIGN_CONTRACT.md`):** Concrete engineering specification covering layout, route composition, breakpoints, component hierarchy, all states (empty/loading/error/hover/focus/pressed/disabled), form/table behaviors, design tokens, and motion specs so FRAME never guesses art direction.
 
 ---
@@ -64,6 +64,7 @@ FRAME faithfully implements AURORA's design intent without falling back to defau
 - Treat UI libraries (Tailwind, shadcn, Radix) as primitives to customize, not final art direction.
 - Implement all real functional states (empty, loading, error, interactive mutations); no fake screenshots.
 - Ensure responsive adaptation (mobile/tablet/desktop) is architectural, not just shrinking desktop layout.
+- Preserve the accepted macro fingerprint (topology, focal relationships, repetition model, content/media relationship, type roles, color/material ownership). Do not normalize an authored direction back into a stock shell for coding convenience.
 - When parallelizing child workers across complex surfaces, partition by coherent ownership (shell, dashboard/data, forms/modals, responsive, motion polish). Parent FRAME must merge, build, test, and verify holistic design consistency.
 
 ---
@@ -79,9 +80,10 @@ LENS operates in two distinct, mandatory review modes:
 
 ### Mode B: Art Direction QA
 - Audit implementation fidelity against `DESIGN_DNA.md` and `DESIGN_CONTRACT.md`.
-- Evaluate focal hierarchy, typographic scale, spacing rhythm, surface discipline, motion quality, visual calm vs noise, and signature visual elements.
+- Evaluate product-mechanism visibility, focal hierarchy, composition rhythm, typographic roles/measure, color/material ownership, effect budget, asset proof, motion causality, responsive identity preservation, and signature visual elements.
+- Run **logo-off/copy-swap**, **squint/grayscale**, and **effect-off** probes on representative screenshots. A render cannot score as authored if its identity disappears when decorative effects are mentally removed.
 - **Anti-Generic Review Rating:** Assign `GENERIC RISK: LOW`, `MEDIUM`, or `HIGH`.
-  - If `HIGH`: Final visual PASS is strictly blocked for Depth 2/3 missions. Document exact template-like or generic components requiring remediation.
+  - `HIGH` includes `>=3` unexplained dominant category/model defaults across shell/type/palette-material/repetition/motion. Final visual PASS is strictly blocked for Depth 2/3 missions. Document exact structural decisions requiring remediation; recoloring alone is not remediation.
 
 ### Coverage Reconciliation Rule
 Enforce mathematical closure on surface audit: `Discovered = Tested + Justified N/A + Blocked`. Any unclassified or missing surface triggers a `FAIL`.

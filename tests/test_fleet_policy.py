@@ -8,7 +8,12 @@ import yaml
 
 from scripts.sanitize_config import sanitize_identity_config, sanitize_text
 from scripts.sanitize_skill_examples import sanitize_text as sanitize_skill_text
-from scripts.validate_fleet import Validation, validate_canonical_skills, validate_ui_workflow
+from scripts.validate_fleet import (
+    Validation,
+    validate_canonical_skills,
+    validate_runtime_core,
+    validate_ui_workflow,
+)
 
 
 class SanitizerTests(unittest.TestCase):
@@ -42,6 +47,20 @@ web:
     def test_redacts_generic_secret_scalar(self):
         cleaned = sanitize_text("provider:\n  api_key: live-secret\n  model: x\n")
         self.assertEqual(yaml.safe_load(cleaned)["provider"]["api_key"], "REDACTED")
+
+    def test_redacts_mcp_bearer_header_to_connector_env(self):
+        source = """mcp_servers:
+  monetag:
+    url: https://example.invalid/mcp
+    headers:
+      Authorization: Bearer literal-secret-value
+"""
+        cleaned = sanitize_text(source)
+        parsed = yaml.safe_load(cleaned)
+        self.assertEqual(
+            parsed["mcp_servers"]["monetag"]["headers"]["Authorization"],
+            "Bearer ${MONETAG_MCP_TOKEN}",
+        )
 
     def test_removes_chat_identifiers(self):
         source = """platforms:
@@ -190,6 +209,38 @@ class UIWorkflowV4InvariantTests(unittest.TestCase):
             drift_val = Validation()
             validate_canonical_skills(temp_root, drift_val)
             self.assertTrue(any("checksum drift in profile frame" in err for err in drift_val.errors))
+
+    def test_runtime_core_is_embedded_once_and_prompt_budgeted(self):
+        val = Validation()
+        validate_runtime_core(ROOT, val)
+        self.assertEqual(val.errors, [])
+
+        with tempfile.TemporaryDirectory() as temporary:
+            temp_root = Path(temporary)
+            (temp_root / "governance").mkdir(parents=True)
+            shutil.copy2(
+                ROOT / "governance/FLEET_RUNTIME_CORE.md",
+                temp_root / "governance/FLEET_RUNTIME_CORE.md",
+            )
+            for profile in (
+                "orion", "atlas", "aurora", "forge", "frame", "lens",
+                "nexus", "prism", "quant", "radar", "sentinel",
+            ):
+                destination = temp_root / "profiles" / profile
+                destination.mkdir(parents=True)
+                shutil.copy2(ROOT / "profiles" / profile / "SOUL.md", destination / "SOUL.md")
+            drift_target = temp_root / "profiles/forge/SOUL.md"
+            drift_target.write_text(
+                drift_target.read_text(encoding="utf-8").replace(
+                    "Optimize for the strongest finished outcome",
+                    "Optimize for the first acceptable outcome",
+                    1,
+                ),
+                encoding="utf-8",
+            )
+            drift_val = Validation()
+            validate_runtime_core(temp_root, drift_val)
+            self.assertTrue(any("embedded Fleet Runtime Core V2 drift" in err for err in drift_val.errors))
 
     def test_negative_duplicate_stage_id(self):
         wf = copy.deepcopy(self.workflow)

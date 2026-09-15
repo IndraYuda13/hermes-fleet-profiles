@@ -12,10 +12,16 @@ from typing import Any, Iterable
 
 import yaml
 
+try:
+    from scripts.validate_contracts import validate_repository_contracts
+except ModuleNotFoundError:  # direct execution from the scripts directory
+    from validate_contracts import validate_repository_contracts
+
 FLEET = ("orion", "atlas", "aurora", "forge", "frame", "lens", "nexus", "prism", "quant", "radar", "sentinel")
 ALL_PROFILES = set(FLEET) | {"groupbot"}
 PLACEHOLDERS = {"", "REDACTED", "CHANGEME", "NOT_COMMITTED"}
 SECRET_KEY = re.compile(r"(?:^|_)(?:api_key|token|secret|password|password_hash|client_secret)$", re.I)
+BEARER_AUTH = re.compile(r"^Bearer\s+(.+)$", re.I)
 SECRET_PATTERNS = (
     re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----[\s\S]*?-----END (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),
     re.compile(r"\bgh[pousr]_[A-Za-z0-9_]{30,}\b"),
@@ -319,9 +325,74 @@ def validate_canonical_skills(root: Path, result: Validation) -> None:
                     f"anti-ai-slop-web-design/SKILL.md checksum drift in profile {prof}",
                 )
 
+    # 5. AURORA's active UI/UX retrieval package must inherit the hardened
+    # canonical authoring boundary. Future catalog refreshes must not silently
+    # restore "design-system first" behavior in the live design profile.
+    for relative in (
+        "SKILL.md",
+        "templates/base/skill-content.md",
+        "data/catalog-summary.json",
+    ):
+        canonical = root / "global/skills/creative/ui-ux-pro-max" / relative
+        active = root / "profiles/aurora/skills/creative/ui-ux-pro-max" / relative
+        result.require(canonical.is_file(), f"missing canonical ui-ux-pro-max/{relative}")
+        result.require(active.is_file(), f"missing AURORA ui-ux-pro-max/{relative}")
+        if canonical.is_file() and active.is_file():
+            result.require(
+                canonical.read_bytes() == active.read_bytes(),
+                f"ui-ux-pro-max/{relative} checksum drift between global and aurora",
+            )
+
+
+def validate_runtime_core(root: Path, result: Validation) -> None:
+    """Keep active SOUL prompts compact and synchronized to one runtime contract."""
+
+    core_path = root / "governance/FLEET_RUNTIME_CORE.md"
+    result.require(core_path.is_file(), "missing governance/FLEET_RUNTIME_CORE.md")
+    if not core_path.is_file():
+        return
+
+    core = core_path.read_text(encoding="utf-8").strip()
+    start = "<!-- FLEET_RUNTIME_CORE_V2:START -->"
+    end = "<!-- FLEET_RUNTIME_CORE_V2:END -->"
+    stale_fragments = (
+        "Delegation Control Protocol (Hermes v0.20.2)",
+        "Fleet Teammates V1.2",
+        "/root/.hermes/shared_verification_governance_v1.md",
+        "Evidence Manifest V1",
+    )
+
+    for name in FLEET:
+        path = root / "profiles" / name / "SOUL.md"
+        result.require(path.is_file(), f"missing {path.relative_to(root)}")
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        line_count = len(text.splitlines())
+        result.require(
+            line_count <= 260,
+            f"{name}: SOUL prompt budget exceeded ({line_count} > 260 lines)",
+        )
+        result.require(
+            text.count(start) == 1 and text.count(end) == 1,
+            f"{name}: SOUL must contain exactly one Fleet Runtime Core V2 marker pair",
+        )
+        if text.count(start) == 1 and text.count(end) == 1:
+            embedded = text.split(start, 1)[1].split(end, 1)[0].strip()
+            result.require(
+                embedded == core,
+                f"{name}: embedded Fleet Runtime Core V2 drift; run scripts/sync_runtime_core.py --apply",
+            )
+        for fragment in stale_fragments:
+            result.require(
+                fragment not in text,
+                f"{name}: stale runtime policy fragment remains in SOUL: {fragment}",
+            )
+
 
 def validate(root: Path) -> Validation:
     result = Validation()
+    result.errors.extend(validate_repository_contracts(root))
     manifest_path = root / "governance/roles.yaml"
     result.require(manifest_path.is_file(), "missing governance/roles.yaml")
     if not manifest_path.is_file():
@@ -365,6 +436,14 @@ def validate(root: Path) -> Validation:
             if SECRET_KEY.search(key):
                 safe = value is None or str(value).strip() in PLACEHOLDERS or str(value).startswith("${")
                 result.require(safe, f"{name}: committed secret-like value at {'.'.join(key_path)}")
+            if key.lower() == "authorization" and isinstance(value, str):
+                bearer = BEARER_AUTH.match(value.strip().strip('"\''))
+                if bearer:
+                    credential = bearer.group(1).strip()
+                    result.require(
+                        credential.startswith("${") and credential.endswith("}"),
+                        f"{name}: committed bearer credential at {'.'.join(key_path)}",
+                    )
         dashboard = config.get("dashboard") or {}
         result.require("basic_auth" not in dashboard, f"{name}: dashboard.basic_auth must live in .env")
         result.require(not str(dashboard.get("auth", "")).startswith("password"), f"{name}: plaintext dashboard auth committed")
@@ -389,8 +468,24 @@ def validate(root: Path) -> Validation:
     orion = configs.get("orion") or {}
     result.require((orion.get("kanban") or {}).get("review_dispatch") is True, "orion: review_dispatch must be enabled")
 
+    # Open-ended style-catalog selection belongs to AURORA. Keeping the catalog
+    # disabled for implementers/verifiers/orchestrator prevents a selected design
+    # contract from being normalized back into model-familiar UI defaults.
+    for name in ("orion", "frame", "lens", "prism"):
+        disabled_skills = set(((configs.get(name) or {}).get("skills") or {}).get("disabled") or [])
+        result.require(
+            "ui-ux-pro-max" in disabled_skills,
+            f"{name}: ui-ux-pro-max must remain disabled; AURORA owns open-ended art direction",
+        )
+    aurora_disabled = set(((configs.get("aurora") or {}).get("skills") or {}).get("disabled") or [])
+    result.require(
+        "ui-ux-pro-max" not in aurora_disabled,
+        "aurora: ui-ux-pro-max retrieval aid must remain available to the design author",
+    )
+
     validate_ui_workflow(root, roles, result)
     validate_canonical_skills(root, result)
+    validate_runtime_core(root, result)
 
     runtime_pack_path = root / "governance/runtime-smoke.yaml"
     result.require(runtime_pack_path.is_file(), "missing governance/runtime-smoke.yaml")
@@ -446,7 +541,7 @@ def validate(root: Path) -> Validation:
             continue
         try:
             text = path.read_text(encoding="utf-8")
-        except UnicodeDecodeError:
+        except (UnicodeDecodeError, OSError):
             continue
         for pattern in SECRET_PATTERNS:
             if pattern.search(text):

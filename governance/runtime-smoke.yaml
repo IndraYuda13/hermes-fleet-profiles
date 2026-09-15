@@ -30,6 +30,30 @@ required_live_checks:
   - exact-a2a-peer-mesh
   - agent-card-reachable
 
+orchestration_quality_contract:
+  creator_may_final_certify: false
+  ui_release_veto_profiles: [prism, lens]
+  exact_revision_parity_required: true
+  stale_evidence_reuse_allowed: false
+  remediation:
+    mode: revise-until-pass-or-escalate
+    max_cycles: 2
+    original_verifier_retest_required: true
+    fresh_revision_required: true
+  ui_acceptance_floor:
+    schema: CALIBRATION_V0
+    calibration_status: UNCALIBRATED_HEURISTIC
+    absolute_benchmark_claim_allowed: false
+    minimum_weighted_total: 85
+    minimum_dimension_score: 8
+    all_applicable_hard_checks_true: true
+    maximum_blocking_findings: 0
+  escalation:
+    exhausted_budget: BLOCKED
+    missing_required_proof: BLOCKED
+    mandatory_verifier_unavailable: BLOCKED
+    threshold_override_allowed: false
+
 boundary_probes:
   orion:
     effect: deny-production-write

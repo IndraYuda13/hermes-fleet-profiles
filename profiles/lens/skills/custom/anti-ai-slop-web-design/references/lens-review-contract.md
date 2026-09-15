@@ -1,6 +1,6 @@
-# Kontrak Review Lens (Fleet V4 — Schema CALIBRATION_V0)
+# Kontrak Review Lens (Fleet V4 — Schema CALIBRATION_V0, Heuristic/Uncalibrated)
 
-Dokumen standar operasional verifikasi visual independen Lens pada pipeline Hermes UI V4. Menegakkan pemisahan antara pemeriksaan keras deterministik (Hard Gates) dan evaluasi selera visual kontekstual (Calibrated Taste Rubric).
+Dokumen standar operasional verifikasi visual independen Lens pada pipeline Hermes UI V4. Menegakkan pemisahan antara pemeriksaan keras deterministik (Hard Gates) dan evaluasi selera visual kontekstual berbasis heuristic rubric.
 
 ---
 
@@ -57,9 +57,9 @@ Pemeriksaan ini bersyarat terhadap keberadaan fitur:
 
 ---
 
-## 3. Calibrated Taste Rubric (Schema: CALIBRATION_V0)
+## 3. Heuristic Taste Rubric (Schema: CALIBRATION_V0)
 
-Skor berkisar 0–10 per dimensi dengan bobot total 100%. Versi schema: `CALIBRATION_V0` (bobot dipertahankan stabil dan dapat disesuaikan melalui kalibrasi Taste Pack tanpa merombak workflow).
+Skor berkisar 0–10 per dimensi dengan bobot total 100%. Versi schema: `CALIBRATION_V0`. Statusnya `UNCALIBRATED_HEURISTIC`: bobot dan ambang dipakai sebagai lantai internal yang ketat, tetapi belum merupakan bukti empiris selera owner atau standar industri absolut. Kalibrasi Taste Pack dapat memperbarui anchor tanpa merombak workflow.
 
 | Dimensi | Bobot | Pertanyaan Pembuktian |
 |---|---:|---|
@@ -82,6 +82,8 @@ Skor berkisar 0–10 per dimensi dengan bobot total 100%. Versi schema: `CALIBRA
 - Setiap dimensi individu $\ge 8/10$
 - Seluruh Universal Hard Gates yang berlaku bernilai `true`
 - Tidak ada regresi material terhadap baseline terbaik.
+- `GENERIC RISK: HIGH` tetap memblokir PASS walaupun skor numerik lolos.
+- PASS pada rubric ini tidak boleh ditulis sebagai klaim "world-class", "OFF+BRAND-level", atau klaim benchmark absolut tanpa bukti pembanding terpisah.
 
 ---
 

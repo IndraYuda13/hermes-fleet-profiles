@@ -70,9 +70,10 @@ Deterministic, multi-stage visual verification standard for LENS and the fleet. 
                                     ▼
 ┌────────────────────────────────────────────────────────────────────────┐
 │ Gate 4: VLM Macro Aesthetic & Art Direction (Final Tier)              │
-│ ├─ Isolated to Macro Evaluation: Visual Hierarchy, Calm, Theme Cohesion│
-│ ├─ Anti-Generic-AI Slop Rating (LOW / MEDIUM / HIGH)                  │
-│ └─ Verification of 2-5 Signature Elements from DESIGN_DNA.md          │
+│ ├─ Whole-viewport + detail evidence: hierarchy, rhythm, identity       │
+│ ├─ Product specificity + default-cluster/effect-off probes             │
+│ ├─ Desktop/mobile thesis preservation                                  │
+│ └─ Anti-Generic-AI Slop Rating (LOW / MEDIUM / HIGH)                  │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -143,11 +144,18 @@ Executed via Playwright / CDP event listeners.
 
 ## 5. Gate 4: VLM Macro Aesthetic & Art Direction
 VLM is executed **ONLY** after Gates 0 through 3 are 100% PASS.
-- VLM evaluates high-resolution native 1:1 sector crops (not downscaled full-page).
-- Prompt focuses strictly on:
-  1. **Visual Balance & Rhythm:** Hierarchy of typography and surface cards.
-  2. **Anti-Generic-AI Slop Rating:** Assign `LOW`, `MEDIUM`, or `HIGH`. (`HIGH` = automatic BLOCK).
-  3. **Signature Visual Elements:** Verify implementation of the 2-5 unique signature motifs defined in `DESIGN_DNA.md`.
+- **Evidence set:** provide native-resolution whole-viewport captures for macro judgment **plus** 1:1 sector crops for typography/material/detail. Sector crops alone cannot prove page composition. For responsive work, compare at least one desktop and one mobile capture side-by-side.
+- Prompt evaluates these observable questions:
+  1. **Product Mechanism & Specificity:** What real product behavior/content/proof visibly generates the composition? Could the shell plausibly belong to many unrelated products unchanged?
+  2. **Composition & Rhythm:** Is focal order obvious in a squint/grayscale view? Do topology, repetition, negative space and density follow content priority rather than component-library defaults?
+  3. **Typography System:** Are role contrasts, measure, wrapping, data/numeric treatment and font character coherent? Penalize fashionable pairings used as identity without product rationale.
+  4. **Color / Material / Effect Budget:** Which regions own color and material? Are glow/blur/gradient/glass/particles bounded and purposeful? Apply the effect-off probe: if removing decoration collapses hierarchy/identity, block high scores.
+  5. **Assets & Proof:** Do dominant visual regions carry authentic or declared synthetic proof, or is decorative chrome filling missing content?
+  6. **Motion / Interaction Meaning:** When motion evidence exists, does it demonstrate transformation, state, causality or continuity? Stable states must not pulse merely to look alive.
+  7. **Responsive Re-authorship:** Does mobile preserve the visual thesis through intentional reorder/reframe/crop/disclosure/interaction changes instead of a mechanical vertical stack?
+  8. **Signature Device Fidelity:** Verify the 1-2 functional/memorable devices defined in `DESIGN_DNA.md`; novelty alone earns no score.
+- **Default-cluster ledger:** name the dominant shell, type treatment, palette/material treatment, repeated-container pattern and motion pattern. If `>=3` are recognizable category/model defaults without independent product/brief rationale, set `GENERIC RISK: HIGH` regardless of polish.
+- **Verdict:** `GENERIC RISK: HIGH` is an automatic visual BLOCK for Depth 2/3. Remediation must change the structural/content cause; token-only recoloring, font swaps, radius edits or weaker glow do not clear the finding.
 
 ---
 

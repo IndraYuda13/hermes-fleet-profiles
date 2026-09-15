@@ -6,14 +6,18 @@ import tempfile
 import unittest
 from pathlib import Path
 
-ROOT = next(parent for parent in Path(__file__).resolve().parents
-            if (parent / "scripts/evaluate-relevance.py").exists())
-MODULE_PATH = ROOT / "scripts/evaluate-relevance.py"
-SPEC = importlib.util.spec_from_file_location("evaluate_relevance", MODULE_PATH)
-evaluator = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(evaluator)
+ROOT = next((parent for parent in Path(__file__).resolve().parents
+             if (parent / "scripts/evaluate-relevance.py").exists()), None)
+if ROOT is not None:
+    MODULE_PATH = ROOT / "scripts/evaluate-relevance.py"
+    SPEC = importlib.util.spec_from_file_location("evaluate_relevance", MODULE_PATH)
+    evaluator = importlib.util.module_from_spec(SPEC)
+    SPEC.loader.exec_module(evaluator)
+else:
+    evaluator = None
 
 
+@unittest.skipUnless(evaluator is not None, "relevance-evaluator maintenance script is not bundled in this Hermes runtime skill")
 class TestMetricMath(unittest.TestCase):
     def test_precision_counts_missing_ranks_as_non_relevant(self):
         self.assertEqual(evaluator.precision_at_k([2], 1), 1.0)
@@ -43,6 +47,7 @@ class TestMetricMath(unittest.TestCase):
         self.assertEqual(evaluator.grades_for_results(results, judgments), [1, 2])
 
 
+@unittest.skipUnless(evaluator is not None, "relevance-evaluator maintenance script is not bundled in this Hermes runtime skill")
 class TestFixtureValidation(unittest.TestCase):
     @staticmethod
     def valid_fixture():
@@ -74,6 +79,7 @@ class TestFixtureValidation(unittest.TestCase):
         self.assertIn("grade 1 or 2", errors)
 
 
+@unittest.skipUnless(evaluator is not None, "relevance-evaluator maintenance script is not bundled in this Hermes runtime skill")
 class TestThresholdGate(unittest.TestCase):
     def test_runtime_fingerprint_binds_reasoning_contract(self):
         original = evaluator.ROOT, evaluator.RUNTIME_DIR, evaluator.DATA_DIR
