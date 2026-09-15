@@ -68,3 +68,35 @@ Before configuring an API gateway as a provider for autonomous agent execution, 
 - [ ] **Sub-Second TTFT:** Pre-flight handshake latency is zero or minimal (<200ms) without multi-step browser emulation.
 - [ ] **Concurrency Isolation:** Supports at least 3-5 concurrent execution slots without cross-thread lockups or session collisions.
 - [ ] **Stable IP Egress:** Requests use clean residential/datacenter IPs with zero risk of interactive CAPTCHA blocking.
+
+---
+
+## 4. Universal Function Calling & MCP Bridge Implementation Pattern
+
+When wrapping a web LLM endpoint into an OpenAI-compatible function-calling gateway (`tools`, `tool_choice`, `tool_calls`), use a dual-layer engine: native upstream toggles for platform tools (web search, code interpreter) and a universal virtual compiler + streaming state machine for client-defined tools.
+
+### A. Dynamic Delimited Prompt Injection & Sanitization
+- **Dynamic Nonce Delimiters:** Never use static tags like `<tool_call>` or `[TOOL_CALL]`. Attackers or user prompts can easily inject closing tags and spoof tool executions. Generate a per-turn random nonce (e.g. `<<<TOOL_CALL_<hex8>>>>` ... `<<</TOOL_CALL_<hex8>>>>`) and instruct the model to wrap calls strictly inside that tag.
+- **Input Neutralization:** Scan and escape any occurrences of the gateway delimiter pattern in user messages before submitting the payload upstream so the model never sees conflicting delimiter structures.
+- **Strict Schema Whitelisting:** Strip experimental or deeply nested properties from client-submitted tool definitions. Enforce max character caps (e.g. 512 chars) on tool and parameter descriptions to prevent prompt-injection via metadata.
+
+### B. Lookahead Streaming State Machine (O(1) Argument Streaming)
+- **Token Lookahead Buffer:** When streaming SSE from upstream, maintain a lookahead buffer sized to the open delimiter. While outside tags, yield text immediately as `choices[0].delta.content`.
+- **Zero O(N^2) JSON Decoding:** Do NOT run `json.loads()` on every incoming delta token. Stream raw argument slices directly as `choices[0].delta.tool_calls[0].function.arguments` fragments. Only validate complete JSON once upon encountering the closing delimiter.
+- **Bounded Accumulator Buffers:** Cap argument accumulation buffers (e.g. max 64 KB per parameter string, max 1 MB per turn). If a runaway model exceeds the limit without closing tags, terminate stream immediately (fail-closed) with `finish_reason: "length"` to prevent ReDoS or memory exhaustion.
+
+### C. Multi-Turn Session Pool Normalization
+- **Stateful Tool Call Registry:** Retain active `tool_call_id` mappings in the session pool. When the client sends `role: "tool"`, verify that `tool_call_id` matches an active pending call from the previous assistant turn; reject orphan or unprompted tool messages with HTTP 400.
+- **Message Tree Normalization:** Translate client history into upstream format. Map `role: "assistant"` with `tool_calls` and subsequent `role: "tool"` messages into structured context blocks (e.g. `[Tool Result for <name> (<id>)]: <content>`) anchored to the assistant turn's message ID (`parent_message_id`).
+- **Session Mutex & 404 Recovery:** Protect per-session state with an `asyncio.Lock` to prevent DAG corruption from concurrent requests. If upstream returns 404 due to context eviction, replay the full normalized conversation history from root (`parent_message_id="client-created-root"`).
+
+### D. MCP Plugin Bridge Hardening
+- **SSRF Mitigation:** When connecting to remote/SSE MCP endpoints, perform synchronous DNS pre-resolution and reject connections to loopback (`127.0.0.0/8`, `::1`), private subnets (RFC 1918: `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`), and cloud metadata services (`169.254.169.254`). Disable automatic HTTP redirects.
+- **Zero-Shell Subprocess Execution:** Run local MCP servers via `subprocess.Popen(cmd_list, shell=False)` using an explicit binary allowlist.
+- **Credential & Environment Isolation:** Pass a sanitized, empty environment (`env={}` + explicitly whitelisted keys) to child MCP processes. Never pass `os.environ.copy()`, which leaks gateway API keys, session tokens, and proxy secrets.
+- **Hard Execution Timeout:** Enforce a strict execution deadline (e.g. 15s) for external tool calls so hanging MCP servers do not starve the gateway.
+
+### E. Codex / Responses Wire Protocol Custom Tool Streaming
+- **Incomplete JSON Prefix Guard:** When extracting unwrapped arguments for custom/freeform tool delta streaming (e.g. converting `{"input": "<cmd>"}` to `response.custom_tool_call_input.delta`), argument tokens arrive incrementally (`'{"'`, `'in'`, `'pu'`, `'t"'`, `': '`, `'"'`). If `s.startswith("{")` or `s.startswith("[")` and the payload has neither parsed as complete JSON nor matched the value regex, return `""` immediately. Never fall through to returning raw `s`: returning partial JSON syntax emits syntax fragments as tool input and advances `emitted_input_len` past 0, which stalls delta streaming until actual input length exceeds the syntax length and corrupts the command prefix.
+- **Delimiter-Adjacent Formatting Whitespace Suppression:** When models emit closing tool delimiters (e.g. `<<</TOOL_CALL_...>>>\n`), the trailing newline is delimiter formatting, not assistant speech. Buffer leading text or check for completed tool calls so delimiter-adjacent whitespace does not spuriously instantiate an empty or newline-only `message` output item in turn output arrays.
+

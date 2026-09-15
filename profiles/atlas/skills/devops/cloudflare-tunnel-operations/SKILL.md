@@ -22,7 +22,7 @@ Operate a tunnel as a complete route: public hostname, DNS record, cloudflared i
 2. Inspect the complete `ingress:` list before editing. Each hostname gets one `service`; retain the terminal `http_status:404` fallback.
    *Note: If `patch` or `write_file` tools refuse direct edits to `/etc/cloudflared/config*.yml` or `/etc/nginx/sites-available/*` due to sensitive system paths, use a small inline Python script via `write_file` into workspace and run it via `terminal` to modify or write the file.*
 3. Keep an origin on loopback unless the application explicitly supports authenticated public binding.
-4. Add/update the ingress entry, validate syntax with `cloudflared tunnel --config <path> ingress validate` (the `--config` flag MUST precede `ingress validate`), then route DNS explicitly using tunnel UUID (`cloudflared --origincert /root/.cloudflared/cert.pem tunnel route dns --overwrite-dns <tunnel-uuid> <hostname>`).
+4. Create a backup before editing (`cp <config> <config>.bak_$(date +%Y%m%d)`). Add/update the ingress entry, run `diff -u <backup> <config>` to verify zero sibling ingress mutations, validate syntax with `cloudflared tunnel --config <path> ingress validate` (the `--config` flag MUST precede `ingress validate`), then route DNS explicitly using tunnel UUID (`cloudflared --origincert /root/.cloudflared/cert.pem tunnel route dns --overwrite-dns <tunnel-uuid> <hostname>`).
 5. Restart the managed unit with `systemctl`; never leave an unmanaged `cloudflared` process competing with it. Note that `systemctl reload cloudflared` is unsupported (cloudflared doesn't implement reload); use restart or kill process if allowed.
 6. Verify in order: origin listener, local HTTP with its expected Host header, public HTTP, then the browser/WebSocket path.
 
@@ -109,6 +109,8 @@ cloudflared --origincert /root/.cloudflared/cert.pem tunnel route dns --overwrit
 ```
 Verify: `cloudflared --origincert /root/.cloudflared/cert.pem tunnel route dns -f <tunnel-uuid> <hostname>` prints "already configured to route to your tunnel" if correct.
 
+**Wildcard DNS Trap (*.domain.com):** Never assume a zone wildcard DNS CNAME automatically routes new subdomains correctly to your tunnel. When edge workers, page rules, or custom transform rules exist on the zone, unmapped subdomains can return empty 200 (0 bytes) or hit default edge handlers. Always bind an explicit CNAME record to the tunnel UUID for every newly exposed hostname.
+
 ### Ingress Validation Syntax Flag Order
 `cloudflared tunnel ingress validate` does not accept trailing flags. Always place `--config` before the subcommand:
 ```bash
@@ -135,6 +137,7 @@ Report the changed unit/config file, hostname, target listener, DNS action, and 
 ## Verification checklist
 
 - [ ] Ingress shape and final fallback were inspected.
+- [ ] Ingress config diff verified against backup to ensure zero sibling route corruption.
 - [ ] Managed tunnel unit restarted cleanly.
 - [ ] DNS and local origin checks agree with the target hostname.
 - [ ] Public HTTP and relevant WebSocket behavior were tested separately.

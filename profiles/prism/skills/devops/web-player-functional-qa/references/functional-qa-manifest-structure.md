@@ -45,13 +45,44 @@ Standard output structure for PRISM functional QA runs. Used by fleet gauntlet m
 ```
 <workspace>/
   FUNCTIONAL_QA.md                         # Human-readable report
+  REPRODUCIBILITY_RUNBOOK.md               # Deterministic execution runbook
   evidence/manifests/
-    prism-functional.json                  # Machine-readable manifest
+    prism-functional.json                  # PRISM_VERIFICATION_REPORT.json
+    prism-coverage-map.json                # State reconciliation map
+    defect-ledger.json                     # Structured failures (if FAIL)
     screenshot-320px.png                   # Responsive screenshots
     screenshot-390px.png
     screenshot-768px.png
     screenshot-1440px.png
     screenshot-1920px.png
+```
+
+## Supplemental Manifest Schemas
+
+### `prism-coverage-map.json`
+```json
+{
+  "build_sha": "<sha>",
+  "total_states": 12,
+  "exercised_states": 12,
+  "unexercised_states": [],
+  "coverage_percentage": 100.0
+}
+```
+
+### `defect-ledger.json` (emitted on failure)
+```json
+[
+  {
+    "defect_id": "DEF-001",
+    "severity": "BLOCKER",
+    "domain": "form_boundary",
+    "selector": "[data-testid=\"submit-button\"]",
+    "expected": "Button disabled during in-flight network request",
+    "actual": "Rapid double-click dispatched duplicate network requests",
+    "stack_trace": "..."
+  }
+]
 ```
 
 ## Verdict Rules

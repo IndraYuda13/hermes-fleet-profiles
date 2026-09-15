@@ -1,9 +1,9 @@
 {
-  "last_report_path": "/root/.hermes/profiles/frame/logs/curator/20260905-131343",
-  "last_run_at": "2026-09-05T13:13:43.997776+00:00",
-  "last_run_duration_seconds": 21.067788,
-  "last_run_summary": "auto: no changes; llm: ### Pass Summary\n\n- **Total curator-managed candidates:** 7\n- **Pinned skills skipped (Hard Rule 3):** 6\n  - `craftsmanship-core` (`pinned=yes`)\n  - `fleet-v22-governance` (`pinned=yes`)\n  - `frontend-craftsmanship` (`pinned=yes`)\n  - `fron…",
+  "last_report_path": "/root/.hermes/profiles/frame/logs/curator/20260912-132409",
+  "last_run_at": "2026-09-12T13:24:09.956347+00:00",
+  "last_run_duration_seconds": 26.660774,
+  "last_run_summary": "auto: no changes; llm: ### Curator Audit & Consolidation Report\n\n#### Evaluation Summary\n- **Candidate Pool:** 7 curator-managed skills reviewed.\n- **Pinned Skills (Skipped per Rule 3):** 6 skills are flagged `pinned=yes` and skipped entirely:\n  - `craftsmanship-…",
   "last_run_summary_shown_at": null,
   "paused": false,
-  "run_count": 2
+  "run_count": 3
 }

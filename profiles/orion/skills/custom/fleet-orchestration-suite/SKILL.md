@@ -35,3 +35,16 @@ Comprehensive standard operating procedure for orchestrating specialized autonom
 - **Dynamic Git Anchors:** Before modifying production source, record exact branch (`git symbolic-ref --short HEAD`) and SHA (`git rev-parse HEAD`), create a dedicated feature branch, and author an automated 1-click rollback script (`rollback_to_vX_stable.sh`).
 - **Feature-Level Rollback Verification:** Rollback verification must confirm feature signatures (canvas, WebGL, scripts) in a headless browser, not merely HTTP 200 or title tags.
 - **Release Gating:** Two independent verification passes (PRISM functional + LENS visual) required before ORION presents deliverables for human review.
+
+## 5. UI Design V4 Lifecycle & Verification Hardening
+For UI Design Depth 2 and Depth 3 missions, ORION enforces the full 14-stage V4 pipeline, Creator != Certifier boundary, bounded exploration budget, and dual independent release veto.
+See complete procedural guide and invariant rules:
+`skill_view("fleet-orchestration-suite", "references/ui-v4-orchestration-and-verification-governance.md")`
+
+## 6. Asynchronous Dual-Verifier Arrival & Release State Machine
+- **Asynchronous Verifier Arrival Handling:** When independent verifiers run in parallel (e.g. LENS visual QA and PRISM functional/a11y QA), one verifier will inevitably finish and report first via A2A or Kanban.
+  1. *Early Arrival Acknowledgment:* Acknowledge receipt, inspect on-disk artifacts (`LENS_REVIEW_REPORT.json` or PRISM test logs), and approve promotion to `BEST_BUILD_SHA` for that verification dimension.
+  2. *Strict In-Flight Guard:* Record `INTERNAL_VISUAL_GATE = PASS` (or functional pass), but keep `MISSION_RELEASE_STATE = IN_VERIFICATION` while sibling verifier tasks remain active (`status: running`). Never declare mission release or notify the human owner until ALL required verifier tasks reach terminal states.
+  3. *Owner Acceptance Reservation:* `INTERNAL_RELEASE_GATE = PASS` marks internal verification closure only. `OWNER_VISUAL_ACCEPTANCE` and `OWNER_ACCEPTANCE` MUST remain `PENDING`. Internal agents (ORION, LENS, PRISM, FRAME) are strictly forbidden from setting owner acceptance to `PASS`; only the human owner can transition it.
+  4. *Unified Meta-Release Synthesis:* Once all verifiers complete with PASS, ORION synthesizes the unified release decision record, bundles all visual and functional evidence, and presents the deliverable with `MISSION_RELEASE_STATE = AWAITING_OWNER`.
+

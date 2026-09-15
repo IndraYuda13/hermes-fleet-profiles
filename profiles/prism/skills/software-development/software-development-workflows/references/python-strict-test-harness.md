@@ -25,8 +25,21 @@ When auditing and verifying Python test suites under Python 3.12+ (especially wi
 
 ## 2. Pytest Configuration & Discovery Isolation
 
-* Always ensure `pytest.ini` or `pyproject.toml` defines `pythonpath = .` so the test runner does not depend on ambient shell `PYTHONPATH` environment variables.
-* Set `asyncio_mode = strict` or `auto` explicitly in `pytest.ini` when using `pytest-asyncio`.
+* **Discovery Scoping in Monorepos & Multi-Package Trees**: Bare `pytest` recursively discovers all `test_*.py` files across the entire workspace. In repositories containing skill trees, plugins, or heterogeneous tools, this triggers collection crashes:
+  - Missing optional dependencies in sibling packages (e.g. `ModuleNotFoundError: No module named 'docx'`).
+  - Namespace collisions from identical test filenames across subtrees (`import file mismatch: imported module 'test_core' has this __file__ attribute...`).
+* **Root Configuration Requirement**: Always declare explicit test paths and module roots in `pytest.ini` or `pyproject.toml`:
+  ```ini
+  [pytest]
+  testpaths = tests
+  pythonpath = .
+  ```
+* **Ad-Hoc & Unconfigured Execution**: When invoking tests without a root `pytest.ini`, never run bare `pytest` from the workspace root. Always scope the target path and pythonpath explicitly:
+  ```bash
+  PYTHONPATH=. pytest tests/ -v
+  ```
+* **Failure Distinction**: Distinguish test collection errors in unconfigured sibling directories from genuine test assertion failures in the target suite before declaring a build or test suite broken.
+* **Asyncio Mode**: Set `asyncio_mode = strict` or `auto` explicitly in `pytest.ini` when using `pytest-asyncio`.
 
 ## 3. Concurrency & Idempotency Testing
 

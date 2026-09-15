@@ -1,4 +1,4 @@
-_config_version: 41
+_config_version: 44
 a2a_agents:
   atlas:
     timeout: 900
@@ -41,24 +41,24 @@ curator:
   consolidate: true
   prune_builtins: false
 custom_providers:
-- api_key: REDACTED
-  base_url: https://9router.indrayuda.my.id/v1
-  model: gpt
-  models:
-    ag-opus-pool:
-      context_length: 950000
-    gpt:
-      context_length: 500000
-  name: 9router.indrayuda.my.id
-- api_key: REDACTED
-  base_url: http://localhost:20128/v1
-  model: gpt
-  models:
-    ag-opus-pool:
-      context_length: 950000
-    gpt:
-      context_length: 500000
-  name: Local (localhost:20128)
+  - api_key: REDACTED
+    base_url: https://9router.indrayuda.my.id/v1
+    model: gpt
+    models:
+      ag-opus-pool:
+        context_length: 950000
+      gpt:
+        context_length: 500000
+    name: 9router.indrayuda.my.id
+  - api_key: REDACTED
+    base_url: http://localhost:20128/v1
+    model: gpt
+    models:
+      ag-opus-pool:
+        context_length: 950000
+      gpt:
+        context_length: 500000
+    name: Local (localhost:20128)
 dashboard:
   cors_origins: '[''https://hermes.indrayuda.my.id'']'
   host: 0.0.0.0
@@ -83,66 +83,66 @@ kanban:
   dispatch_in_gateway: false
 known_builtin_toolsets:
   a2a:
-  - browser
-  - clarify
-  - code_execution
-  - computer_use
-  - context_engine
-  - cronjob
-  - delegation
-  - discord
-  - discord_admin
-  - file
-  - homeassistant
-  - image_gen
-  - memory
-  - session_search
-  - skills
-  - spotify
-  - stt
-  - terminal
-  - todo
-  - tts
-  - video
-  - video_gen
-  - vision
-  - web
-  - x_search
-  - yuanbao
+    - browser
+    - clarify
+    - code_execution
+    - computer_use
+    - context_engine
+    - cronjob
+    - delegation
+    - discord
+    - discord_admin
+    - file
+    - homeassistant
+    - image_gen
+    - memory
+    - session_search
+    - skills
+    - spotify
+    - stt
+    - terminal
+    - todo
+    - tts
+    - video
+    - video_gen
+    - vision
+    - web
+    - x_search
+    - yuanbao
   cli:
-  - browser
-  - clarify
-  - code_execution
-  - computer_use
-  - context_engine
-  - cronjob
-  - delegation
-  - discord
-  - discord_admin
-  - file
-  - homeassistant
-  - image_gen
-  - memory
-  - session_search
-  - skills
-  - spotify
-  - stt
-  - terminal
-  - todo
-  - tts
-  - video
-  - video_gen
-  - vision
-  - web
-  - x_search
-  - yuanbao
+    - browser
+    - clarify
+    - code_execution
+    - computer_use
+    - context_engine
+    - cronjob
+    - delegation
+    - discord
+    - discord_admin
+    - file
+    - homeassistant
+    - image_gen
+    - memory
+    - session_search
+    - skills
+    - spotify
+    - stt
+    - terminal
+    - todo
+    - tts
+    - video
+    - video_gen
+    - vision
+    - web
+    - x_search
+    - yuanbao
 known_plugin_toolsets:
   a2a:
-  - a2a
-  - spotify
+    - a2a
+    - spotify
   cli:
-  - a2a
-  - spotify
+    - a2a
+    - spotify
 mcp_servers:
   burpmcp:
     enabled: true
@@ -190,202 +190,202 @@ platform_toolsets:
 plugins:
   disabled: []
   enabled:
-  - platforms/a2a
-  - ponytail
-  - superpowers
-  - web-firecrawl
-  - web-searxng
+    - platforms/a2a
+    - ponytail
+    - superpowers
+    - web-firecrawl
+    - web-searxng
 skills:
   disabled:
-  - 9router-troubleshooting
-  - account-login-router
-  - airtable
-  - anime-recommendation
-  - anti-ai-slop-web-design
-  - apple-app-automation
-  - apple-ecosystem-automation
-  - apple-notes
-  - apple-reminders
-  - architecture-diagram
-  - arxiv
-  - ascii-art
-  - ascii-video
-  - audiocraft
-  - automated-git-backups
-  - baoyu-infographic
-  - blocked-page-recovery
-  - blogwatcher
-  - box
-  - brainstorming
-  - break-tool-loops
-  - bstation-streaming-bot
-  - cf-temp-mail
-  - claude-code
-  - claude-design
-  - cloudflare-tunnel-management
-  - cloudflare-tunnel-operations
-  - cloudflared-tunnel-operations
-  - code-review-workflows
-  - codebase-inspection
-  - codex
-  - coding-agent-orchestration
-  - comfyui
-  - competitor-news-monitor
-  - computer-use
-  - craftsmanship-core
-  - creative-engineering-orchestration
-  - ddg-search
-  - deep-research-pro
-  - design-md
-  - dispatching-parallel-agents
-  - document-to-action-items
-  - docx
-  - dogfood
-  - email-inbox-triage
-  - error-learning-loop
-  - evaluating-llms-harness
-  - event-quest-design
-  - excalidraw
-  - executing-plans
-  - express-api-development
-  - external-coding-agents
-  - findmy
-  - finishing-a-development-branch
-  - firecrawl-self-hosted
-  - fleet-evidence-gate
-  - fleet-v22-governance
-  - fleet-visual-intelligence
-  - frontend-design
-  - generative-engine-optimization
-  - gif-search
-  - github-auth
-  - github-bulk-operations
-  - github-code-review
-  - github-issue-to-pr
-  - github-issues
-  - github-operations
-  - github-pr-workflow
-  - github-profile-management
-  - github-repo-management
-  - github-repository-operations
-  - github-sparse-clone
-  - google-sheets-formatting-pitfalls
-  - google-workspace
-  - grass-bot-management
-  - grounded-citations
-  - hackerai-repo-exploration
-  - heartmula
-  - hermes-agent
-  - hermes-agent-backup
-  - hermes-agent-memory-limits
-  - hermes-agent-skill-authoring
-  - hermes-dashboard-cloudflare
-  - hermes-desktop-plugins
-  - hermes-operations
-  - hermes-state-management
-  - himalaya
-  - huggingface-hub
-  - humanizer
-  - imessage
-  - inspecting-hermes-desktop-dom
-  - jira-mcp-atlassian
-  - jira-rest-atlassian
-  - jupyter-live-kernel
-  - llama-cpp
-  - llm-leaderboards
-  - llm-wiki
-  - lms-automation
-  - manage-server
-  - manim-video
-  - maps
-  - meeting-action-items
-  - merge-reconciler
-  - moodle-universal-quiz-solver
-  - multi-search-engine
-  - n8n-workflow-automation
-  - nano-pdf
-  - node-inspect-debugger
-  - nofx-operations
-  - notion
-  - obsidian
-  - ocr-and-documents
-  - octobot-operations
-  - opencode
-  - openhue
-  - osint-phone-profiling
-  - p5js
-  - pdf
-  - petdex
-  - plan
-  - polymarket
-  - ponytail
-  - popular-web-designs
-  - postman-mcp
-  - powerpoint
-  - prediction-market-research
-  - pretext
-  - proactive-agent
-  - product-price-monitor
-  - python-debugpy
-  - python-package-troubleshooting
-  - receiving-code-review
-  - requesting-code-review
-  - requesting-code-review.consolidated-20260724
-  - research-paper-writing
-  - rexpository-pattern-scan
-  - runtime-debugging
-  - sdlc-review
-  - searxng-operations
-  - segment-anything
-  - self-hosted-service-operations
-  - service-connectivity-troubleshooting
-  - serving-llms-vllm
-  - session-cleanup
-  - session-librarian
-  - simplify-code
-  - sketch
-  - software-development-workflows
-  - songsee
-  - songwriting-and-ai-music
-  - spike
-  - subagent-driven-development
-  - superpowers
-  - systematic-debugging
-  - systematic-debugging.consolidated-20260724
-  - teams-meeting-pipeline
-  - technical-workflow
-  - telegram-bot-development
-  - telegram-bot-operations
-  - telegram-bot-routing
-  - telegram-bot-troubleshooting
-  - telegram-pyrogram-bots
-  - telethon-interactive-login
-  - telethon-reseller-login
-  - test-driven-development
-  - test-driven-development.consolidated-20260724
-  - time-series-foundation-models
-  - timesfm-forecasting-engine
-  - touchdesigner-mcp
-  - trading-research
-  - troubleshooting-proxy-and-404-errors
-  - ui-ux-pro-max
-  - using-git-worktrees
-  - using-superpowers
-  - verification-before-completion
-  - verification-gate
-  - vps-disk-maintenance
-  - vps-llm-sizing
-  - vps-service-operations
-  - web-scraping-workflows
-  - web-ui-testing-and-auditing
-  - weekly-review-planning
-  - weights-and-biases
-  - writing-plans
-  - writing-skills
-  - xlsx
-  - xurl
-  - youtube-content
-  - yuanbao
+    - 9router-troubleshooting
+    - account-login-router
+    - airtable
+    - anime-recommendation
+    - anti-ai-slop-web-design
+    - apple-app-automation
+    - apple-ecosystem-automation
+    - apple-notes
+    - apple-reminders
+    - architecture-diagram
+    - arxiv
+    - ascii-art
+    - ascii-video
+    - audiocraft
+    - automated-git-backups
+    - baoyu-infographic
+    - blocked-page-recovery
+    - blogwatcher
+    - box
+    - brainstorming
+    - break-tool-loops
+    - bstation-streaming-bot
+    - cf-temp-mail
+    - claude-code
+    - claude-design
+    - cloudflare-tunnel-management
+    - cloudflare-tunnel-operations
+    - cloudflared-tunnel-operations
+    - code-review-workflows
+    - codebase-inspection
+    - codex
+    - coding-agent-orchestration
+    - comfyui
+    - competitor-news-monitor
+    - computer-use
+    - craftsmanship-core
+    - creative-engineering-orchestration
+    - ddg-search
+    - deep-research-pro
+    - design-md
+    - dispatching-parallel-agents
+    - document-to-action-items
+    - docx
+    - dogfood
+    - email-inbox-triage
+    - error-learning-loop
+    - evaluating-llms-harness
+    - event-quest-design
+    - excalidraw
+    - executing-plans
+    - express-api-development
+    - external-coding-agents
+    - findmy
+    - finishing-a-development-branch
+    - firecrawl-self-hosted
+    - fleet-evidence-gate
+    - fleet-v22-governance
+    - fleet-visual-intelligence
+    - frontend-design
+    - generative-engine-optimization
+    - gif-search
+    - github-auth
+    - github-bulk-operations
+    - github-code-review
+    - github-issue-to-pr
+    - github-issues
+    - github-operations
+    - github-pr-workflow
+    - github-profile-management
+    - github-repo-management
+    - github-repository-operations
+    - github-sparse-clone
+    - google-sheets-formatting-pitfalls
+    - google-workspace
+    - grass-bot-management
+    - grounded-citations
+    - hackerai-repo-exploration
+    - heartmula
+    - hermes-agent
+    - hermes-agent-backup
+    - hermes-agent-memory-limits
+    - hermes-agent-skill-authoring
+    - hermes-dashboard-cloudflare
+    - hermes-desktop-plugins
+    - hermes-operations
+    - hermes-state-management
+    - himalaya
+    - huggingface-hub
+    - humanizer
+    - imessage
+    - inspecting-hermes-desktop-dom
+    - jira-mcp-atlassian
+    - jira-rest-atlassian
+    - jupyter-live-kernel
+    - llama-cpp
+    - llm-leaderboards
+    - llm-wiki
+    - lms-automation
+    - manage-server
+    - manim-video
+    - maps
+    - meeting-action-items
+    - merge-reconciler
+    - moodle-universal-quiz-solver
+    - multi-search-engine
+    - n8n-workflow-automation
+    - nano-pdf
+    - node-inspect-debugger
+    - nofx-operations
+    - notion
+    - obsidian
+    - ocr-and-documents
+    - octobot-operations
+    - opencode
+    - openhue
+    - osint-phone-profiling
+    - p5js
+    - pdf
+    - petdex
+    - plan
+    - polymarket
+    - ponytail
+    - popular-web-designs
+    - postman-mcp
+    - powerpoint
+    - prediction-market-research
+    - pretext
+    - proactive-agent
+    - product-price-monitor
+    - python-debugpy
+    - python-package-troubleshooting
+    - receiving-code-review
+    - requesting-code-review
+    - requesting-code-review.consolidated-20260724
+    - research-paper-writing
+    - rexpository-pattern-scan
+    - runtime-debugging
+    - sdlc-review
+    - searxng-operations
+    - segment-anything
+    - self-hosted-service-operations
+    - service-connectivity-troubleshooting
+    - serving-llms-vllm
+    - session-cleanup
+    - session-librarian
+    - simplify-code
+    - sketch
+    - software-development-workflows
+    - songsee
+    - songwriting-and-ai-music
+    - spike
+    - subagent-driven-development
+    - superpowers
+    - systematic-debugging
+    - systematic-debugging.consolidated-20260724
+    - teams-meeting-pipeline
+    - technical-workflow
+    - telegram-bot-development
+    - telegram-bot-operations
+    - telegram-bot-routing
+    - telegram-bot-troubleshooting
+    - telegram-pyrogram-bots
+    - telethon-interactive-login
+    - telethon-reseller-login
+    - test-driven-development
+    - test-driven-development.consolidated-20260724
+    - time-series-foundation-models
+    - timesfm-forecasting-engine
+    - touchdesigner-mcp
+    - trading-research
+    - troubleshooting-proxy-and-404-errors
+    - ui-ux-pro-max
+    - using-git-worktrees
+    - using-superpowers
+    - verification-before-completion
+    - verification-gate
+    - vps-disk-maintenance
+    - vps-llm-sizing
+    - vps-service-operations
+    - web-scraping-workflows
+    - web-ui-testing-and-auditing
+    - weekly-review-planning
+    - weights-and-biases
+    - writing-plans
+    - writing-skills
+    - xlsx
+    - xurl
+    - youtube-content
+    - yuanbao
   write_approval: false
 toolsets:
 - file
@@ -405,3 +405,41 @@ agent: {}
 browser:
   use_real_profile: true
   real_profile_autoclose: true
+
+# ── Security ──────────────────────────────────────────────────────────
+# Secret redaction is ON by default — strings that look like API keys,
+# tokens, and passwords are masked in tool output, logs, and chat
+# responses before the model or user ever sees them. Set redact_secrets
+# to false to disable (e.g. when developing the redactor itself).
+# tirith pre-exec scanning is enabled by default when the tirith binary
+# is available. Configure via security.tirith_* keys or env vars
+# (TIRITH_ENABLED, TIRITH_BIN, TIRITH_TIMEOUT, TIRITH_FAIL_OPEN).
+#
+# security:
+#   redact_secrets: true
+#   tirith_enabled: true
+#   tirith_path: "tirith"
+#   tirith_timeout: 5
+#   tirith_fail_open: true
+
+# ── Fallback Model ────────────────────────────────────────────────────
+# Automatic provider failover when primary is unavailable.
+# Uncomment and configure to enable. Triggers on rate limits (429),
+# overload (529), service errors (503), or connection failures.
+#
+# Supported providers:
+#   openrouter   (OPENROUTER_API_KEY)  — routes to any model
+#   openai-codex (OAuth — hermes auth) — OpenAI Codex
+#   nous         (OAuth — hermes auth) — Nous Portal
+#   zai          (ZAI_API_KEY)         — Z.AI / GLM
+#   kimi-coding  (KIMI_API_KEY)        — Kimi / Moonshot
+#   kimi-coding-cn (KIMI_CN_API_KEY)   — Kimi / Moonshot (China)
+#   minimax      (MINIMAX_API_KEY)     — MiniMax
+#   minimax-cn   (MINIMAX_CN_API_KEY)  — MiniMax (China)
+#   bedrock      (AWS IAM / boto3)     — AWS Bedrock (Converse API)
+#
+# For custom OpenAI-compatible endpoints, add base_url and key_env.
+#
+# fallback_model:
+#   provider: openrouter
+#   model: anthropic/claude-sonnet-4

@@ -32,18 +32,189 @@ This skill provides proven procedures and strict technical invariants for client
 - **Rule:** Never use `build/index.js` for `docx`. Always specify `build/index.umd.js` (v8) or `dist/index.umd.cjs` (v9).
 
 ### Client-Side PDF Generation via html2pdf.js
-- For clean A4 document output (such as ATS resumes or invoices):
+- For clean A4 document output (such as ATS resumes, invoices, or EPDA disbursement sheets) across ALL devices (desktop, tablet, and mobile smartphones), implement the **Isolated Viewport Iframe Engine Pattern**:
 ```javascript
-const opt = {
-  margin: [10, 10, 10, 10], // mm [top, left, bottom, right]
-  filename: filename,
-  image: { type: 'jpeg', quality: 0.98 },
-  html2canvas: { scale: 2.5, useCORS: true, letterRendering: true },
-  jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-  pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-};
-html2pdf().set(opt).from(element).save();
+async function exportPerfectA4PDF(sourceElementId, filename) {
+  const source = document.getElementById(sourceElementId);
+  if (!source) return;
+
+  const sourceHtml = source.outerHTML;
+
+  // 1. ISOLATED VIEWPORT IFRAME ENGINE:
+  // Creates an independent 800px viewport. Isolates rendering from mobile phone viewports (390px),
+  // split-screen flex containers, browser zoom levels, and scroll offsets.
+  const iframe = document.createElement('iframe');
+  iframe.id = 'pdfIsolationExportFrame';
+  iframe.style.position = 'fixed';
+  iframe.style.left = '-9999px';
+  iframe.style.top = '0';
+  iframe.style.width = '800px';
+  iframe.style.height = '1140px';
+  iframe.style.zIndex = '-9999';
+  iframe.style.border = 'none';
+  iframe.style.background = '#ffffff';
+  document.body.appendChild(iframe);
+
+  const idoc = iframe.contentWindow.document;
+  idoc.open();
+  idoc.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: #ffffff; color: #000000; width: 794px; margin: 0 auto; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .a4-paper {
+          width: 794px !important;
+          max-width: 794px !important;
+          height: 1120px !important;
+          max-height: 1120px !important;
+          padding: 35px 42px 25px 42px !important;
+          box-sizing: border-box !important;
+          font-family: 'Consolas', 'Courier New', monospace;
+          font-size: 8.2pt;
+          line-height: 1.22;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          background: #ffffff;
+        }
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; box-sizing: border-box; font-family: 'Consolas', monospace; font-size: 8pt; }
+        td, th { padding: 2.5px 5px; border: 1px solid #000000; vertical-align: middle; }
+        .doc-head-table td, .doc-bottom-grid td { border: none; }
+        .t-left { text-align: left !important; }
+        .t-center { text-align: center !important; }
+        .t-right { text-align: right !important; }
+      </style>
+    </head>
+    <body>
+      ${sourceHtml}
+    </body>
+    </html>
+  `);
+  idoc.close();
+
+  // Allow layout and web fonts to settle
+  await new Promise(r => setTimeout(r, 200));
+
+  const targetEl = idoc.querySelector('.a4-paper') || idoc.body.firstElementChild;
+
+  const opt = {
+    margin: [0, 0, 0, 0], // 0 margin in jsPDF because padding is internal
+    filename: filename,
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { 
+      scale: 2, 
+      useCORS: true, 
+      logging: false,
+      scrollX: 0,
+      scrollY: 0,
+      width: 794,
+      height: 1120,
+      windowWidth: 800
+    },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+    pagebreak: { mode: 'avoid-all' } // Strict single-page enforcement
+  };
+
+  try {
+    const generator = iframe.contentWindow.html2pdf || window.html2pdf;
+    await generator().set(opt).from(targetEl).save();
+    if (document.getElementById('pdfIsolationExportFrame')) {
+      document.body.removeChild(iframe);
+    }
+  } catch (err) {
+    if (document.getElementById('pdfIsolationExportFrame')) {
+      document.body.removeChild(iframe);
+    }
+    console.error("PDF export error, fallback to print:", err);
+    window.print();
+  }
+}
 ```
+- **The `position: fixed` + `z-index: -1` html2canvas Blank Canvas Trap (`canvasHeight = 0` / 3KB Empty PDF):**
+  - *Trap:* Attempting to hide an export clone with `position: fixed; z-index: -1;` before passing it to `html2pdf().from(clone)`.
+  - *Mechanism:* In `html2canvas`, any element with `position: fixed` causes the layout engine to compute a canvas height of `0` (`canvasHeight: 0`). Furthermore, `z-index: -1` paints the element behind the root stacking context and dark background of `document.body`. Together, `html2canvas` outputs an empty canvas, and `jsPDF` produces a 3KB blank white PDF file.
+  - *Rule:* Never use `position: fixed` or negative `z-index` on export clones. If using client-side canvas capture, mount offscreen inside an isolated `<iframe>`.
+- **The Hidden-Tab / Ancestor `display: none` Trap in Client-Side PDF Generation (3KB Blank/Empty PDF):**
+  - *Trap:* Triggering `html2pdf()` or `html2canvas` while the source element (e.g. `#epdaPaper`) resides inside a parent container that is hidden via `display: none` (such as a mobile tabbed interface where the Form tab is active and the Document Preview tab is hidden).
+  - *Mechanism:* Elements inside `display: none` ancestors are completely omitted from the browser's layout render tree. Calling `.cloneNode(true)` on such an element clones an uncomputed node with `offsetWidth = 0` and `offsetHeight = 0`. When `html2canvas` attempts to measure or rasterize it, canvas height evaluates to `0`, producing an empty canvas stream, and `jsPDF` saves a completely blank 3KB white PDF file.
+  - *Fix (Isolated Active Paint Engine Pattern):* When cloning an element for export, NEVER rely on the parent container's visibility state. Append the clone directly to `document.body`, explicitly force `display: flex !important; flex-direction: column !important; justify-content: space-between !important; width: 794px !important; max-width: 794px !important; height: 1120px !important; max-height: 1120px !important; position: fixed !important; left: 0 !important; top: 0 !important; z-index: 99999 !important; background: #ffffff !important; box-sizing: border-box !important; padding: 35px 42px 25px 42px !important;`, wait 100–150ms for the browser to compute the layout and render styles, run `html2pdf().set(opt).from(clone).save()`, and remove the clone inside `.then()` and `.catch()` handlers.
+- **The CSS Animation Frozen-State Trap in `@media print` (The 1KB / Blank Headless Print PDF Bug):**
+  - *Trap:* Adding CSS entry animations (e.g. `animation: fadeIn 0.2s ease-in-out;` where `@keyframes fadeIn { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }`) to tab sections or document preview panels causes automated or headless printing (Chrome `--print-to-pdf`, Puppeteer, Playwright, or CDP `Page.printToPDF`) to produce a 1KB completely blank white PDF with zero text.
+  - *Mechanism:* In headless or programmatic PDF printing, the browser rasterizes print media before animations are scheduled to run, or permanently freezes all CSS transitions and `@keyframes` animations at their initial keyframe (`from { opacity: 0; }`). Because `opacity: 0` is stamped onto the printable container during render tree generation, the print engine treats the element as completely invisible and outputs an empty white page with an empty content stream.
+  - *Rule:* In `@media print`, ALWAYS explicitly disable all animations and transitions globally, and force target containers to full opacity:
+    ```css
+    @media print {
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        animation: none !important;
+        transition: none !important;
+      }
+      #printableContainer,
+      .tab-section {
+        display: block !important;
+        opacity: 1 !important;
+        transform: none !important;
+        animation: none !important;
+      }
+    }
+    ```
+- **The Responsive Media Query Pollution of `@media print` Trap (Blank Page on Mobile Print):**
+  - *Trap:* Declaring mobile responsive breakpoints as bare `@media (max-width: 1100px)` instead of scoped `@media screen and (max-width: 1100px)`.
+  - *Mechanism:* Bare `@media (max-width: ...)` applies to all media types including `print`. When users print from a smartphone (360px–390px viewport) or a headless browser, the browser evaluates the breakpoint against the screen width before printing. If the responsive rule contains an ID selector `#previewCol { display: none !important; }`, it overrides `@media print` class rules like `.preview-container { display: block !important; }` due to higher CSS specificity (`0,1,0,0` vs `0,0,1,0`). The document container remains `display: none` during printing, causing the browser to print an empty white page.
+  - *Rule:* ALWAYS declare responsive breakpoints as `@media screen and (max-width: ...)`. In `@media print`, explicitly target the printable container by its exact ID and class with `display: block !important; width: 100% !important; padding: 0 !important; margin: 0 auto !important;`, and hide application chrome (`#controlsCol, .controls-container, .mobile-tab-bar, .no-print, header.app-topbar`).
+- **The In-Situ Single-Page JavaScript Syntax Collision Trap ("Semuanya Tidak Bisa di Klik"):**
+  - *Trap:* When replacing or updating functions in client-side HTML `<script>` blocks via regex or find-and-replace, dangling commas, mismatched braces, or unremoved trailing fragments (e.g. `},\n jsPDF: ...`) leave invalid syntax.
+  - *Mechanism:* Browsers parse `<script>` tags as a single compilation unit. An unhandled `SyntaxError` at any line halts execution of the entire script. Consequently, top-level functions (`calculate`, `loadHub`, `downloadPDF`, `printDoc`) are never defined on `window`, causing all button clicks, form inputs, and dropdowns across the application to silently fail (`malah semuanya tidak bisa di klik`).
+  - *Rule:* Always validate `<script>` syntax programmatically (e.g. extracting `<script>` content and asserting `node -c` exits 0) immediately after modifying in-situ client code before deploying to production or declaring completion.
+- **The Superior Native Vector Print Architecture (`window.print()` with Dynamic Document Title):**
+  - *Trap:* Trying to force `html2canvas` rasterization for client-side PDF downloads when the user expects vector-grade print quality ("sempurna seperti print A4").
+  - *Mechanism:* `html2canvas` converts DOM elements into raster bitmap images before placing them in `jsPDF`. This introduces blurriness, missing CSS features, mobile viewport clipping, and large file sizes (~500KB–1MB). In contrast, `window.print()` delegates directly to the browser's native C++ print engine (Blink/WebKit/Gecko), rendering 100% crisp vector text, razor-sharp table borders at 1200 DPI, and exact `@media print` CSS with zero canvas bugs and compact file size (~100KB).
+  - *Pattern (Dynamic Document Title Pre-Fill for Native PDF Export):*
+    To give users a 1-click "Download PDF" experience using the native vector print engine:
+    ```javascript
+    function downloadPDF() {
+      const vessel = document.getElementById('inpVessel').value.trim().replace(/[^a-zA-Z0-9]/g, '_');
+      const port = document.getElementById('inpPort').value.trim().replace(/[^a-zA-Z0-9]/g, '_');
+      const filename = `EPDA_${vessel}_${port}_BGM`;
+
+      // Dynamically update document.title: Modern browsers (Chrome, Safari, Edge) automatically
+      // use document.title as the default suggested file name in the "Save as PDF" dialog!
+      const prevTitle = document.title;
+      document.title = filename;
+
+      showToast("📄 Membuka dialog cetak PDF... Pilih 'Save as PDF' untuk hasil 100% jernih dan sempurna!");
+
+      setTimeout(() => {
+        window.print();
+        setTimeout(() => { document.title = prevTitle; }, 2000);
+      }, 300);
+    }
+    ```
+    This completely eliminates client-side canvas bugs while ensuring the user's downloaded PDF is 100% identical in perfection to Print A4.
+- **The Mobile Viewport Half-Page Distortion & Left Shearing Trap (`html2pdf.js` on Smartphones):**
+  - *Trap:* Triggering `html2pdf.js` / `html2canvas` directly on an in-DOM or cloned element in a mobile browser (iOS Safari or Android Chrome) produces a PDF where the document is compressed into the left 40%–50% of the page, the right half of the A4 page is completely blank white, and the left table margin is sheared off.
+  - *Mechanism:* `html2canvas` inherently adopts the host document's `window.innerWidth` (e.g. 375px–390px on smartphones) and current scroll coordinates. Even if the cloned element has `width: 794px`, the mobile browser's layout engine constrains canvas rasterization to the narrow mobile viewport width (~390px). When `jsPDF` places this 390px-wide canvas image onto a 595pt (210mm) A4 canvas, it covers only half the page width. Furthermore, mobile pinch-zoom or touch scroll offsets push the left side of the canvas into negative coordinates, slicing off the leftmost columns and headers.
+  - *Rule:* Never render `html2canvas` in the host document when mobile compatibility is required. Always mount an offscreen `<iframe>` with `width: 800px; height: 1140px; position: fixed; left: -9999px;`, inject the document and print CSS, and run `html2pdf` from inside the iframe. The iframe establishes its own independent desktop-grade viewport with zero scroll offset and zero mobile media-query interference, ensuring identical 100% full-width, single-page A4 PDF output on all devices.
+- **The Split-Screen / Responsive Container html2canvas Offset Trap (Left Shearing & Clipped Columns):**
+  - *Trap:* Passing an element directly to `html2pdf().from(element)` while it sits inside a split-screen CSS grid/flexbox layout or a horizontally scrolled container, especially when passing `windowWidth: 800` or `scrollX: 0`.
+  - *Mechanism:* `html2canvas` evaluates bounding client rect coordinates relative to the window or scroll parent. If the document sits in the right pane (e.g. `X = 560px`), forcing `windowWidth: 800` or `scrollX: 0` causes `html2canvas` to capture from the window's left edge (X=0) instead of the element's local coordinate origin. This shifts the target element 300px+ to the left into negative space, shearing off the left header, logo, and left-side table columns.
+  - *Rule:* Never capture an in-situ document element residing inside a split-screen or scrolled container. Always deep-clone the element (`cloneNode(true)`), mount it fixed at `(0, 0)` with exact A4 pixel dimensions (`width: 794px; height: 1120px; box-sizing: border-box;`), render with `html2pdf`, and unmount on completion.
+- **The Spurious Blank 2nd Page Trap in html2pdf.js:**
+  - *Trap:* The exported single-page PDF unexpectedly generates a second page that is 100% blank white.
+  - *Mechanism:* In standard A4 portrait at 96 DPI, printable page height is 297mm (1122.5px). If the rendered canvas height exceeds 1122px by even 1 single subpixel (e.g. 1123px) due to font line-height, borders, or table gaps, `jsPDF` automatically generates a second page to accommodate the overflowing 1px slice.
+  - *Rule:*
+    1. Lock the export clone height strictly to `height: 1120px; max-height: 1120px; overflow: hidden;` (2–3px below 1122.5px).
+    2. Set `pagebreak: { mode: 'avoid-all' }` in `html2pdf` options.
+- **The Dual-Margin Trap in html2pdf.js (Right-Margin Truncation):**
+  - *Trap:* Specifying non-zero margins (e.g. `margin: [8, 10, 8, 10]`) in `html2pdf` options when the target element (`.a4-paper`) is already styled to physical A4 width (`width: 210mm; box-sizing: border-box;`) with its own internal padding.
+  - *Mechanism:* `html2pdf.js` delegates to `jsPDF.addImage()`, which places the rendered canvas starting at `x = margin_left` (10mm). A 210mm wide canvas placed at `x = 10mm` terminates at `x = 220mm`. Because physical A4 paper is strictly 210mm wide, the rightmost 10mm (table borders, remarks column, currency labels, stamps) is pushed off-page and clipped off completely.
+  - *Rule:* When the target element defines internal margins/padding, `opt.margin` MUST be `0`. Lock `.a4-paper` with `width: 210mm; max-width: 210mm; min-height: 297mm; box-sizing: border-box !important; padding: 10mm 12mm 8mm 12mm;`.
+- **Table Layout Hardening for Zero-Overflow PDF:**
+  - *Rule:* Always set `.bgm-cost-table, .vessel-grid-table, table { table-layout: fixed; width: 100%; box-sizing: border-box !important; word-break: break-word; }`. Without `table-layout: fixed`, long text in remarks or particulars forces table cells beyond 100% width, causing right borders to disappear in PDF export.
 - **ATS Resume Layout Rule:** Always enforce single-column linear flow for ATS CVs. Avoid multi-column floating boxes, graphics, or nested tables that disrupt programmatic OCR/parser reading order.
 - **The html2canvas Box-Shadow Capture Artifact in PDF Export:**
   - *Trap:* Rendering the document canvas with CSS `box-shadow` on screen (e.g. `box-shadow: 0 10px 25px rgba(0,0,0,0.1)`) without disabling it during PDF generation.
@@ -353,6 +524,90 @@ When users request that client-side code be unreadable or scrambled when inspect
 
 ---
 
+## 6. Enterprise & Maritime Commercial Document Generators (EPDA, Proforma & Quotation Invoices)
+
+### Authentic Maritime & Corporate Invoice Typography Invariant
+- **Trap:** Styling enterprise disbursement or invoice previews with generic rounded web fonts (e.g. Inter, Poppins, Roboto) or soft pastel borders.
+- **Mechanism:** In global maritime trade, chartering, and international disbursement auditing, shipping documents (EPDA, FDA, Charter Parties, Fixture Notes) are audited line-by-line by international disbursement accountants. Documents styled with casual web aesthetics appear amateurish, unverified, and lack legal authority.
+- **Rule:** While the application control shell can use modern sans-serif (e.g. Plus Jakarta Sans), the live A4 document sheet MUST use high-contrast monospace / typewriter typography (`'Consolas', 'Courier New', 'IBM Plex Mono', monospace`) with `font-variant-numeric: tabular-nums`. Monospace enforces strict tabular character alignment, eliminates ambiguous digit spacing, and provides the authentic legal look of enterprise maritime documentation.
+
+### Grid Borders, Column Structure & Decimal Alignment
+- **Rule:** Never use borderless floating rows or soft box-shadows on the document table itself.
+- Construct the main disbursement table with crisp `1px–1.5px solid #000000` gridlines (`border-collapse: collapse`), dark navy header bands (`#002060` with bold white uppercase text), and a standardized 4-column structure:
+  `[PARTICULARS] | [TARIFF / CALCULATION BASIS] | [AMOUNT] | [REMARKS]`
+- Set the `TARIFF / BASIS` column to show explicit multiplication formulas (e.g. `22,698 x 0.1 x 3 Day(s)` or `0.00179 x 30,000`), allowing charterers to verify math instantly.
+- Right-align all currency amounts (`text-align: right !important`) so decimal points align vertically down the entire column.
+
+### Domain Grounding & Operational Hub Presets
+- **Trap:** Building commercial calculators with random mock ports or generic placeholder locations.
+- **Mechanism:** Sales and operations teams lose time re-entering local tariffs, while executive stakeholders immediately notice the disconnection from real company operations.
+- **Rule:** Always ground preset configurations directly in the company's verified corporate profile and strategic operational hubs. For shipping agencies like BGM, provide 1-click presets aligned with their official operational hubs (e.g. Morowali/Bahodopi, Balikpapan/Lubuk Tutung, Taboneo/Muara Berau, Cigading/Ciwandan, Dumai, Batam STS, Gresik, Jakarta HQ, Manokwari), pre-populating typical vessel specifications (GRT, DWT, LOA), cargo volumes, and localized port tariffs.
+- **Dual Selector Architecture (Native Dropdown + Visual Preset Grid):** Always pair visual preset card buttons with a prominent, stylized native `<select>` dropdown (`#selBgmPortHub`) at the top of the form with two-way state synchronization. Non-technical users instinctively look for a formal dropdown menu to switch operational hubs.
+
+### Commercial Form Control & Mobile 1-Column Invariant
+- **The Multi-Column Form Grid Squeeze Trap (<640px Viewports):**
+  - *Trap:* Retaining 2-column or 3-column CSS grids (`.grid-2`, `.grid-3`) inside form cards on mobile screens (360px–414px).
+  - *Mechanism:* On a 390px phone, 3 columns leave only ~90px width per cell. Long parameter labels (e.g. `Port Supervision`, `Harbour Dues`, `Light Dues`) and unit texts collide horizontally, forcing the rightmost column outside the viewport or truncating inputs.
+  - *Rule:* Always enforce single-column flow (`grid-template-columns: 1fr !important; gap: 10px !important;`) on mobile viewports (<640px).
+- **The Desktop Canvas Viewport Blowout Trap on Mobile (Split-Screen Document Apps):**
+  - *Trap:* In a split-screen document app (Left: Form controls, Right: Live A4 preview canvas ~794px wide), on mobile viewports (<1100px or <640px), failing to hide the A4 canvas container (`display: none !important`) by default causes the 794px-wide A4 canvas to expand the host document body width to 794px.
+  - *Mechanism:* In mobile browsers (360px–390px viewports), an unhidden 794px child element forces `document.body.scrollWidth` to ~800px. As a result, all 100%-width topbars, action buttons, tab bars, and metric cards stretch across 800px. On a 390px physical phone screen, the user only sees the left 390px, causing the right half of the navbar, the "Print A4" button, the right tab, and form inputs to appear sheared or cut off at the right edge.
+  - *Rule:* In split-screen document applications with desktop print canvases, ALWAYS isolate and hide the print canvas on mobile viewports by default in CSS:
+    ```css
+    @media (max-width: 1100px) {
+      html, body { overflow-x: hidden !important; max-width: 100vw !important; }
+      main.workspace-grid { grid-template-columns: 1fr !important; overflow-x: hidden !important; padding: 12px !important; }
+      #previewCol { display: none !important; max-width: 100vw !important; overflow-x: auto !important; }
+    }
+    ```
+    Only unhide the preview container when the user explicitly clicks the "Pratinjau A4" tab via `switchTab('preview')` using `style.setProperty('display', 'flex', 'important')`.
+- **Mobile Financial Metrics Bar 2x2 Grid Invariant:**
+  - *Trap:* Displaying a 4-item KPI financial metrics bar as a single horizontal flex row on mobile screens.
+  - *Mechanism:* Even with `flex-wrap: wrap`, long currency values (e.g. `Rp 713,258,700` and `$43,227.80`) push the 3rd and 4th metric boxes off the right screen margin on 360px–390px viewports.
+  - *Rule:* On mobile screens (<640px), always restructure metric bars into an explicit 2x2 grid (`display: grid; grid-template-columns: 1fr 1fr !important; gap: 8px !important; width: 100% !important;`) with subtle horizontal dividers, ensuring all 4 financial metrics remain 100% visible, centered, and crisp without clipping.
+- **Inline Input Unit Badges:**
+  - *Rule:* Embed numeric units (`$/MT`, `$/GRT`, `USD`, `DAYS`, `MTs`, `MOVES`) as right-aligned badge pills inside an `.input-unit-wrapper` (with `padding-right: 60px;` on the `<input>` and `pointer-events: none;` on the badge). Never let unit strings float inline next to field labels where they crowd horizontal space.
+- **Collapsible Form Card Zero-Clipping Discipline:**
+  - *Trap:* Setting `overflow: hidden` on collapsible accordion cards containing form inputs.
+  - *Mechanism:* If JavaScript accordion toggles set fixed heights or if browser reflow glitches occur, `overflow: hidden` clips bottom inputs to 0px height, making fields appear missing.
+  - *Rule:* Ensure expanded form cards maintain `overflow: visible; height: auto !important; min-height: auto !important;` with adequate bottom padding (`padding-bottom: 20px`).
+
+### Pass-Through vs Margin Financial Decomposition
+- **Rule:** Clearly decompose commercial disbursement calculations into:
+  1. *Pass-Through Costs (Port & Government Dues):* Quay Dues, Pilotage (per movement: Terminal Anchor, Anchor-Berth, Berth-Anchor, Anchor-Dept), Towage, Harbour Dues, Light Dues, Quarantine boat hire, PKKA, Shifting. Separate items subject to VAT (e.g. Indonesian PPN 11% on Quay Dues, Pilotage, and Towage) from non-VAT government PNBP fees.
+  2. *Agency Remuneration (Gross Margin):* Port clearance lumpsum and agency fees.
+  3. *Vessel / Owner Account Expenses:* Crew health / RT Swab, fresh water, and provisions.
+- In the application shell, display live KPI cards tracking Grand Total (USD), Equivalent Local Currency (IDR via standard bank exchange rate), Pass-Through Dues, and Agency Margin in real time so the commercial desk knows profit margins before dispatching quotes.
+
+### One-Click Multi-Channel Quotation Fast-Path
+- **Rule:** In addition to direct A4 PDF download and print features, always provide a one-click "Salin Penawaran (Copy Quotation Summary)" button.
+- The button formats the calculated particulars, cost breakdown, Grand Total, and corporate contact details into clean, professional plain text copied to the clipboard, allowing the commercial team to respond to charterer email or WhatsApp inquiries in under 10 seconds.
+
+### The Dedicated Form Reset & State Nullification Pattern (`resetForm` with Confirmation Gate)
+- **Problem:** In enterprise operational generators with rich default presets, users frequently need to clear pre-filled dummy/sample data to input a brand-new vessel and custom local tariffs from scratch without manually backspacing 20+ fields.
+- **Dual Placement Architecture:** Provide a dedicated Reset / Clear button in two strategic touchpoints:
+  1. Primary topbar actions row (`[ 🔄 Reset Form ]` styled in subtle warning red `rgba(239, 68, 68, 0.12)`).
+  2. Preset selector header (compact inline button `[ 🔄 Kosongkan / Reset Form ]` adjacent to the hub dropdown).
+- **Confirmation Guard Invariant:** Always protect destructive reset actions with an explicit confirmation dialog: `if (!confirm("Apakah Anda yakin ingin mengosongkan seluruh formulir untuk input kapal baru?")) return;` to prevent accidental data loss during active calculations.
+- **Complete State Purge & Neutralization:**
+  - Clear text inputs (`inpMessrs`, `inpVessel`, `inpFlag`, `inpEta`, `inpPort`, `inpLoading` to `""`).
+  - Zero numeric inputs (`inpGrt`, `inpDwt`, `inpLoa`, and all itemized port charges to `0.00` or `""`).
+  - Strip `.active` highlight styling from all preset buttons (`document.querySelectorAll('.btn-hub').forEach(b => b.classList.remove('active'))`).
+  - Reset `<select>` dropdowns to a neutral disabled placeholder (`<option value="" disabled>— Formulir Manual / Pilih Hub —</option>`).
+  - Re-invoke `calculate()` immediately so live A4 paper preview and KPI metric cards zero out ($0.00) in real time.
+- **The Falsy Fallback Expression Trap in Live Document Renderers (`|| 'DEFAULT_STRING'`):**
+  - *Trap:* Using logical OR fallbacks for user inputs (e.g. `const vessel = document.getElementById('inpVessel').value || 'MV PROPEL TBN';` or `const port = input.value || 'BAHADOPI';`) in the calculation/preview loop.
+  - *Mechanism:* When a user clicks "Reset / Kosongkan Form", the input field value becomes `""` (empty string). In JavaScript, `""` evaluates to falsy, which immediately triggers the `|| 'DEFAULT_STRING'` fallback, re-populating the live document with the sample vessel, client, and port names and misleading the user into thinking the reset failed.
+  - *Rule:* Never use fallback strings for document fields. Always read values cleanly with `(input.value || '').trim()`, and render clean neutral hyphens or empty strings on the document (`document.getElementById('docVessel').textContent = vessel || '-';`).
+- **The Zero-State Zombie Formula & Static Remarks Trap (Eliminating `0 x 0 x 1 Day(s)` Artifacts):**
+  - *Trap:* Interpolating formula strings (e.g. `${fmtInt(grt)} x ${quayRate} x ${days} Day(s)`) or leaving static remarks table cells (e.g. `139.60 USD`, `LUMPSUM`, `BOAT HIRE WITH LAUNCH OF PORT`) without zero-guards.
+  - *Mechanism:* When values are reset or empty, the preview table continues displaying nonsensical zero formulas (`0 x 0 x 1 Day(s)`, `0 x 0 + 0.00`, `0.00 $ x 0 Est. Crew`) and orphaned remarks, creating visual clutter that confuses users about whether old tariffs remain active.
+  - *Rule:* In live document projections, guard all formula strings, amounts, and remarks behind positive value checks:
+    - If variables are zero, set basis to clean hyphen `'-'` (`dQuayBasis.textContent = (grt > 0 && quayRate > 0 && days > 0) ? ... : '-'`).
+    - Bind remarks cells to explicit IDs (`dPilotTariff`, `dClearanceRemarks`, `dBoatHireRemarks`) and clear them to empty string `''` when the associated itemized cost is zero.
+
+---
+
 ## 2. Resilient Media & Video Embeds
 
 ### YouTube Shorts 'Error 153' (Video Player Configuration Error)
@@ -367,3 +622,195 @@ When users request that client-side code be unreadable or scrambled when inspect
 - **Trap:** Legacy themes (e.g., BizPage) often use JavaScript in `main.js` that extracts `<img src="...">` from `.carousel-background`, removes the element from DOM (`.remove()`), and injects `background-image: url(...)` into `.carousel-item`.
 - **Mechanism:** If script execution is deferred, or if double CSS overlays (`#intro .carousel-item::before` at 70% black + inline linear-gradient) are stacked, the hero section appears as a solid pitch-black box before or even after load.
 - **Rule:** Set `style="background-image: url('...')"`, `background-size: cover;`, and `background-position: center;` directly in the HTML tag on `.carousel-item`, and tune overlay gradients to 0.40–0.65 opacity so real workshop action and sparks remain vivid.
+
+---
+
+## 7. Retail & Service Business POS, Cashflow & Monthly Profit/Loss Financial Systems
+
+### Architecture for Daily/Monthly Cashflow & POS Engines (Barbershop, Salons, Workshops, Cafes)
+When building single-page financial calculators and cash register systems for service businesses:
+1. **Daily POS Register & Monthly Omset Synchronization:**
+   - Implement tap-to-add service cards reflecting the business's official pricelist with visual gold/neon accents.
+   - Record transactions with timestamp, customer name/table, itemized services, payment method (`Cash`, `QRIS`, `Transfer`), and line-item totals.
+   - Real-time KPI deck must track both daily metrics (Today's Income / Uang Masuk Hari Ini) and monthly cumulative metrics (Monthly Gross Revenue / Omset Bulan Ini) dynamically filtered by active month (`YYYY-MM`).
+2. **Operational Expense Ledger (Uang Keluar Harian & Bulanan):**
+   - Provide a structured daily expense tracker partitioned into realistic service categories: *Stok Bahan Baku & Produk* (Blade/silet, pomade, shampoo, shaving cream), *Operasional & Kebersihan* (Laundry handuk, neck paper, sanitasi), *Utilitas* (Listrik PLN, PDAM, WiFi), *Gaji & Komisi Barber/Capster*, *Konsumsi*, and *Perawatan Alat* (Service clipper, asah gunting).
+   - Display real-time Today's Expense vs Monthly Total Expenses.
+3. **Dynamic Catalog / Pricelist Manager with Persistent Storage:**
+   - Store service catalogs in browser `localStorage` (`KEY_SERVICES`) so price changes persist permanently without requiring a backend database.
+   - Provide in-place editing for service name, unit price, and package description, plus ability to add custom services or delete discontinued items.
+   - *Factory Reset Invariant:* Always provide a "Reset ke Harga Asli" button that restores the catalog back to the baseline benchmark data if user edits cause discrepancies.
+4. **Monthly P&L Ledger & Cashflow Reconciliation:**
+   - Compute Net Profit: $\text{Net Profit} = \text{Total Income} - \text{Total Expenses}$.
+   - Compute Profit Margin: $\text{Margin } \% = \left(\frac{\text{Net Profit}}{\text{Total Income}}\right) \times 100\%$.
+   - Display two reconciliation tables:
+     * *Service Distribution:* Aggregates volume sold per service (e.g. 71 heads shaved/styled) and revenue generated per service line.
+     * *Daily Cashflow Ledger:* Row-by-row daily balance ($+\text{In}, -\text{Out}, =\text{Net}$) across days 1–31 of the active month.
+5. **Executive Monthly Statement A4 PDF Export:**
+   - Render a formal single-page A4 document matching corporate accounting standards:
+     * Business Identity & Contacts header with period badge.
+     * Metadata strip (Bulan buku, total hari aktif operasional, tanggal cetak).
+     * Section I: Executive P&L Summary (Omset, Biaya, Laba Bersih, Margin).
+     * Section II: Itemized Service Revenue Breakdown.
+     * Section III: Categorized Operational Expense Allocation.
+     * Dual authorization block: Signature box for *Kasir / Frontdesk* and *Owner / Management*.
+   - Combine with a 1-click WhatsApp copy button (`copyMonthlySummary`) that formats the monthly financial summary into clean, professional text ready for instant messaging.
+6. **The Complete Financial Data Purge & Seeding Guard Pattern (`resetAllFinancialData`):**
+   - *Problem:* Users wanting to put the financial calculator into real production need to wipe out all pre-populated dummy/simulation transactions (both orders and expenses) so cashflow starts completely clean from Rp 0.
+   - *Trap:* Clearing data via `localStorage.removeItem(KEY_ORDERS)` without an explicit seed state flag. On the next browser reload, standard bootstrap logic (`if (!savedOrders) seedData()`) detects null storage and automatically re-populates the sample orders, frustrating the user.
+   - *Rule:* Implement a persistent seed flag (`localStorage.setItem('barber_seeded_flag', 'cleared')`) and store an explicit empty array (`JSON.stringify([])`). Guard `initData()` so it never overwrites a user-initiated clean slate:
+     ```javascript
+     function resetAllFinancialData() {
+       if (!confirm("Hapus semua riwayat transaksi uang masuk & keluar? Data kas akan dimulai dari Rp 0.")) return;
+       orders = [];
+       expenses = [];
+       currentCart = {};
+       localStorage.setItem(KEY_ORDERS, JSON.stringify([]));
+       localStorage.setItem(KEY_EXPENSES, JSON.stringify([]));
+       localStorage.setItem('barber_seeded_flag', 'cleared');
+       renderPosPricelist();
+       renderCartUI();
+       recalculateAll();
+     }
+     ```
+     Always pair this with a "Muat Data Contoh (Demo)" button (`reloadDemoData`) on the monthly ledger toolbar so the owner can restore simulation data if they wish to test projections.
+
+---
+
+## 8. Maritime Cargo Loading Progress & Statement of Facts (SOF) Generator Architecture
+
+When building daily cargo monitoring, vessel turnaround, and Statement of Facts (SOF) web systems for shipping agencies, stevedoring companies, and charterers:
+
+### Operational Telemetry & Mathematical Foundations
+- **Primary Input Matrix:**
+  - *Target Stowage Plan (MT):* Contractual or planned cargo quantity (e.g. `51,740 MT` Coal in bulk).
+  - *Cargo Loaded Previous (MT):* Cumulative cargo loaded up to the start of the current operational period/shift.
+  - *Cargo Loaded Current Shift (MT):* Quantity loaded during the active shift/day (e.g. `7,500 MT`).
+  - *Operating Hours (Hours):* Active net loading hours during the shift (e.g. `4.8 hrs`).
+- **Standardized Mathematical Formulas:**
+  - $\text{Total Loaded to Date} = \text{Previous Loaded} + \text{Current Shift Loaded}$
+  - $\text{Balance Cargo to Load} = \text{Target Stowage Plan} - \text{Total Loaded to Date}$
+  - $\text{Loading Progress } \% = \left(\frac{\text{Total Loaded to Date}}{\text{Target Stowage Plan}}\right) \times 100\%$
+  - $\text{Average Loading Rate} = \frac{\text{Current Shift Loaded}}{\text{Operating Hours}} \quad (\text{MT / Hour})$
+  - $\text{Estimated Time of Completion (ETC)}:$ Projected completion timestamp calculated as:
+    $$\text{Remaining Hours} = \frac{\text{Balance Cargo}}{\text{Average Loading Rate}}$$
+- **Mandatory Maritime Contingency Clause (`IAGWP & WP`):**
+  - In international shipping law, maritime agencies and charterers NEVER provide unconditional completion dates. Unconditional guarantees expose the agency to demurrage/despatch disputes or laytime breach claims.
+  - Always append the mandatory international maritime disclaimer to all estimated completion timestamps:
+    👉 **`IAGWP & WP`** (*If All Goes Well and Weather Permitting*).
+
+### Port Weather & Sea Telemetry Integration
+- In dry bulk shipping (coal, clinker, grain, bauxite), rain or high swells trigger immediate cargo hatch closure and suspension of loading operations.
+- Integrate a live port weather widget tracking:
+  - *Sky Condition:* (Fine, Sunny, Cloudy, Overcast, Rain, Thunderstorm).
+  - *Air Temperature:* Current, Minimum, and Maximum (°C).
+  - *Wind Speed & Direction:* (e.g. `13 km/h / 7 Knots — Gentle Breeze`).
+  - *Humidity & Precipitation Probability:* High humidity and rain probabilities (>40%) alert operations of potential hatch-closing risks.
+  - *Sea & Swell Condition:* (e.g. `Calm, Swell 0.2 – 0.5 Mtr`).
+  - *Operational Impact Outlook:* Explicit narrative statement confirming whether cargo operations are proceeding without interruption or documenting weather downtime.
+
+### Statement of Facts (SOF) Chronological Event Ledger
+- Provide an interactive, expandable chronology of port milestones:
+  - Standard Milestones: `Vsl Arrived at Roads/Anchorage`, `1st Notice of Readiness (NOR) Tendered`, `Dropped Anchor`, `2nd NOR Re-Tendered`, `Port Authorities Onboard (Inward Clearance)`, `Free Pratique Granted by Health Quarantine (KKP)`, `Authorities Disembarked`, `Pilot Onboard & Shifted to Jetty`, `All Fast Alongside Berth`, `Commence Cargo Loading Operations`, `Draft Survey Completed`, `Hatch Closed Due to Rain (Stoppage)`, `Resumed Loading`, `Completed Cargo Operations`, `Unberthed / Cast Off`.
+  - Allow adding custom milestone rows (Date, Time `HH:MM hrs`, Description) with instant reordering and row deletion.
+
+### Dual-Mode Photo Documentation Engine (Camera & File Upload)
+When documenting ship operations, draft surveys, hatch loading, and conveyor belt status:
+1. **Triple-Path Capture Architecture:**
+   - *Native Mobile Camera Trigger:* `<input type="file" id="cameraCaptureInput" accept="image/*" capture="environment">` directly launches the rear camera app on Android and iOS devices.
+   - *In-Browser Live WebCam Snapshot Modal:* For users working on laptops or tablets with browser webcam permissions, provide an in-page modal using `navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } })` rendering to a `<video autoplay playsinline>` feed, with a snapshot trigger drawing to an offscreen `<canvas>` and converting to Base64 JPEG data URL via `canvas.toDataURL('image/jpeg', 0.88)`.
+   - *Gallery / Multi-File Upload:* `<input type="file" id="fileUploadInput" accept="image/*" multiple>` allowing batch selection of inspection photos from local storage.
+2. **Photo Management & Captioning:**
+   - Store photos as `{ id, dataUrl, caption, filename }` in client state.
+   - Render interactive thumbnail cards in the control panel with an editable caption input (`"Kapal sandar di Dermaga"`, `"Pemuatan Palka No. 3"`) and a delete button.
+3. **Print & PDF Layout Hardening for Photo Annex:**
+   - In the live A4 document sheet, render attached photos in a dedicated Section D (`OPERATIONAL PHOTO DOCUMENTATION`) arranged in a crisp 2-column or 3-column grid with dark subtitle bars.
+   - **Page-Break Invariant:** Prevent ugly mid-photo clipping by declaring:
+     ```css
+     @media print {
+       .photo-card-doc,
+       .photo-doc-section,
+       .report-table,
+       .sof-doc-table,
+       .weather-box-container {
+         page-break-inside: avoid !important;
+         break-inside: avoid !important;
+       }
+     }
+     ```
+   - If photos exceed Page 1 space, `page-break-inside: avoid` gracefully pushes the photo grid onto Page 2 as an official Photo Annex without splitting image boxes across page edges.
+
+### Interactive HTML5 Time Pickers (`<input type="time">`) & Operational Timestamp Engineering
+- **The Plain Text Time Input Trap in Maritime Chronologies:**
+  - *Trap:* Using generic `<input type="text">` for operational time fields (e.g. `value="11:10 hrs LT"` or `value="05:36"`).
+  - *Mechanism:* Text fields force users to manually type numbers, colons, spaces, and suffixes on keyboards, leading to inconsistent casing (`11.10`, `11:10 AM`, `1110hrs`), typos, and frustration. Users expect the browser's native 3-column time picker flyout (Hours, Minutes, AM/PM) with scrollable columns and blue selection highlights.
+  - *Rule:* Always use native `<input type="time">` for all operational timestamps.
+- **The Tiny Clock Icon Hit-Target Trap & `onclick="this.showPicker()"` Ergonomics:**
+  - *Trap:* Expecting users to click the tiny 16px native clock indicator on the far edge of the time input.
+  - *Mechanism:* In Chromium desktop (Chrome, Edge, Opera), clicking the text area of `<input type="time">` merely focuses the hour segment for keyboard typing. The native 3-column dropdown picker opens ONLY when the user clicks directly on the small clock icon. On high-resolution desktop screens or touchpads, this small target causes repeated misclicks.
+  - *Rule:* Always attach `onclick="this.showPicker()"` to `<input type="time">` elements:
+    ```html
+    <input type="time" class="time-picker-box" id="inpTime" value="11:10" onclick="this.showPicker()" onchange="recalc()" title="Pilih Jam">
+    ```
+    This programmatically opens the 3-column flyout dropdown whenever the user clicks *anywhere* inside the input box.
+- **Dark-Theme WebKit Calendar/Clock Indicator Inversion:**
+  - *Trap:* Rendering native time or date pickers on dark background panels (`background: #0f172a` or dark navy) without styling the WebKit indicator.
+  - *Mechanism:* The default browser indicator icon is dark grey/black. Against dark backgrounds, it becomes nearly invisible.
+  - *Rule:* In dark mode stylesheets, explicitly invert the indicator icon to crisp white and add smooth hover scale:
+    ```css
+    input[type="time"]::-webkit-calendar-picker-indicator,
+    input[type="date"]::-webkit-calendar-picker-indicator {
+      filter: invert(1);
+      cursor: pointer;
+      opacity: 0.85;
+      padding: 2px;
+      border-radius: 4px;
+      transition: transform 0.2s, opacity 0.2s;
+    }
+    input[type="time"]::-webkit-calendar-picker-indicator:hover,
+    input[type="date"]::-webkit-calendar-picker-indicator:hover {
+      opacity: 1;
+      transform: scale(1.2);
+    }
+    ```
+- **The Native Date Picker (`<input type="date">`) vs Ambiguous `<select>` or Free-Text Trap:**
+  - *Trap:* When users ask to "pilih/select tanggal jangan manual", implementing an HTML `<select>` tag with a hardcoded list of dates or leaving a manual text field (`<input type="text">`).
+  - *Mechanism:* In colloquial user phrasing, "select tanggal" frequently means selecting the date from an interactive graphical calendar picker (the native HTML5 `<input type="date">` popup with monthly calendar grid, year/month navigation, "Today", "Clear", and blue highlighted day) as seen in Chromium/Chrome. A static `<select>` dropdown restricts date range flexibility, requires maintaining arbitrary date arrays, and frustrates users, while free-text inputs invite formatting errors.
+  - *Rule:* Always use native HTML5 `<input type="date">` with `onclick="this.showPicker()"` for date selection. Pair it with an automatic date synthesizer that converts the standard ISO value (`YYYY-MM-DD`) into the formal corporate/maritime format (e.g. `14TH SEPT 2026`) in live document previews and exported plain-text summaries.
+- **Dual-Engine Real-Time Geolocation & Location Auto-Switching Architecture (GPS + Zero-Permission IP Fallback):**
+  - *Trap:* Forcing operators to manually re-type local port names and coordinates whenever they move between operational hubs, or relying solely on `navigator.geolocation` which fails silently when users deny permission or use desktop PCs without GPS chips.
+  - *Mechanism:* Field agents, surveyors, and commercial desk staff work across varied environments (onboard vessels, at the jetty, in transit, or at headquarters in Jakarta). If geolocation relies only on browser GPS, permission denial breaks the automated flow. If it relies only on manual presets, users cannot instantly adapt the report to their current physical station ("contoh saya di jakarta dan langsung lokasi berganti di jakarta").
+  - *Architecture (Dual-Engine Location & Port Auto-Switching):*
+    1. *High-Accuracy GPS (First Pass):* Attempt `navigator.geolocation.getCurrentPosition` with a 6-second timeout for mobile devices and GPS-equipped laptops.
+    2. *Zero-Permission IP-Based Fallback (Second Pass):* If GPS is denied, unavailable, or times out, immediately and seamlessly fall back to client-side or backend IP Geolocation (e.g. `https://ipwho.is/` or local `weather_api.php`). IP lookup requires zero browser permissions and instantly resolves the user's city (e.g. Jakarta, Balikpapan, Surabaya) and regional coordinates.
+    3. *Reverse Geocoding & Port Matching:* Pass coordinates through reverse geocoding (`api.bigdatacloud.net` or local lookup) to identify the municipality. Automatically map municipal names to canonical commercial port terminals (e.g. `Jakarta` -> `Tanjung Priok Port (Jakarta)`, `Banten / Cilegon` -> `Cigading Port`, `Kutai / Bengalon` -> `Lubuk Tutung Port (Kobexindo Jetty)`).
+    4. *Cascading Real-Time Synchronization:*
+       - Update the port input in the form.
+       - Update the header KPI summary bar (`Pelabuhan Aktif: [City]`).
+       - Immediately fetch live meteorological and marine wave telemetry for those exact coordinates.
+       - Re-render the live A4 document header (`Port of Call`) and Section B weather card in real time.
+       - Provide both an explicit `[ 📍 Deteksi Lokasi Saya (GPS / IP) ]` button and categorized 1-click location preset cards so users can toggle between their physical location and target vessel terminals instantly.
+- **Single-Column Time Picker Simplicity vs Double-Column Clutter Trap in Tabular SOF:**
+  - *Trap:* Placing two separate time pickers (Start Time and End Time) side-by-side inside every row of an operational milestone table.
+  - *Mechanism:* Most operational events (arrival, NOR, dropped anchor, inspection, commence) occur at a single discrete point in time. Displaying two time inputs per row clutters the table, reduces horizontal space for descriptions, and causes cognitive confusion for users.
+  - *Rule:* Keep the primary time column to exactly **one** `<input type="time">` per row with `onclick="this.showPicker()"`. For events that span durations, let the single time picker capture the event milestone and document the end time in the description (e.g. `Waiting port authority onboard (until 09:50 hrs)`).
+- **Live Meteorological & Marine Satellite Telemetry Architecture (Google Weather & Satellite Dual-Engine):**
+  - *Trap:* Leaving weather telemetry purely manual or relying on proprietary weather APIs that require paid keys or fail under browser CORS restrictions.
+  - *Mechanism:* Commercial vessel loading reports require real-time, defensible meteorological data on the exact day and shift the report is generated (especially wind speed in Knots, precipitation probability for hatch closure, and swell height). Manual entry wastes time and invites guesswork.
+  - *Architecture (Dual-Engine Live Weather Telemetry):*
+    1. *Local Backend Proxy (`weather_api.php`):* Maintains a lookup table of regional maritime port coordinates (e.g. Lubuk Tutung `0.7667° N, 117.7333° E`, Taboneo `-3.7333° S, 114.4833° E`, Bahodopi `-2.8167° S, 122.1500° E`, Cigading `-6.0167° S, 105.9500° E`).
+    2. *Zero-Auth CORS-Enabled Direct Fallback:* If hosted statically or run offline from `file:///`, fall back directly to Open-Meteo Weather & Marine APIs (NOAA/ECMWF feeds) without requiring API keys.
+    3. *Automated Unit Conversions:* Convert km/h to Knots (`kmh * 0.54`) and map to standard Beaufort scale terms (Gentle Breeze, Fresh Breeze, Light Air). Parse swell and wind wave heights into a clean marine string (`Calm / Smooth, Swell 0.1 – 0.3 Mtr`).
+    4. *Operational Impact Synthesis:* Automatically evaluate rain probability (>60%) and WMO weather codes to generate an actionable operational advisory (e.g. recommending continuous loading vs standby hatch closure).
+    5. *User Feedback & Telemetry Status:* Provide an explicit `[ 🔄 Sync Cuaca Live ]` button with a spinning indicator, live connection badge (`● Live Connected: [Port]`), and real-time update timestamp.
+- **Automatic Operational Hours & Loading Rate Telemetry Calculation:**
+  - Pair Commence Date/Time (`inpCommenceDate`, `inpCommenceTime`) with Cut-Off Date/Time (`inpCutoffDate`, `inpCutoffTime`).
+  - Compute active shift operating hours automatically:
+    $$\text{Operating Hours} = \frac{\text{Timestamp}_{\text{Cutoff}} - \text{Timestamp}_{\text{Commence}}}{3600 \times 1000}$$
+  - Feed this value directly into the real-time average loading rate ($\text{MT} / \text{Hour}$), eliminating manual arithmetic and human calculation errors during shift handovers.
+
+### Dual Deliverable Standard: Vector PDF & One-Click Chat Copy
+- Provide two instant dispatch channels:
+  1. **`[ 📄 Unduh PDF Resmi ]`:** Pre-fills `document.title = LOADING_REPORT_${vessel}_${port}_BGM` and invokes native vector printing (`window.print()`) rendering a 100% crisp, A4 corporate document complete with diamond agency logos, tabular particulars, weather widget, SOF timeline, and photo annex.
+  2. **`[ 📋 Salin Format Email / WA ]`:** Copies clean, standardized plain-text markdown matching international shipping agency protocols directly to clipboard, allowing operators to send comprehensive updates to charterers (e.g. Mr. Hadi) in under 5 seconds.
+

@@ -43,10 +43,11 @@ python3 index.py +628xxx
 - **"Silent Worker Drop / Zombie Service" (Deceptive `active (running)`):**
   - In `start4.py`, child `index.py` workers run via `await process.wait()` without an auto-restart loop. When an account hits an MTProto connection drop (`[Errno 110] Connection timed out`, server closed connection, or DC reset), `index.py` exits cleanly.
   - Because `start4.py` remains running as long as at least one worker is still connected, systemd reports `custX.service` as `active (running)`, creating a zombie state where the service appears alive but 80–90% of customer bots are dead.
-  - **Verification Rule:** NEVER rely solely on `systemctl status custX`. Always verify the total running worker count:
-    `ps -ef | grep index.py | grep -v grep | wc -l` (must be exactly 51 total across the 5 instances: 11 in cust1, 10 each in cust2..5).
-  - In `systemctl status custX`, healthy units show `Tasks: 21` (or 23 for cust1). A unit showing `Tasks: 5` has dropped all but 2 workers.
-  - **Quick Remediation:** Run `systemctl restart cust1 cust2 cust3 cust4 cust5` to respawn all 51 workers cleanly.
+  - **Verification Rule:** NEVER rely solely on `systemctl status custX`. Always verify the total running worker count against actual session files:
+    `ps -ef | grep index.py | grep -v grep | wc -l`
+    This count must match the total `.session` files (`find /root/cust/reseller*/session -name "*.session" | wc -l`). Currently 53 total across the 5 instances (11 in cust1, 11 in cust2, 11 in cust3, 10 in cust4, 10 in cust5).
+  - In `systemctl status custX`, healthy units show `Tasks: 21` (for 10 workers) or `Tasks: 23` (for 11 workers). A unit showing `Tasks: 5` has dropped all but 2 workers.
+  - **Quick Remediation:** Run `systemctl restart cust1 cust2 cust3 cust4 cust5` to respawn all workers cleanly.
 
 - **"Bot Gak Nyebar":**
   1. Check if `state_{phone}.json` has `floodwait_active: true`.
@@ -61,7 +62,7 @@ python3 index.py +628xxx
 
 ## Diagnostic & Inspection Commands
 ```bash
-# Verify all 51 workers are running (11 in cust1, 10 in cust2-5)
+# Verify all active workers match session file count (find /root/cust/reseller*/session -name "*.session" | wc -l)
 ps -ef | grep index.py | grep -v grep | wc -l
 
 # Service status & process tree (check Tasks count: 21-23 = normal, 5 = workers dropped)
@@ -89,16 +90,28 @@ journalctl -u custX | grep -E "FLOODWAIT|Terkirim" | tail -n 20
 
 ## Adding Customer Account & Interactive Login Flow
 To log in a new customer account under Hermes:
-1. Identify the slot directory (`reseller` to `reseller5`) with the lowest active session count (`ls session/*.session | wc -l`).
-2. Run `login.py` in background with PTY enabled:
+1. **Check Existing Session & Residual Configs:**
+   - Run `find /root/cust -name "*<phone>*"`.
+   - If `.session` exists, the account is already logged in.
+   - If only `cf/cf{phone}.json` or `state_{phone}.json` exists in `resellerX` (e.g. session was revoked/purged but config remains), prioritize logging into `resellerX` so existing slots and configuration are instantly re-used without manual migration.
+2. **Identify Target Reseller Directory:**
+   - If no residual config exists, pick the slot directory (`reseller` to `reseller5`) with the lowest active session count (`for d in /root/cust/reseller*; do echo "$d: $(ls -1 $d/session/*.session 2>/dev/null | wc -l)"; done`).
+3. Run `login.py` in background with PTY enabled:
    `terminal(command="/usr/local/lib/hermes-agent/venv/bin/python3 login.py +628xxx", workdir="/root/cust/resellerX", background=True, pty=True)`
-3. Monitor prompt using `process_manage(action='log', session_id=...)` until `"Please enter the code you received:"` appears.
-4. When user provides OTP or 2FA password, submit via `process_manage(action='submit', session_id=..., data='<CODE>')`.
-5. If user requests a **reseller unique code** ("kode unik N hari/minggu"):
+4. Monitor prompt using `process_manage(action='log', session_id=...)` until `"Please enter the code you received:"` appears.
+5. When user provides OTP or 2FA password, submit via `process_manage(action='submit', session_id=..., data='<CODE>')`.
+6. **Post-Login Daemon Reload & Verification:**
+   - Tunggu hingga proses `login.py` exit cleanly (status `exit: 0` atau pesan berhasil di log).
+   - Pastikan file `.session` terbentuk di `/root/cust/resellerX/session/+628xxx.session`.
+   - Restart service terkait agar `start4.py` mendeteksi dan menjalankan worker `index.py` untuk akun baru:
+     `systemctl restart custX.service`
+   - Verifikasi worker baru berjalan: `ps aux | grep "index.py +628xxx"` dan cek total worker (`ps -ef | grep index.py | grep -v grep | wc -l`).
+   - Backup session baru ke private repo: `bash /mnt/cust-telethon-backup/scripts/backup.sh`.
+7. If user requests a **reseller unique code** ("kode unik N hari/minggu"):
    - Hitung timestamp Unix epoch: `int(time.time()) + (N * 86400)`.
    - Contoh 1 minggu = 7 hari = `now + 604800` (format 10 digit epoch).
-6. Jika login butuh kirim ulang kode (resend), kill session aktif via `process_manage(action='kill', session_id=...)` lalu jalankan ulang perintah login baru.
-7. **Mengecek Pesan Masuk / Kode Login Baru Telegram (777000):**
+8. Jika login butuh kirim ulang kode (resend), kill session aktif via `process_manage(action='kill', session_id=...)` lalu jalankan ulang perintah login baru.
+9. **Mengecek Pesan Masuk / Kode Login Baru Telegram (777000):**
    Jika user/pelanggan menanyakan apakah ada kode OTP/login masuk yang baru ke akun yang sudah login di daemon:
    - Gunakan Telethon client one-off di venv Hermes (`/usr/local/lib/hermes-agent/venv/bin/python3`) membaca chat ID `777000` (Telegram Service Notifications).
    - Jalankan script singkat:
@@ -129,8 +142,9 @@ To log in a new customer account under Hermes:
    Customer slot expiry is automatically extended by the exact duration of the FloodWait penalty.
 
 ## Encrypted Private GitHub Backup
-All 51 Telethon SQLite `.session` files (~237 MB) are backed up securely in private repo `IndraYuda13/cust-telethon-backup`:
+All 53 Telethon SQLite `.session` files (~245 MB) are backed up securely in private repo `IndraYuda13/cust-telethon-backup`:
 - Backup script: `/mnt/cust-telethon-backup/scripts/backup.sh` (uses `sqlite3 .backup` + `age` asymmetric encryption with SSH Ed25519 key).
 - Restore script: `/mnt/cust-telethon-backup/scripts/restore.sh`.
 - Run backup: `bash /mnt/cust-telethon-backup/scripts/backup.sh`.
-- If the script times out during GitHub push, finish with manual push in `/mnt/cust-telethon-backup`: `git push origin main`.
+- If the script times out during GitHub push (backup.sh default timeout can cut off 45MB chunk uploads), complete the push manually with a generous timeout:
+  `cd /mnt/cust-telethon-backup && git push origin main` (timeout >= 120s).

@@ -40,7 +40,7 @@ Use print mode for most bounded work, e.g. `claude -p '<task>' --max-turns 10` w
 
 ## OpenAI Codex
 
-Codex requires a git repository; use `codex exec '<task>'` for one-shot work and a tracked PTY/background process for long tasks. Prefer its normal sandbox or `--full-auto` for workspace edits. In a gateway/service environment where the sandbox cannot initialize, use `--sandbox danger-full-access` only with an explicit workdir, a clean starting status, and post-run diff/test review. See `references/openai-codex.md`.
+Codex requires a git repository; use `codex exec '<task>'` for one-shot work and a tracked PTY/background process for long tasks. Prefer its normal sandbox or `--full-auto` for workspace edits. In a gateway/service environment where the sandbox cannot initialize, use `--sandbox danger-full-access` only with an explicit workdir, a clean starting status, and post-run diff/test review. When connecting Codex CLI via custom proxies or gateways, configure `wire_api = "responses"`; routing through standard chat-completions proxies flattens `namespace` tools and prevents `exec`/`apply_patch` execution. See `references/openai-codex.md`.
 
 ## OpenCode
 
@@ -55,6 +55,8 @@ Use `opencode run '<task>'` for bounded work; it does not need an interactive TU
 ## Common pitfalls
 
 - Treating a CLI's success text as verification rather than running the project check.
+- Routing modern Codex CLI through chat-completions translation proxies that discard `namespace` tools—the model produces conversational diffs without invoking disk or exec tools.
+- Failing to sanitize delimiters across tool outputs (`function_call_output` / `custom_tool_call_output`)—untrusted shell or diff content containing delimiter tokens triggers indirect tool injection.
 - Reusing a working directory across concurrent autonomous editors.
 - Sending an unbounded prompt without a test or completion criterion.
 - Launching an interactive TUI for a task that a one-shot command can finish.

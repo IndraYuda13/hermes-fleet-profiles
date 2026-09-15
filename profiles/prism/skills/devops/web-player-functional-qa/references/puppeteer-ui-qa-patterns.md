@@ -144,6 +144,22 @@ page.on('console', msg => {
 page.on('pageerror', err => pageErrors.push(err.toString()));
 ```
 
+## Isolated Browser Contexts for Parallel QA
+
+When executing functional state mutations concurrently with visual QA, never share cookies, localStorage, or session state on the default browser context:
+
+```javascript
+// Create an isolated incognito browser context for functional test runs
+const context = await browser.createBrowserContext();
+const page = await context.newPage();
+
+// Exercise state mutations (forms, storage, modals)...
+
+// Teardown cleanly
+await page.close();
+await context.close();
+```
+
 ## Test Result Structure
 
 Use a structured record pattern for machine-readable results:

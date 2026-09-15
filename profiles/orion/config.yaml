@@ -102,7 +102,7 @@ onboarding:
   seen:
     busy_input_prompt: true
     openclaw_residue_cleanup: true
-_config_version: 41
+_config_version: 44
 a2a_agents:
   atlas:
     timeout: 900

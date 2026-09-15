@@ -1,9 +1,9 @@
 {
-  "last_report_path": "/root/.hermes/profiles/lens/logs/curator/20260905-131335",
-  "last_run_at": "2026-09-05T13:13:35.064506+00:00",
-  "last_run_duration_seconds": 7.877978,
-  "last_run_summary": "auto: no changes; llm: API call failed after 3 retries: cannot import name '_bound_prompt_cache_key_field' from 'agent.transports.codex' (/usr/local/lib/hermes-agent/agent/transports/codex.py)",
+  "last_report_path": "/root/.hermes/profiles/lens/logs/curator/20260912-132428",
+  "last_run_at": "2026-09-12T13:24:28.764677+00:00",
+  "last_run_duration_seconds": 15.290287,
+  "last_run_summary": "auto: no changes; llm: ### Curator Consolidation Audit\n\n#### Candidate Assessment\nEvaluated all 5 curator-managed skills provided in the candidate list:\n- **`craftsmanship-core`** (`pinned=yes`): Skipped.\n- **`fleet-v22-governance`** (`pinned=yes`): Skipped.\n- **…",
   "last_run_summary_shown_at": null,
   "paused": false,
-  "run_count": 2
+  "run_count": 3
 }

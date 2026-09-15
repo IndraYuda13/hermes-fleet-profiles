@@ -194,6 +194,21 @@
     "use_count": 0,
     "view_count": 0
   },
+  "collective-wisdom-install": {
+    "archived_at": null,
+    "created_at": "2026-09-13T07:25:01.860394+00:00",
+    "created_by": null,
+    "last_patched_at": null,
+    "last_reused_patch_generation": 0,
+    "last_used_at": null,
+    "last_viewed_at": null,
+    "patch_count": 0,
+    "patch_generation": 0,
+    "pinned": false,
+    "state": "active",
+    "use_count": 0,
+    "view_count": 0
+  },
   "competitor-news-monitor": {
     "archived_at": null,
     "created_at": "2026-09-06T07:19:14.763782+00:00",

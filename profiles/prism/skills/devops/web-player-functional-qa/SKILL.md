@@ -140,26 +140,90 @@ const hasFocusVisible = await page.evaluate(() => {
 });
 ```
 
-## 6. Anti-AI-Slop Computed Style Scanning
-Scan all DOM elements for design anti-patterns:
+## 6. Mock Data & Text Leakage Scanning (Anti-Slop Hardening)
+
+Never apply crude CSS syntax bans (such as banning `linear-gradient` or `backdrop-filter` in source code) during deterministic functional QA. Visual motifs are evaluated perceptually by LENS under taste scoring; PRISM validates data integrity and semantic contracts.
+
+### Rendered DOM Leaf Node Scanning
+Scan only visible leaf node `innerText` to prevent false positives on `<script>` tags, inline styles, or defensive JavaScript logic:
 ```javascript
-const antiSlopChecks = await page.evaluate(() => {
-  const results = { gradient: false, boxShadow: false, blur: false };
-  for (const el of document.querySelectorAll('*')) {
-    const s = getComputedStyle(el);
-    if (s.backgroundImage?.includes('gradient')) results.gradient = true;
-    if (s.boxShadow !== 'none') results.boxShadow = true;
-    if (s.backdropFilter !== 'none' || s.filter?.includes('blur')) results.blur = true;
+const leakageFindings = await page.evaluate(() => {
+  const issues = [];
+  const walker = document.createTreeWalker(
+    document.body,
+    NodeFilter.SHOW_TEXT,
+    {
+      acceptNode(node) {
+        const parent = node.parentElement;
+        if (!parent) return NodeFilter.FILTER_REJECT;
+        const tag = parent.tagName.toLowerCase();
+        if (tag === 'script' || tag === 'style' || tag === 'noscript') {
+          return NodeFilter.FILTER_REJECT;
+        }
+        return NodeFilter.FILTER_ACCEPT;
+      }
+    }
+  );
+
+  const tokenPatterns = [
+    { pattern: /\blorem\s+ipsum\b/i, label: 'Lorem Ipsum placeholder' },
+    { pattern: /\bundefined\b/, label: 'Leaked undefined token' },
+    { pattern: /\bNaN\b/, label: 'Leaked NaN token' },
+    { pattern: /\b\[object Object\]\b/, label: 'Unstringified object token' },
+    { pattern: /\bTODO\b/, label: 'TODO marker in production copy' }
+  ];
+
+  while (walker.nextNode()) {
+    const text = walker.currentNode.nodeValue || '';
+    for (const { pattern, label } of tokenPatterns) {
+      if (pattern.test(text)) {
+        issues.push({ label, snippet: text.trim().slice(0, 80) });
+      }
+    }
   }
-  return results;
+  return issues;
 });
 ```
-Also scan for placeholder text leakage:
-```javascript
-const text = await page.evaluate(() => document.body.innerText);
-const hasSlop = /lorem|ipsum|placeholder|TODO|undefined/i.test(text);
-```
+
+### Word Boundary & Defensive JS Protection Pitfall
+Never use raw substring matches like `text.includes("undefined")` or `text.includes("NaN")`. This causes false positives on defensive code strings (`typeof x !== "undefined"`) or legitimate UI validation messages ("Value cannot be undefined"). Always enforce regex word boundaries `\bundefined\b` and `\bNaN\b` on rendered text nodes only.
 
 ## 7. Alpine.js Global Store Pitfalls
 - Store objects (`Alpine.store(...)`) do not inherit component lifecycle methods such as `this.$nextTick`.
 - Inside store methods, trigger DOM re-scans or icon updates with `setTimeout(() => { ... }, 50)` rather than calling `this.$nextTick()`.
+
+## 8. Fleet Parallel Verification & Handoff Contract (Stage 9)
+In multi-agent pipeline verifications where PRISM operates in parallel with LENS:
+
+### Dual-Plane Separation of Responsibilities
+- **PRISM (Deterministic Execution Plane)**: State machine transitions, form validation boundaries, route navigation contracts, ARIA/DOM tree accessibility mechanics (focus trapping, tabindex order), mock data leakage regex, and automated regression suites.
+- **LENS (Perceptual Rendered Plane)**: Rendered visual quality, taste rubric, macro-diversity, layout metrology, rendered pixel contrast, perceptual anti-slop, and motion feel.
+
+### Mandatory Inputs Required from FRAME
+1. `BUILD_MANIFEST.json`: Exact `build_sha`, deterministic preview launch command, typecheck status, and lint status.
+2. `INTERACTION_CONTRACT.json`: Stable test selectors (`data-testid` or accessibility roles) and state machine transition tables. Never run tests against brittle Tailwind utility classes.
+3. `ROUTE_AND_FIXTURE_MANIFEST.json`: Explicit route map, 404 handling, and realistic fixture datasets (no empty placeholders).
+
+### Outputs Produced for ORION Release Gate
+1. `PRISM_VERIFICATION_REPORT.json`: Machine-readable results bound to exact `build_sha` covering all test domains.
+2. `PRISM_COVERAGE_MAP.json`: Reconciliation proving 0 unexercised state transitions against `INTERACTION_CONTRACT.json`.
+3. `REPRODUCIBILITY_RUNBOOK.md`: Single-line commands and environment seeds allowing identical test reproduction.
+4. `DEFECT_LEDGER.json`: Structured defect entries with severity (`BLOCKER`, `HIGH`, `MEDIUM`), failing assertion, target selector, and stack trace (emitted on failure).
+
+### Dual-Gate Independent Veto Invariant
+- `RELEASE_GATE = PRISM_PASS && LENS_PASS`. Never calculate an average score across functional and visual gates.
+- Defect routing goes to ORION as a structured report for unified dispatch to FRAME or AURORA, never direct conflicting directives between verifiers.
+
+### Concurrency & State Mutation Isolation
+- Functional QA is state-mutating (form submissions, error triggering, dialog toggles, local/sessionStorage writes); perceptual QA requires a quiescent DOM baseline.
+- When running in parallel, PRISM and LENS must never share a browser context, incognito session, or mutable storage partition. Always launch independent browser instances or isolated contexts with dedicated ephemeral storage.
+
+### Feature-Conditional Checks & Journey Gating (Anti-Goodhart Rule)
+- For conditional rules (e.g. "focus trap only if modal/dialog present", "form validation only if forms present"), never pass by omission alone.
+- PRISM must cross-reference required components against the journey specifications in `INTERACTION_CONTRACT.json`. If a journey mandates a modal, dialog, or form, but the DOM element is missing, emit `CONTRACT_VIOLATION_FAIL` rather than silently skipping the conditional check.
+
+### Accessibility Division of Labor (Axe-Core vs LENS)
+- Automated DOM contrast engines (axe-core) fail or flag false-positive `needs review` warnings on gradient, backdrop-filter, canvas, or semi-transparent composite layers.
+- PRISM owns structural, keyboard, and programmatic accessibility: ARIA roles, accessible name computation, focus management/trapping, tabindex ordering, and input labeling.
+- Perceptual color contrast over layered or composite backgrounds is formally delegated to LENS rendered metrology. Scope axe-core contrast checks strictly to solid, single-layer backgrounds to avoid deadlocks.
+
