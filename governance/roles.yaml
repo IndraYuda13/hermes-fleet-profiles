@@ -19,7 +19,7 @@ quality_governance:
 profiles:
   orion:
     role_class: orchestrator
-    model: ag-opus-pool
+    model: gpt-terra
     a2a_port: 9901
     production_write: false
     allowed_write_scopes: [mission-ledger, decision-ledger, closure-report, release-decision-record]
@@ -29,7 +29,7 @@ profiles:
 
   atlas:
     role_class: production-operator
-    model: gemini-flash
+    model: gpt-terra
     a2a_port: 9902
     production_write: true
     allowed_write_scopes: [infrastructure, deployment, rollback, observability]
@@ -39,7 +39,7 @@ profiles:
 
   aurora:
     role_class: design-author
-    model: gemini-flash
+    model: gpt-terra
     a2a_port: 9903
     production_write: false
     allowed_write_scopes: [design-dna, design-contract, research-evidence, candidate-hypotheses, content-map, asset-manifest, interaction-contract]
@@ -49,7 +49,7 @@ profiles:
 
   forge:
     role_class: implementer
-    model: gemini-flash
+    model: gpt-terra
     a2a_port: 9904
     production_write: true
     allowed_write_scopes: [backend-source, systems-source, migrations, implementation-tests]
@@ -59,7 +59,7 @@ profiles:
 
   frame:
     role_class: implementer
-    model: gemini-flash
+    model: gpt-terra
     a2a_port: 9905
     production_write: true
     allowed_write_scopes: [frontend-source, frontend-tests, build-artifacts, visual-spikes, spike-manifest, build-manifest, vertical-slice]
@@ -69,7 +69,7 @@ profiles:
 
   lens:
     role_class: verifier
-    model: ag-opus-pool
+    model: gpt-terra
     a2a_port: 9906
     production_write: false
     allowed_write_scopes: [qa-evidence, screenshots, defect-report, visual-tournament, slice-report, lens-review-report]
@@ -79,7 +79,7 @@ profiles:
 
   nexus:
     role_class: documentation
-    model: gemini-flash
+    model: ag-opus-pool
     a2a_port: 9907
     production_write: false
     allowed_write_scopes: [documentation, runbook, release-communication]
@@ -89,7 +89,7 @@ profiles:
 
   prism:
     role_class: verifier
-    model: ag-opus-pool
+    model: gpt-terra
     a2a_port: 9908
     production_write: false
     allowed_write_scopes: [test-source, test-results, benchmark-evidence, defect-report, functional-qa-report, prism-verification-report]
@@ -99,7 +99,7 @@ profiles:
 
   quant:
     role_class: analyst
-    model: ag-opus-pool
+    model: gpt-terra
     a2a_port: 9909
     production_write: false
     allowed_write_scopes: [analysis-code, datasets, model-evidence, research-report]
@@ -109,7 +109,7 @@ profiles:
 
   radar:
     role_class: researcher
-    model: ag-opus-pool
+    model: gpt-terra
     a2a_port: 9910
     production_write: false
     allowed_write_scopes: [research-evidence, source-ledger, research-report]
@@ -119,7 +119,7 @@ profiles:
 
   sentinel:
     role_class: verifier
-    model: ag-opus-pool
+    model: gpt-terra
     a2a_port: 9911
     production_write: false
     allowed_write_scopes: [security-tests, scan-results, threat-model, defect-report]
@@ -129,7 +129,7 @@ profiles:
 
   groupbot:
     role_class: isolated-chat
-    model: gemini-flash
+    model: ag-opus-pool
     a2a_port: null
     production_write: false
     allowed_write_scopes: []
