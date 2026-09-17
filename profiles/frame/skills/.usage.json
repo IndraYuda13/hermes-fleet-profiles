@@ -5,14 +5,14 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-14T08:37:03.978913+00:00",
-    "last_viewed_at": "2026-09-14T08:37:03.973186+00:00",
+    "last_used_at": "2026-09-17T16:51:58.209021+00:00",
+    "last_viewed_at": "2026-09-17T16:51:58.189578+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 43,
-    "view_count": 43
+    "use_count": 53,
+    "view_count": 53
   },
   "anti-slop-ecommerce-architecture": {
     "archived_at": null,
@@ -20,14 +20,14 @@
     "created_by": "agent",
     "last_patched_at": "2026-09-09T13:26:51.897946+00:00",
     "last_reused_patch_generation": 18,
-    "last_used_at": "2026-09-12T13:24:23.769031+00:00",
-    "last_viewed_at": "2026-09-12T13:24:23.764300+00:00",
+    "last_used_at": "2026-09-17T16:51:41.278012+00:00",
+    "last_viewed_at": "2026-09-17T16:51:41.250578+00:00",
     "patch_count": 18,
     "patch_generation": 18,
     "pinned": false,
     "state": "active",
-    "use_count": 18,
-    "view_count": 18
+    "use_count": 19,
+    "view_count": 19
   },
   "craftsmanship-core": {
     "archived_at": null,
@@ -95,14 +95,14 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-14T08:56:48.206717+00:00",
-    "last_viewed_at": "2026-09-14T08:56:48.201748+00:00",
+    "last_used_at": "2026-09-17T16:51:41.315570+00:00",
+    "last_viewed_at": "2026-09-17T16:51:41.304875+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": true,
     "state": "active",
-    "use_count": 183,
-    "view_count": 180
+    "use_count": 193,
+    "view_count": 190
   },
   "frontend-design": {
     "archived_at": null,
@@ -110,14 +110,14 @@
     "created_by": "installed",
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-11T15:46:33.463345+00:00",
-    "last_viewed_at": "2026-09-11T15:46:33.456950+00:00",
+    "last_used_at": "2026-09-17T16:51:58.184418+00:00",
+    "last_viewed_at": "2026-09-17T16:51:58.179230+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 17,
-    "view_count": 16
+    "use_count": 23,
+    "view_count": 22
   },
   "frontend-state-contract": {
     "archived_at": null,
@@ -125,14 +125,14 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-14T08:50:15.524393+00:00",
-    "last_viewed_at": "2026-09-14T08:50:15.518948+00:00",
+    "last_used_at": "2026-09-17T16:51:41.298913+00:00",
+    "last_viewed_at": "2026-09-17T16:51:41.268613+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": true,
     "state": "active",
-    "use_count": 80,
-    "view_count": 80
+    "use_count": 82,
+    "view_count": 82
   },
   "google-stitch-design-intelligence": {
     "archived_at": null,
@@ -155,14 +155,14 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-09T13:41:51.416716+00:00",
-    "last_viewed_at": "2026-09-09T13:41:51.411122+00:00",
+    "last_used_at": "2026-09-17T16:21:29.727100+00:00",
+    "last_viewed_at": "2026-09-17T16:21:29.677386+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": true,
     "state": "active",
-    "use_count": 18,
-    "view_count": 15
+    "use_count": 22,
+    "view_count": 19
   },
   "impeccable": {
     "archived_at": null,
@@ -170,14 +170,14 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-06T22:27:06.825115+00:00",
-    "last_viewed_at": "2026-09-06T22:27:06.814041+00:00",
+    "last_used_at": "2026-09-17T16:51:58.203116+00:00",
+    "last_viewed_at": "2026-09-17T16:51:58.173505+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 4,
-    "view_count": 4
+    "use_count": 10,
+    "view_count": 10
   },
   "lens-visual-qa-engine": {
     "archived_at": null,
@@ -200,14 +200,14 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-14T08:56:56.406635+00:00",
-    "last_viewed_at": "2026-09-14T08:56:56.400541+00:00",
+    "last_used_at": "2026-09-17T16:51:41.293653+00:00",
+    "last_viewed_at": "2026-09-17T16:51:41.288119+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": true,
     "state": "active",
-    "use_count": 67,
-    "view_count": 64
+    "use_count": 69,
+    "view_count": 66
   },
   "ui-ux-pro-max": {
     "archived_at": null,

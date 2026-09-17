@@ -51,9 +51,16 @@ Every candidate defines:
 5. asset/content strategy and crop behavior;
 6. one or two product-specific signature devices;
 7. what intentionally remains quiet;
-8. motion purpose and energy budget;
-9. responsive re-authoring, not “stack desktop vertically”;
-10. which framework/category defaults are intentionally kept or replaced.
+8| motion purpose and energy budget;
+9| responsive re-authoring, not “stack desktop vertically”;
+10| which framework/category defaults are intentionally kept or replaced.
+
+### Storefront & Mobile Layout Invariants
+- **Above-The-Fold Inventory Invariant:** On mobile viewports (<=480px), catalog discovery MUST position the first actionable category tile or product card at Y <= 0.60 * viewport_height, ensuring at least 2 actionable products/categories are fully visible without scrolling.
+- **Zero Redundant Navigation Stacks:** Never stack multiple category filters (e.g. pills + tab strip) within the same viewport. Provide one clean, canonical navigation control.
+- **Contextual Stepper Invariant:** Checkout progress steppers must be suppressed during top-level catalog discovery and only reveal during active purchase funnel steps (destination -> payment -> status).
+- **Mobile Header Profile Invariant:** User profile identity on mobile must collapse to avatar badge / initials or truncated first name; never render unbounded full names that compress logo or utility actions.
+- **No Runway Hijacking:** Never inject account management cards or balance widgets into the primary product selection slot. Account management belongs in dedicated drawers or dialogs.
 
 Candidates that collapse to the same wireframe when viewed in grayscale or with brand names hidden are one candidate, not three.
 

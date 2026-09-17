@@ -1,6 +1,6 @@
 model:
   context_length: 950000
-  default: ag-opus-pool
+  default: gpt-terra
   provider: custom:local-(localhost:20128)
 toolsets:
 - kanban
@@ -252,6 +252,7 @@ mcp_servers:
     headers:
       Authorization: Bearer ${MONETAG_MCP_TOKEN}
     timeout: 60
+    enabled: false
 platform_toolsets:
   a2a:
   - a2a
@@ -293,22 +294,4 @@ platforms:
   telegram:
     enabled: true
   whatsapp:
-    enabled: true
-    extra:
-      allow_all_users: true
-      allow_from: []
-      group_allow_from: []
-      group_allowed_chats: []
-      group_policy: open
-      require_mention: true
-      bridge_port: 3001
-      session_path: /root/.hermes/profiles/orion/whatsapp/session
-      mention_patterns:
-      - Orion
-      - '@Orion'
-      - \bOrion\b
-      - bot
-      - '@bot'
-      - \bbot\b
-      - Bb
-      - '@Bb'
+    enabled: false

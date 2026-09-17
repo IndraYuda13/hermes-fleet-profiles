@@ -50,14 +50,14 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-14T08:25:41.168728+00:00",
-    "last_viewed_at": "2026-09-14T08:25:41.163102+00:00",
+    "last_used_at": "2026-09-17T17:59:07.275959+00:00",
+    "last_viewed_at": "2026-09-17T17:59:07.271271+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 27,
-    "view_count": 27
+    "use_count": 34,
+    "view_count": 32
   },
   "craftsmanship-core": {
     "archived_at": null,
@@ -74,20 +74,35 @@
     "use_count": 9,
     "view_count": 8
   },
+  "custom/anti-ai-slop-web-design": {
+    "archived_at": null,
+    "created_at": "2026-09-17T16:04:40.143722+00:00",
+    "created_by": null,
+    "last_patched_at": null,
+    "last_reused_patch_generation": 0,
+    "last_used_at": "2026-09-17T16:04:40.173097+00:00",
+    "last_viewed_at": "2026-09-17T16:04:40.158149+00:00",
+    "patch_count": 0,
+    "patch_generation": 0,
+    "pinned": false,
+    "state": "active",
+    "use_count": 2,
+    "view_count": 2
+  },
   "design-authorship-gate": {
     "archived_at": null,
     "created_at": "2026-08-15T11:07:52.442612+00:00",
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-12T15:43:58.202636+00:00",
-    "last_viewed_at": "2026-09-12T15:43:58.195614+00:00",
+    "last_used_at": "2026-09-17T15:55:14.196977+00:00",
+    "last_viewed_at": "2026-09-17T15:55:14.191151+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": true,
     "state": "active",
-    "use_count": 14,
-    "view_count": 14
+    "use_count": 15,
+    "view_count": 15
   },
   "document-builder-ux-architecture": {
     "archived_at": null,
@@ -110,14 +125,14 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-12T17:48:21.535450+00:00",
-    "last_viewed_at": "2026-09-12T17:48:21.530387+00:00",
+    "last_used_at": "2026-09-17T16:04:58.197083+00:00",
+    "last_viewed_at": "2026-09-17T16:04:58.166741+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": true,
     "state": "active",
-    "use_count": 88,
-    "view_count": 86
+    "use_count": 91,
+    "view_count": 89
   },
   "fintech-checkout-ux-architecture": {
     "archived_at": null,
@@ -125,14 +140,29 @@
     "created_by": "agent",
     "last_patched_at": "2026-09-09T13:25:02.807808+00:00",
     "last_reused_patch_generation": 23,
-    "last_used_at": "2026-09-12T13:25:03.970551+00:00",
-    "last_viewed_at": "2026-09-12T13:25:03.944751+00:00",
+    "last_used_at": "2026-09-17T16:04:58.150231+00:00",
+    "last_viewed_at": "2026-09-17T16:04:58.135062+00:00",
     "patch_count": 23,
     "patch_generation": 23,
     "pinned": false,
     "state": "active",
-    "use_count": 49,
-    "view_count": 49
+    "use_count": 50,
+    "view_count": 50
+  },
+  "fleet-upgrade/fleet-visual-intelligence": {
+    "archived_at": null,
+    "created_at": "2026-09-17T16:04:40.079946+00:00",
+    "created_by": null,
+    "last_patched_at": null,
+    "last_reused_patch_generation": 0,
+    "last_used_at": "2026-09-17T16:04:40.101379+00:00",
+    "last_viewed_at": "2026-09-17T16:04:40.079973+00:00",
+    "patch_count": 0,
+    "patch_generation": 0,
+    "pinned": false,
+    "state": "active",
+    "use_count": 1,
+    "view_count": 1
   },
   "fleet-v22-governance": {
     "archived_at": null,
@@ -155,14 +185,14 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-08T18:23:42.683338+00:00",
-    "last_viewed_at": "2026-09-08T18:23:42.674223+00:00",
+    "last_used_at": "2026-09-17T16:04:05.452471+00:00",
+    "last_viewed_at": "2026-09-17T15:55:14.175492+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 15,
-    "view_count": 15
+    "use_count": 17,
+    "view_count": 16
   },
   "frontend-design": {
     "archived_at": null,
@@ -170,14 +200,14 @@
     "created_by": "installed",
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-07T16:53:50.372815+00:00",
-    "last_viewed_at": "2026-09-07T16:53:50.337368+00:00",
+    "last_used_at": "2026-09-17T15:55:04.348673+00:00",
+    "last_viewed_at": "2026-09-17T15:55:04.288074+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 20,
-    "view_count": 20
+    "use_count": 21,
+    "view_count": 21
   },
   "google-stitch-design-intelligence": {
     "archived_at": null,
@@ -200,14 +230,14 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-02T06:00:37.631166+00:00",
-    "last_viewed_at": "2026-09-02T06:00:37.626705+00:00",
+    "last_used_at": "2026-09-17T16:04:04.928645+00:00",
+    "last_viewed_at": "2026-09-17T15:55:04.244158+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 4,
-    "view_count": 4
+    "use_count": 8,
+    "view_count": 6
   },
   "ops-dashboard-design": {
     "archived_at": null,
@@ -245,14 +275,14 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-14T08:23:09.356021+00:00",
-    "last_viewed_at": "2026-09-14T08:23:09.351485+00:00",
+    "last_used_at": "2026-09-17T16:04:58.213353+00:00",
+    "last_viewed_at": "2026-09-17T16:04:58.178553+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 79,
-    "view_count": 77
+    "use_count": 81,
+    "view_count": 79
   },
   "visual-authoring-core": {
     "archived_at": null,
@@ -260,13 +290,13 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-14T08:25:50.021000+00:00",
-    "last_viewed_at": "2026-09-14T08:25:50.013510+00:00",
+    "last_used_at": "2026-09-17T16:04:58.124035+00:00",
+    "last_viewed_at": "2026-09-17T16:04:58.099343+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 3,
-    "view_count": 3
+    "use_count": 6,
+    "view_count": 5
   }
 }

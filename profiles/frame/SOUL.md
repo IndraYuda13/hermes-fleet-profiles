@@ -30,6 +30,12 @@ Responsive work changes composition when the device changes the task. Reorder, c
 
 Implement and exercise the states the product actually needs: loading, empty, error, validation, disabled, hover, focus-visible, pressed/active, long content, dense data, slow/failing network, and mutation/retry behavior where relevant. Never create fake production metrics/testimonials to make screenshots look complete.
 
+### Authenticated State & Mobile Header Defense
+- Always implement and test authenticated layout branches, especially with long user names (>=20 chars).
+- On mobile viewports (<=480px), never render raw full-name strings in topbars. Always collapse user identity to a 44x44px avatar badge with initial or truncated first name.
+- Guarantee that secondary utility actions (Lacak, Bantuan) maintain >=44px touch targets and never wrap onto vertical baselines above the logo.
+- Ensure storefront catalog containers start at Y <= 0.60 * viewport_height on mobile; suppress discovery-inappropriate widgets like steppers, inline account cards, and redundant category pills.
+
 ## Vertical-slice rule
 
 For large UI work, implement the hero/primary surface plus one representative follow-up section or workflow first. Make desktop and mobile real enough for LENS to judge the direction. Do not fan out the entire site while the core art direction is still unproven.

@@ -621,14 +621,14 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-12T13:23:36.261268+00:00",
-    "last_viewed_at": "2026-09-12T13:23:36.243571+00:00",
+    "last_used_at": "2026-09-17T05:23:45.714053+00:00",
+    "last_viewed_at": "2026-09-17T05:23:45.682212+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 8,
-    "view_count": 8
+    "use_count": 9,
+    "view_count": 9
   },
   "email-inbox-triage": {
     "archived_at": null,
@@ -1963,14 +1963,14 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-13T09:28:41.648652+00:00",
-    "last_viewed_at": "2026-09-13T09:28:41.636184+00:00",
+    "last_used_at": "2026-09-17T17:42:46.461058+00:00",
+    "last_viewed_at": "2026-09-17T17:42:46.453029+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 25,
-    "view_count": 23
+    "use_count": 28,
+    "view_count": 26
   },
   "searxng-operations": {
     "archived_at": "2026-07-17T12:39:17.405782+00:00",
@@ -2098,15 +2098,30 @@
     "created_at": "2026-07-17T12:30:21.314339+00:00",
     "created_by": "agent",
     "last_patched_at": "2026-09-13T09:11:22.064879+00:00",
-    "last_reused_patch_generation": 10,
-    "last_used_at": "2026-09-13T09:11:09.449773+00:00",
-    "last_viewed_at": "2026-09-13T09:11:09.439457+00:00",
+    "last_reused_patch_generation": 12,
+    "last_used_at": "2026-09-17T17:03:44.659571+00:00",
+    "last_viewed_at": "2026-09-17T17:03:44.635172+00:00",
     "patch_count": 52,
     "patch_generation": 12,
     "pinned": false,
     "state": "active",
-    "use_count": 69,
-    "view_count": 69
+    "use_count": 72,
+    "view_count": 71
+  },
+  "software-development/software-development-workflows": {
+    "archived_at": null,
+    "created_at": "2026-09-17T16:04:22.811418+00:00",
+    "created_by": null,
+    "last_patched_at": null,
+    "last_reused_patch_generation": 0,
+    "last_used_at": "2026-09-17T16:04:22.829360+00:00",
+    "last_viewed_at": "2026-09-17T16:04:22.811441+00:00",
+    "patch_count": 0,
+    "patch_generation": 0,
+    "pinned": false,
+    "state": "active",
+    "use_count": 1,
+    "view_count": 1
   },
   "software-development:dogfood": {
     "archived_at": null,
@@ -2443,14 +2458,14 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-13T09:28:41.616390+00:00",
-    "last_viewed_at": "2026-09-13T09:28:41.602420+00:00",
+    "last_used_at": "2026-09-17T17:03:33.176836+00:00",
+    "last_viewed_at": "2026-09-17T17:03:33.153688+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 39,
-    "view_count": 39
+    "use_count": 45,
+    "view_count": 44
   },
   "verification-gate": {
     "archived_at": null,
@@ -2458,14 +2473,14 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-14T08:36:16.358864+00:00",
-    "last_viewed_at": "2026-09-14T08:36:16.348665+00:00",
+    "last_used_at": "2026-09-17T17:42:43.902922+00:00",
+    "last_viewed_at": "2026-09-17T17:42:43.892137+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 75,
-    "view_count": 75
+    "use_count": 81,
+    "view_count": 81
   },
   "video-algorithmic-qa": {
     "archived_at": null,
@@ -2527,14 +2542,14 @@
     "created_by": "agent",
     "last_patched_at": "2026-09-12T15:19:21.557556+00:00",
     "last_reused_patch_generation": 16,
-    "last_used_at": "2026-09-12T15:46:57.140418+00:00",
-    "last_viewed_at": "2026-09-12T15:46:57.132026+00:00",
+    "last_used_at": "2026-09-17T17:03:44.628190+00:00",
+    "last_viewed_at": "2026-09-17T17:03:44.620136+00:00",
     "patch_count": 16,
     "patch_generation": 16,
     "pinned": false,
     "state": "active",
-    "use_count": 25,
-    "view_count": 25
+    "use_count": 28,
+    "view_count": 28
   },
   "web-scraping-workflows": {
     "archived_at": null,

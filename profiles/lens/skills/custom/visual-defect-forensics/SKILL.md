@@ -28,7 +28,13 @@ Search specifically for defects that can exist while HTML/CSS/JS compiles and au
 - inspect browser console after interactions,
 - check for layout shift and scrollbars appearing/disappearing,
 - verify ultrawide max-width and information grouping,
-- look for icon metaphors that are technically valid but contextually wrong.
+- look for icon metaphors that are technically valid but contextually wrong,
+- audit across a 3D state matrix: viewports x user journeys x session auth states (Guest, Auth Standard, Auth Long Name >= 20 chars),
+- assert Content Visibility Index (CVI): first actionable inventory item must render above the fold (top <= 0.60 * viewport_height on mobile; minimum 2 items visible),
+- detect semantic redundancy: flag duplicate category selectors or stacked filter strips within the same screen,
+- verify header baseline integrity: ensure user names (especially long full names) do not crush the brand logo, blow out top-actions, or displace navigation links onto separate rows,
+- verify stepper context: checkout steppers must not appear on top-level browsing/discovery surfaces and horizontal step labels must never wrap into multiple lines,
+- ban canned praise: never issue PASS or high scores without explicit, adversarial visual falsification and vision-inspected screenshot evidence.
 
 ## Reporting
 

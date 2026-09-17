@@ -84,12 +84,17 @@ WHATSAPP_DEBUG=true
   5. Restart gateway (`/restart` command via chat or kill bridge to reload cleanly).
 
 ### 3. Group User Authorization vs Group Chat Bypass (`group_allowed_chats` & `authz_mixin.py`)
-- **The Core Authorization Trap:** When `WHATSAPP_ALLOWED_USERS` is configured, Hermes gateway's `_is_user_authorized()` in `gateway/authz_mixin.py` enforces sender allowlist on *every inbound message* (including group chats). Non-allowlisted group members (e.g. other group participants) get rejected at the intake gate as `Unauthorized user: <lid>`.
+- **The Core Authorization Trap & The Owner-Test False Positive:**
+  When `WHATSAPP_ALLOWED_USERS` is configured, Hermes gateway's `_is_user_authorized()` in `gateway/authz_mixin.py` enforces sender allowlist on *every inbound message* (including group chats).
+  - *The Owner-Test False Positive:* If the owner/operator tests the bot in a new group with `@bot test`, the bot replies successfully because the owner's phone/LID is already in `allow_from` / `WHATSAPP_ALLOWED_USERS`. This creates the false impression that group setup is complete, even though any message from friends/collaborators will be immediately dropped as `Unauthorized user: <lid>`.
+  - Always verify that non-allowlisted group members are permitted before declaring the group ready.
 - **Root Cause & Fix Patterns:**
-  1. **Option A (All Members in Allowed Groups):** Add the group JID to `platforms.whatsapp.extra.group_allowed_chats: ["<group_jid>@g.us", ...]` in `config.yaml`.
+  1. **Option A (All Members in Specific Groups):** Add the group JID to `platforms.whatsapp.extra.group_allowed_chats: ["<group_jid>@g.us", ...]` in `config.yaml`. In `authz_mixin.py`, `_chat_scoped_grant()` admits any sender in that chat without requiring individual user allowlists.
   2. **Option B (Open Group Policy with Allow-All):** When setting `group_policy: "open"`, ensure `platforms.whatsapp.extra.allow_all_users = True` or set `WHATSAPP_ALLOW_ALL_USERS=true` in `.env` so group members aren't silently dropped by the default-deny user allowlist.
-  3. **LID Device Normalization:** Baileys returns bot IDs formatted like `<WHATSAPP_JID>` or `<WHATSAPP_JID>`. Ensure ID normalizers strip the `:device` segment before `@` so autocomplete mentions (`@<WHATSAPP_ID>`) match `botIds` reliably.
-  4. **Long-Polling Buffer Desync on Bridge Restarts:** When restarting or killing the Node.js bridge (`kill -9 <pid>`), the gateway re-establishes TCP connection to port 3000. If messages arrived during restart, verify `/messages` long-polling queue is actively flushing (`GET http://127.0.0.1:3000/messages`) and confirming `200 OK` deliveries.
+  3. **Protected Config Barrier Pitfall:** Hermes agent file tools (`patch`, `write_file`) strictly reject writes to `/root/.hermes/profiles/<profile>/config.yaml` and `.env` (protected system/credential files). Never try to file-patch them directly; use `hermes --profile <profile> config set <key> <value>` via terminal.
+  4. **Multi-Instance Port Disambiguation:** In multi-profile setups (e.g. `groupbot` on :3000, `orion` on :3001), always check `bridge_port` in `config.yaml` before querying `/chat/<jid>` or `/send`. Querying the wrong port returns 404 or connection error.
+  5. **LID Device Normalization:** Baileys returns bot IDs formatted like `<WHATSAPP_JID>` or `<WHATSAPP_JID>`. Ensure ID normalizers strip the `:device` segment before `@` so autocomplete mentions (`@<WHATSAPP_ID>`) match `botIds` reliably.
+  6. **Long-Polling Buffer Desync on Bridge Restarts:** When restarting or killing the Node.js bridge (`kill -9 <pid>`), the gateway re-establishes TCP connection to port 3000. If messages arrived during restart, verify `/messages` long-polling queue is actively flushing (`GET http://127.0.0.1:3000/messages`) and confirming `200 OK` deliveries.
 
 ### 4. Mention Patterns, LID Mentions & Group Policy Discipline
 - In WhatsApp groups, mentioning a bot often inserts the contact LID and display name (e.g. `@<WHATSAPP_ID>AW.ai` or `@AW.ai`) rather than raw phone numbers.
@@ -104,6 +109,7 @@ WHATSAPP_DEBUG=true
   - Keep `platforms.whatsapp.extra.group_policy: "allowlist"` and `require_mention: true` when operating in shared groups.
   - Do **not** set `group_policy: "open"` blindly if `allow_from` / `WHATSAPP_ALLOWED_USERS` is strictly filtered; always preserve the explicit `group_allow_from` and `group_allowed_chats` pattern to avoid unauthorized authorization dropouts or unwanted global group triggers.
 - On official upstream Hermes, `_message_is_reply_to_bot` compares raw `quotedParticipant` strings without device-index stripping or LID alias expansion. Always instruct users in WhatsApp groups to explicitly tag/mention the bot (`@bot` / display name) rather than relying solely on quote-replies.
+- **Bare Mentions & Presence Check / Ping Handling:** When an inbound message consists solely of a mention tag (e.g. `@<LID>`, `@bot`, `@<phone>`) or an informal roll-call / presence check (e.g. `absen`, `absen bree`, `p`, `ping`, `tes`), treat it immediately as a conversational liveness ping. Acknowledge presence promptly, casually, and concisely without running background terminal diagnostics (`ps aux`) or inspecting session directory files; investigating a bare identifier as an anomaly delays the response, leading to user interruptions.
 - Always keep upstream framework files (`/usr/local/lib/hermes-agent`) clean and vanilla—rely on official `hermes update` / `git pull` rather than in-place framework edits.
 
 ### 5. Multi-User WhatsApp Group Hardening & Sandboxing Protocol (Profile Isolation)

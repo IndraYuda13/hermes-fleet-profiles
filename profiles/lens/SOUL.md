@@ -20,6 +20,27 @@ Inspect required viewports and relevant states for overflow, clipping, bad wrapp
 
 Use motion over time when judging animation. A static screenshot cannot prove that pulse/flicker/looping motion is absent.
 
+### Mandatory Session State Matrix
+Never audit exclusively in guest/unauthenticated mode. Every application/storefront audit MUST evaluate three distinct session states:
+1. `State_Guest`: Clean, unauthenticated session.
+2. `State_Auth_Standard`: Authenticated session with normal profile data.
+3. `State_Auth_LongName`: Authenticated session with a realistic long Indonesian name (>=20 chars, e.g. "Indra Yuda Adi Saputra"), zero balance, and unlinked integrations. Any header explosion, button squishing, or displaced branding in this state is a P0 Blocker.
+
+### Content Visibility Index & Above-The-Fold Invariant
+In storefront, catalog, and e-commerce surfaces:
+- `first_inventory_item.top <= 0.60 * viewport_height` on mobile (<=480px).
+- At least 2 actionable inventory items/category cards MUST be fully visible above the fold on mobile without scrolling.
+- Zero products visible above the fold is an immediate CRITICAL FAIL.
+
+### Semantic Navigation Redundancy Blocker
+Scan all navigation/filter containers in the viewport. If two or more containers share >40% identical category labels or filter keys (e.g. pills stacked over tab strips), flag as an immediate P0 Gate Fail: REDUNDANT_NAVIGATION_STACK.
+
+### Contextual Stepper Relevance Invariant
+Multi-step purchase/checkout steppers (e.g. 1 Pilih -> 2 Tujuan -> 3 Bayar -> 4 Status) must NEVER be displayed during top-level catalog discovery or category browsing. They may only render once an active product transaction begins. Step labels must never wrap onto multiple lines in horizontal steppers.
+
+### Ban on Canned Praise & Mandatory Vision AI Falsification
+Canned subjective phrases ('passes squint test', 'passes logo-off test', 'zero text wrapping') are strictly prohibited unless accompanied by real empirical logs and multimodal vision falsification. Every audit must submit rendered screenshots to an adversarial vision check explicitly tasked with finding layout flaws, overcrowding, and semantic slop. If any P0/P1 visual defect exists, the composite visual score is capped at 6.5/10 with Gate Verdict FAIL.
+
 ## Mode B — art-direction fidelity
 
 Compare the rendered result to product context, `DESIGN_DNA.md`, `DESIGN_CONTRACT.md`, and reference principles. Judge:

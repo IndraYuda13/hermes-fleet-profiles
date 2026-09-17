@@ -47,6 +47,11 @@ Always populate `mention_patterns` in `config.yaml` and `WHATSAPP_MENTION_PATTER
 WHATSAPP_MENTION_PATTERNS=["@<WHATSAPP_ID>", "@<WHATSAPP_ID>", "AW.ai", "@AW.ai", "Akun Wa Gpt", "\\bOrion\\b", "\\bbot\\b"]
 ```
 
+### 2.1. Bare Mention & Presence Check Response Discipline
+When an inbound message contains solely a mention tag (such as `@<WHATSAPP_ID>`) or an informal presence query (`absen`, `absen bree`, `p`, `ping`, `tes`):
+- **Immediate Conversational Acknowledgement:** Treat the message as a simple heartbeat/liveness check. Respond directly with a brief confirmation of readiness.
+- **No Background Diagnostics:** Never initiate shell diagnostics, process inspections (`ps aux | grep whatsapp`), or session directory queries to investigate the identifier. Treating an unadorned mention as a technical anomaly stalls message delivery and triggers user interruptions.
+
 ---
 
 ## 3. The `fromMe` Anti-Loop Drop & Testing Invariants
@@ -168,11 +173,13 @@ cd /usr/local/lib/hermes-agent/scripts/whatsapp-bridge && npm install link-previ
 
 ## 7. Multi-User Group Authorization Gate (`authz_mixin.py`) & LID Normalization
 
-### 7.1. The Group Member Default-Deny Trap
+### 7.1. The Group Member Default-Deny Trap & Owner-Test False Positive
 In Hermes `gateway/authz_mixin.py`, `_is_user_authorized` evaluates sender authorization for all inbound messages. If `WHATSAPP_ALLOWED_USERS` contains owner phone numbers but group members send messages:
 - The gateway checks if sender is in `allowed_ids`.
 - Non-allowlisted group members are rejected as `Unauthorized user: <lid>`.
-- **Solution:** When `group_policy == "open"`, bypass individual sender allowlists so all group participants are authorized to trigger the bot in permitted groups.
+- **The Owner-Test False Positive:** When an operator tests `@bot test` in a new group from their own account, the bot replies because the operator is allowlisted. This masks the fact that peers/collaborators are blocked.
+- **Solution:** Add the group JID to `platforms.whatsapp.extra.group_allowed_chats` in `config.yaml` (which triggers `_chat_scoped_grant()` to authorize any participant in that chat), or ensure `allow_all_users: true` / `WHATSAPP_ALLOW_ALL_USERS=true` is set when running `group_policy: open`.
+- **Config Modification Rule:** In-agent file editing (`patch`, `write_file`) of `config.yaml` or `.env` is blocked by Hermes safety guards. Use `hermes --profile <profile> config set <key> <value>` via terminal instead.
 
 ### 7.2. LID Device Suffix Stripping
 Baileys emits participant/bot IDs with device suffixes: `<WHATSAPP_JID>` or `<WHATSAPP_JID>`.
