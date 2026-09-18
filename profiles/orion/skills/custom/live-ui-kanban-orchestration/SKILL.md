@@ -30,3 +30,7 @@ When calling `kanban_create`:
 ### 3. Execution & Manual Dispatch
 If tasks remain in `ready` state and are not picked up immediately:
 - Run `hermes kanban dispatch` via `terminal` to trigger dispatcher evaluation and spawn assigned profiles.
+
+### 4. Mandatory Turn Release (Anti-Polling Invariant)
+- **Zero Sleep Loop:** Never run `sleep` loops or while-loops in terminal waiting for task completion.
+- **Native Wake:** Hermes automatically subscribes the creator session via `delivery_mode="notify+wake"`. Conclude your turn immediately after dispatching; the gateway will natively wake ORION when the worker finishes (`completed` / `blocked`).
