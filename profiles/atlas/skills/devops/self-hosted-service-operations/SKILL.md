@@ -74,6 +74,24 @@ Start with filesystem and journal measurements. Inspect stopped Docker container
 
 See `references/vps-disk-maintenance.md` and `references/logrotate-insecure-permissions.md`.
 
+## Local LLM Sizing & CPU Inference Operations
+
+When sizing local LLMs or operating Ollama/llama.cpp on CPU-only VPS hardware:
+
+- **BitNet vs Standard GGUF**: BitNet (`bitnet.cpp`) requires models natively pre-trained from scratch with 1.58-bit ternary weights ($\{-1, 0, 1\}$). Standard architectures (Gemma, Llama, Qwen) cannot be converted to BitNet via post-training quantization without destroying output quality. Use `llama.cpp` or `Ollama` with standard quantization (Q4_K_M, Q5_K_M, Q8_0) for standard models.
+- **RAM Capacity vs CPU Core Bottleneck**: RAM dictates whether a model can fit into memory; CPU core count dictates token generation speed. A 4 vCPU host with high RAM can fit a 32B model (~20GB RAM), but generation throughput bottlenecks at ~1.2–1.4 tokens/sec.
+- **CPU Model Sizing Matrix (4 vCPU baseline)**:
+  - *1B–3B* (e.g. Llama-3.2 3B, BitNet 2B): <3 GB RAM; 20–50+ tok/s; best for high-throughput edge tasks and fast tool calling.
+  - *7B–8B* (e.g. Llama-3.1 8B, Qwen2.5 7B): ~5.5 GB RAM; 10–18 tok/s; balanced for interactive chat and light coding.
+  - *14B–26B* (e.g. Qwen2.5 14B, Gemma 26B): ~9–17 GB RAM; 6–12 tok/s; best balance of reasoning depth and acceptable speed.
+  - *32B* (e.g. Qwen2.5 32B, DeepSeek-R1 32B): ~20 GB RAM; ~1.2–1.4 tok/s (8+ vCPU recommended); too slow for interactive chat, reserve for offline batch or cron jobs.
+- **Instruct vs Reasoning Models**: Instruct models (`qwen2.5:32b`, `llama3.1:8b`) output direct responses immediately. Reasoning models (`deepseek-r1:32b`) emit built-in Chain-of-Thought reasoning (`<think>` blocks) before the answer.
+- **Ollama Storage & Blobs Cleanup**:
+  - `ollama pull` downloads large temporary layer blobs (19GB+ for 32B models) into the storage directory (e.g. `/mnt/ollama-models/blobs`).
+  - If a pull fails with insufficient disk space, Ollama leaves orphan partial blob files (`sha256-*-partial`).
+  - To recover: delete unused models (`ollama rm <model>`), purge partial blobs (`rm -f /mnt/ollama-models/blobs/*partial*`), check free space (`df -h /mnt`), and retry `ollama pull <model>`.
+- **CPU Capability Probes**: Verify vector extension support (AVX2 / AVX-512 required for viable inference throughput) via `lscpu | grep -E "Model name|Flags|Architecture"`.
+
 ## Quick VPS status snapshot
 
 When the user asks "kondisi VPS", "status server", or a general health check, one batched shell is enough. Report as compact tables in Bahasa Indonesia (santai, no em dash).

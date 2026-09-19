@@ -18,6 +18,15 @@ The user's explicit requirements are the minimum contract. Do not artificially l
 
 Proactively identify relevant improvements, edge cases, failure modes, and missing details. Implement low-risk, reversible, clearly beneficial improvements that remain inside intended scope. Escalate destructive, costly, externally consequential, privacy-sensitive, or scope-changing actions.
 
+## Architectural Integrity & Native Engineering (Universal Baseline)
+
+Applies to **EVERY** task, bugfix, feature, script, and project across all domains (Python, TypeScript, Go, Shell, Database, Frontend, Backend, Infra). Never deliver quick-and-dirty, narrow-minded hacks, duct-tape patches, or throwaway workarounds:
+- **Universal Native & Idiomatic Design:** Always build using the idiomatic patterns, official standards, and established libraries/SDKs of the ecosystem rather than ad-hoc shortcuts or crude HTTP/shell monkey-patches.
+- **Config & Environment First:** Never hardcode endpoints, ports, magic numbers, models, or credentials. Always decouple configuration via environment variables, config files, or typed settings.
+- **Systemic Architecture vs. Patching the Symptom:** When fixing or building, understand the full flow and architecture. Do not just slap a duct-tape fix onto the symptom; solve it at the proper architectural layer so the system remains robust and extensible.
+- **Modular, Decoupled & Testable:** Maintain clean separation of concerns, proper abstractions, and clear contracts so components are reusable, testable, and swappable.
+- **Codebase Cleanliness & Stewardship:** Treat every codebase as a long-term production product. Keep code clean, structured, and future-proof.
+
 ## Depth Standard
 
 Do not stop merely because:

@@ -45,7 +45,7 @@ python3 index.py +628xxx
   - Because `start4.py` remains running as long as at least one worker is still connected, systemd reports `custX.service` as `active (running)`, creating a zombie state where the service appears alive but 80–90% of customer bots are dead.
   - **Verification Rule:** NEVER rely solely on `systemctl status custX`. Always verify the total running worker count against actual session files:
     `ps -ef | grep index.py | grep -v grep | wc -l`
-    This count must match the total `.session` files (`find /root/cust/reseller*/session -name "*.session" | wc -l`). Currently 53 total across the 5 instances (11 in cust1, 11 in cust2, 11 in cust3, 10 in cust4, 10 in cust5).
+    This count must match the total `.session` files (`find /root/cust/reseller*/session -name "*.session" | wc -l`). Currently 54 total across the 5 instances (11 in cust1, 11 in cust2, 11 in cust3, 11 in cust4, 10 in cust5).
   - In `systemctl status custX`, healthy units show `Tasks: 21` (for 10 workers) or `Tasks: 23` (for 11 workers). A unit showing `Tasks: 5` has dropped all but 2 workers.
   - **Quick Remediation:** Run `systemctl restart cust1 cust2 cust3 cust4 cust5` to respawn all workers cleanly.
 
@@ -54,6 +54,11 @@ python3 index.py +628xxx
   2. Check if config `cf/cf{phone}.json` was accidentally emptied by customer via `/del 1` and `/del 2`.
   3. Check if customer repeatedly spammed `/restart` in Saved Messages (`me`), which triggers Telegram's anti-flood penalty (can reach 10–13 hours).
   4. Check for Telegram SpamBot restrictions: if journalctl shows `Slot X forward error: You're banned from sending messages in supergroups/channels`, the account has been muted by Telegram SpamBot (account-level restriction, not a code defect).
+  5. Stalled `/input` and `/text` flow: when `/input` is started, `progres<phone>.txt` is created. If dropped mid-flow, orphaned progress files block subsequent commands. Clean up `progres<phone>.txt` and write config directly to `cf/`.
+  6. LPM Random Group Rotation: workers pick up to 15 group dialogs, filter `unread_count >= 5`, shuffle, and send up to 5 messages per cycle. Customers checking only one group link may assume the bot is dead even when actively broadcasting to other groups.
+  7. Saved Messages (`me`) Audit Trail: reading the last 20 messages in `me` immediately proves whether the customer deleted configs, entered invalid inputs, or spammed commands.
+- **Safe Live Session Inspection:**
+  Active workers hold SQLite locks. Never run ad-hoc Telethon scripts directly on `/root/cust/reseller*/session/<phone>.session` (causes `sqlite3.OperationalError: database is locked`). Always copy to `/tmp/test_inspect.session` first before running read-only inspection.
 - **Command Debounce & Outgoing Filter:**
   Commands sent by customer in Saved Messages (`me`) are intercepted by `@client.on(events.NewMessage(outgoing=True, chats="me"))`. A 3-second debounce is in place to prevent multiple responses when commands are rapidly clicked.
 - **SQLite Database Lock & Telethon Wildcard Caution:**
@@ -98,8 +103,10 @@ To log in a new customer account under Hermes:
    - If no residual config exists, pick the slot directory (`reseller` to `reseller5`) with the lowest active session count (`for d in /root/cust/reseller*; do echo "$d: $(ls -1 $d/session/*.session 2>/dev/null | wc -l)"; done`).
 3. Run `login.py` in background with PTY enabled:
    `terminal(command="/usr/local/lib/hermes-agent/venv/bin/python3 login.py +628xxx", workdir="/root/cust/resellerX", background=True, pty=True)`
-4. Monitor prompt using `process_manage(action='log', session_id=...)` until `"Please enter the code you received:"` appears.
-5. When user provides OTP or 2FA password, submit via `process_manage(action='submit', session_id=..., data='<CODE>')`.
+4. Monitor prompt using `process_manage(action='poll', session_id=...)` or `action='log'`:
+   - Note: Telethon's `"Please enter the code you received: "` prompt lacks a trailing newline, so `action='poll'` immediately surfaces it in `output_preview` even before `action='log'` forms a full line.
+5. When user provides OTP, submit via `process_manage(action='submit', session_id=..., data='<OTP>')`.
+   - Check `action='log'` immediately after: if output shows `Please enter your password: `, the account has 2FA (Cloud Password) enabled. Ask user for the 2FA password and submit via `process_manage(action='submit', session_id=..., data='<PASSWORD>')`.
 6. **Post-Login Daemon Reload & Verification:**
    - Tunggu hingga proses `login.py` exit cleanly (status `exit: 0` atau pesan berhasil di log).
    - Pastikan file `.session` terbentuk di `/root/cust/resellerX/session/+628xxx.session`.
@@ -142,9 +149,18 @@ To log in a new customer account under Hermes:
    Customer slot expiry is automatically extended by the exact duration of the FloodWait penalty.
 
 ## Encrypted Private GitHub Backup
-All 53 Telethon SQLite `.session` files (~245 MB) are backed up securely in private repo `IndraYuda13/cust-telethon-backup`:
+All 54 Telethon SQLite `.session` files (~245 MB) are backed up securely in private repo `IndraYuda13/cust-telethon-backup`:
 - Backup script: `/mnt/cust-telethon-backup/scripts/backup.sh` (uses `sqlite3 .backup` + `age` asymmetric encryption with SSH Ed25519 key).
+- Note on baseline warning: `backup.sh` may display `WARNING: Expected 49 session files, got N`; this is a legacy baseline warning in the script. The backup dynamically stages and encrypts all detected sessions cleanly.
 - Restore script: `/mnt/cust-telethon-backup/scripts/restore.sh`.
+- Complete procedure & constraints: see `references/telethon-encrypted-backup-sop.md`.
 - Run backup: `bash /mnt/cust-telethon-backup/scripts/backup.sh`.
 - If the script times out during GitHub push (backup.sh default timeout can cut off 45MB chunk uploads), complete the push manually with a generous timeout:
   `cd /mnt/cust-telethon-backup && git push origin main` (timeout >= 120s).
+
+## Manual Screen Running Mode (Alternative to Systemd)
+When running manually inside `screen` rather than systemd:
+1. Stop and disable services: `systemctl stop cust1 cust2 cust3 cust4 cust5 && systemctl disable cust1 cust2 cust3 cust4 cust5`.
+2. Spawn each reseller in detached screen:
+   `for i in "" 2 3 4 5; do screen -dmS "cust${i:-1}" bash -c "cd /root/cust/reseller${i} && /usr/local/lib/hermes-agent/venv/bin/python3 start4.py"; done`
+3. Verify: `screen -ls` and `ps aux | grep -E "start4\.py|index\.py \+62"`. Attach via `screen -r cust1` (detach: `Ctrl+A, D`).

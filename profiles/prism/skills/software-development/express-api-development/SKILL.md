@@ -95,9 +95,9 @@ When syncing external JSON APIs or upstream data feeds into a local SQLite datab
   app.get(['/docs', '/docs/'], (req, res) => res.send(swaggerHtml));
   app.get('/docs/swagger-ui-init.js', swaggerUi.setup(swaggerDocument));
   ```
-- **Visual Verification & User Frustration Response**:
-  - When the user expresses doubt ("Bukan karena cache bre", "Masih sama aja breee astaga", "Nahhhh gitu kek dari tadi"), do NOT keep insisting or repeating explanations.
-  - Immediately perform browser inspection using `browser_navigate` and `browser_vision`, verify what is actually being rendered, capture a screenshot, and send the MEDIA path directly to the user so they can inspect it themselves.
+- **Visual Verification Over Verbal Reassurance**:
+  - When visual caching issues or client-side rendering discrepancies are suspected, do not rely on verbal explanations.
+  - Immediately perform browser inspection using browser navigation and vision tools, verify the rendered DOM, capture a screenshot, and present the artifact directly.
 
 ---
 
@@ -123,21 +123,7 @@ When syncing external JSON APIs or upstream data feeds into a local SQLite datab
 
 ---
 
-## 6. Telethon SQLite Database Lock Troubleshooting
-
-- **Symptom**: Querying or connecting to a Telethon session file returns `sqlite3.OperationalError: database is locked`.
-- **Cause**: Telethon keeps an open read-write connection to the `.session` file while the script/bot process is actively running.
-- **Fix / Inspection**:
-  - To inspect metadata safely without interrupting the active process, connect in read-only URI mode:
-    ```python
-    import sqlite3
-    conn = sqlite3.connect('file:/path/to/session.session?mode=ro', uri=True)
-    ```
-  - If a full client reconnect is required, find and kill the locking process first (`fuser -k /path/to/session.session` or `kill -9 <PID>`), perform the authorization/session check, then restart the daemon/bot script in the background.
-
----
-
-## 7. n8n Workflow Automation via `n8n-mcp`
+## 6. n8n Workflow Automation via `n8n-mcp`
 
 - **Workflow Creation**: When building automated workflows in n8n via MCP (`mcp__n8n_mcp__create_workflow_from_code`):
   1. Retrieve best practices using `mcp__n8n_mcp__get_workflow_best_practices`.
@@ -147,7 +133,6 @@ When syncing external JSON APIs or upstream data feeds into a local SQLite datab
 - **n8n Expression & Telegram URL Syntax**:
   - In `n8n-nodes-base.httpRequest`, when specifying `url: 'https://api.telegram.org/bot<token>/sendMessage'`, ensure the token format is valid (`<bot_id>:<hash>`).
   - For static or literal JSON payloads in `jsonBody`, pass plain JSON strings instead of `expr(...)` wrappers to avoid n8n expression evaluation syntax errors (`invalid syntax`). Use `expr(...)` only when dynamic `{{ $json... }}` expressions are present.
-  - Active Telegram Bot Token for Waffer Bot: `7578843460:AAGGP-541DltkbCgwUYMB_6rvRKqVHFEoqk` (User Chat ID: `696907598`).
 - **Workflow Version Hygiene & Cleanup**:
   - When re-creating or refactoring n8n workflows from code, draft or duplicate workflow instances will accumulate in the workspace.
   - Use `mcp__n8n_mcp__archive_workflow` with the old `workflowId` to clean up superseded drafts, keeping only active/published production workflows visible in the n8n UI.

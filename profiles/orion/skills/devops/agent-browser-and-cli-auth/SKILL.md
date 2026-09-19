@@ -36,14 +36,23 @@ Websites with multi-factor authentication (2FA), device checks, or bot detection
 ### 1. Cookie Injection (Recommended Fast Path)
 Inject an already authenticated session cookie from the user's primary desktop browser directly into the agent browser tab via CDP:
 
-- **GitHub**: cookie `user_session` on domain `.github.com`
-- Pattern:
+- **GitHub (`.github.com`)**: cookie `user_session`
   ```python
   cdp("Network.setCookie", name="user_session", value=cookie_val, domain=".github.com", path="/", secure=True, httpOnly=True)
   goto_url("https://github.com/")
   wait_for_load()
   ```
-- Verification: inspect `meta[name="user-login"]` to confirm authenticated DOM state.
+  Verification: inspect `meta[name="user-login"]` to confirm authenticated DOM state.
+
+- **X / Twitter (`.x.com` & `.twitter.com`)**: cookies `auth_token`, `ct0`, and `twid`
+  ```python
+  cdp("Network.setCookie", name="auth_token", value=token, domain=".x.com", path="/", secure=True, httpOnly=True)
+  cdp("Network.setCookie", name="ct0", value=ct0, domain=".x.com", path="/", secure=True, httpOnly=False)
+  cdp("Network.setCookie", name="twid", value=twid, domain=".x.com", path="/", secure=True, httpOnly=False)
+  goto_url("https://x.com/home")
+  wait_for_load()
+  ```
+  - **Account Cooldown Invariant:** Rapid failed interactive logins from cloud IPs cause account-level locks ("We've temporarily limited your login"). Enforce a 15–30 minute cooldown after failures before retrying via residential proxy.
 
 ### 2. Google / YouTube Headless Auth Boundary & Bypass Playbook
 Google accounts have strict headless browser and automated environment detection:
@@ -65,6 +74,10 @@ Google accounts have strict headless browser and automated environment detection
   - **DOM Visibility Requirement for `browser_vault_fill`**: `browser_vault_fill` checks `element.getClientRects().length > 0`. In multi-step wizards (Google's C-WIZ), the password container is initially `display: none` until the email/identifier step completes. Before calling `browser_vault_fill`, verify `document.querySelector('input[type="password"]').getClientRects().length > 0`, otherwise the call fails with `"No fillable login field matched the saved item on this page."`
   - **Post-Login Checkpoints (Selfie / Recovery Prompts)**: After 2FA confirmation (e.g. device tap / number matching on phone), Google frequently redirects to onboarding checkpoints such as `myaccount.google.com/verification/selfie/precollection`. Do NOT click "Lanjutkan" (requires live camera streaming). Query and click the skip anchor: `a[aria-label="Lain kali"]` or `a[aria-label="Not now"]` to land cleanly on `myaccount.google.com`.
   - **Browser-Use CLI uvx Latency Trap**: If `browser_exec` times out during startup, `_find_cli()` in `browser_use_cli.py` is likely falling back to `uvx browser-use`, which downloads 100+ packages on every execution. Symlink a pre-built binary into `/root/.local/bin/browser-use` or `/root/.hermes/bin/browser-use` (e.g. `ln -sf <cache_dir>/bin/browser-use /root/.local/bin/browser-use`) so `_find_cli()` resolves instantly without invoking `uvx`.
+  - **Google Cloud & Firebase Headless Console Provisioning**:
+    - **Google AI Studio Bot Rejection**: `aistudio.google.com/app/apikey` strictly blocks datacenter IPs and automated headless browsers with `"The request is suspicious"`. Do not loop automated headless attempts; have the user generate the Gemini API key from their personal desktop/mobile browser and provide it.
+    - **Service Account Key Downloads via CDP**: Creating a JSON service account key in Google Cloud Console (`IAM & Admin -> Service Accounts -> Keys -> Add Key -> Create new key`) triggers a native browser file download. In headless CDP harnesses (`browser_exec`), locate the generated credential under `/root/Downloads/*.json` rather than looking for JSON content in DOM responses.
+    - **Firebase Project Creation Wizard**: In Firebase Console (`console.firebase.google.com`), disable Google Analytics in Step 2 of the creation wizard to bypass billing and organizational permission hurdles on unlinked Google accounts.
 - **Alternative Cookie Export Route**:
   1. Have user export authenticated cookies via browser extension (*Get cookies.txt LOCALLY*) in Netscape format.
   2. Load exported `cookies.txt` into tools (`yt-dlp --cookies cookies.txt`, `requests.cookies.MozillaCookieJar`, or CDP `Network.setCookies`).
@@ -100,5 +113,27 @@ If the user prefers manual login or provides credentials interactively:
   - Standard and `__Secure-` cookies can use `domain=".<domain>"`, `path="/"`, `secure=True`.
 - **Fast CDP Screenshot Fallback**: If `capture_screenshot()` times out (waiting 60s on daemon or `captureBeyondViewport=full` on complex layouts/SPAs), call `res = cdp("Page.captureScreenshot", format="png")` directly. It executes in milliseconds, returns base64 data, and avoids layout hanging.
 - **Remix / React Router Form Intent & Direct Submit**: Forms with `<button name="intent" value="validate" type="submit">` require clicking the button directly or calling `form.requestSubmit(btn)` with the submitter element passed. Calling bare `form.requestSubmit()` drops the intent attribute and leaves the submission inert.
-- **Reliable Screenshot Delivery on Messaging Channels**: When delivering browser visual evidence over Telegram, local paths in temporary directories may fail to preview if the platform channel drops raw media hooks. Staging the image in an exposed web directory (e.g. `/var/www/html/openclaw-media/` routed through Nginx/Cloudflare Tunnel) and providing both inline Markdown `![alt](url)` and direct HTTPS links guarantees instant delivery.
+- **Reliable Screenshot Delivery on Messaging Channels**:
+  - **Telegram MEDIA Delivery & Hidden Directory Block**: `capture_screenshot()` by default saves to `/root/.config/browser-harness/tmp/shot.png`. The Telegram media dispatcher blocks or drops file paths inside hidden dot-directories (`.config`). Never output `MEDIA:/root/.config/...`. Always copy or move the screenshot to an accessible staging directory such as `/tmp/<name>.png` (e.g. `shutil.copy(shot_path, '/tmp/shot.png')`) before emitting `MEDIA:/tmp/shot.png`.
+  - **Public Staging Web Fallback**: When delivering browser visual evidence where local path hooks may fail, stage the image in an exposed web directory (e.g. `/var/www/html/openclaw-media/` routed through Nginx/Cloudflare Tunnel) and provide both inline Markdown `![alt](url)` and direct HTTPS links.
+- **In-Situ Session & Cookie Harvesting via Live Browser Context**:
+  When an automated browser profile already holds an active session on `chatgpt.com`, avoid redundant interactive logins or manual user DevTools exports:
+  1. Evaluate `fetch('/api/auth/session')` in the page context (`js(...)` in `browser_exec`) to extract the live Bearer `accessToken` and user identity object.
+  2. Pull the complete active cookie jar via CDP: `cdp("Network.getCookies", urls=["https://chatgpt.com"])['cookies']` and format as `"; ".join(f"{c['name']}={c['value']}" for c in cookies)`.
+  3. Extract `navigator.userAgent` from the same browser tab so downstream reverse proxies or scripts impersonate the exact browser fingerprint that negotiated Cloudflare Turnstile/Sentinel challenges.
+
+### 6. Multi-Profile Fleet Browser Profile Synchronization
+Hermes isolates Chrome states per profile (`/root/.hermes/profiles/<name>/browser-profile/chrome/Default/Cookies`). Injecting cookies in one profile does NOT update sibling agents.
+Synchronize the browser profile directory across peers while strictly excluding active lock/socket files (`Singleton*`, `*.lock`):
+```python
+import glob, shutil, os
+def ignore_locks(d, files):
+    return [f for f in files if "Singleton" in f or "Socket" in f or "lock" in f.lower()]
+src = "/root/.hermes/profiles/orion/browser-profile/chrome"
+for p in glob.glob("/root/.hermes/profiles/*"):
+    if os.path.basename(p) == "orion": continue
+    dst = os.path.join(p, "browser-profile/chrome")
+    if os.path.exists(dst): shutil.rmtree(dst)
+    shutil.copytree(src, dst, ignore=ignore_locks)
+```
 

@@ -1,9 +1,9 @@
 {
-  "last_report_path": "/root/.hermes/profiles/quant/logs/curator/20260912-132301",
-  "last_run_at": "2026-09-12T13:23:01.624860+00:00",
-  "last_run_duration_seconds": 18.568396,
-  "last_run_summary": "auto: 17 marked stale; llm: I stopped retrying skill_view because it hit the tool-call guardrail (same_tool_failure_halt) after 8 repeated non-progressing attempts. The last tool result explains the blocker; the next step is to change strategy instead of repeating the…",
+  "last_report_path": "/root/.hermes/profiles/quant/logs/curator/20260919-132410",
+  "last_run_at": "2026-09-19T13:24:10.553713+00:00",
+  "last_run_duration_seconds": 66.919612,
+  "last_run_summary": "auto: 11 marked stale, 58 archived; llm: ### Consolidation Pass Summary\n\n- **Candidate Pool Analyzed**: 1 agent-created skill (`market-data-integrity-gate`).\n- **Clusters Evaluated**: None. The only local candidate is flagged `pinned=yes` (`last_activity=2026-08-23T17:23:24.813812…",
   "last_run_summary_shown_at": "2026-07-24T13:00:21.305599+00:00",
   "paused": false,
-  "run_count": 11
+  "run_count": 12
 }

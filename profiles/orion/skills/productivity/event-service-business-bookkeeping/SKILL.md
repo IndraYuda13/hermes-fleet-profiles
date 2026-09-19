@@ -36,7 +36,7 @@ Event services operate on long lead times (weeks or months between booking and s
 ```
 
 1. **Phase 1: H-Booking (Termin 1 / DP 20–30%):**
-   - *Purpose:* Locks calendar date exclusively. 
+   - *Purpose:* Locks calendar date exclusively.
    - *Rule:* Non-refundable. Date is never held without cleared funds in the business account.
 2. **Phase 2: H-30 Days (Termin 2 / 40–50%):**
    - *Purpose:* Working capital for event preparation.
@@ -162,3 +162,13 @@ When fulfilling user requests for business bookkeeping:
   3. Interactive H-7 Early Warning Watchlist with one-click WhatsApp billing reminder generator (`wa.me/?text=...`).
   4. Client-side JSON backup/restore (`exportDataJSON()` / `importDataJSON()`) so users never lose operational records.
 - **Package deliverables into a single downloadable `.zip`** alongside direct file links for immediate deployment.
+
+---
+
+## 7. High-Turnover Walk-In Service Businesses (Barbershops, Salons, Reflexology)
+
+For walk-in retail services operating on daily commission models rather than milestone bookings:
+- Apply the daily per-staff commission formulation ($R_i \times P_i - K_i + T_i$) and shop share calculation ($R_i \times (1 - P_i)$).
+- **Mandate Cash Drawer vs QRIS Reconciliation:** Reconcile cash register intake against staff daily cash payouts to detect whether the drawer has a net cash surplus to bank or a cash deficit requiring the owner to transfer funds to staff from QRIS receipts.
+- **Retrospective Monthly Auditing & Executive PDF Reports:** When recalculating historical months under new commission splits (e.g., shifting to 60% per head), compile a 2-page executive statement (Page 1: KPI & P&L + Cash Reconciliation, Page 2: 31-Day Audit Journal) strictly omitting manual signature/stamp blocks per digital ERP standards.
+- Detailed formulas, drawer settlement rules, 1-click WhatsApp closing templates, and retrospective 2-page PDF audit standards are documented in `references/daily-commission-and-drawer-reconciliation.md`.

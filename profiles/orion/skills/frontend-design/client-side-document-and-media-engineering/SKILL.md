@@ -1,10 +1,10 @@
 ---
 name: client-side-document-and-media-engineering
-description: Use when building client-side document export or web media.
-version: 1.0.0
+description: Use when building client-side document export, web media, or speech/audio interfaces.
+version: 1.1.0
 metadata:
   hermes:
-    tags: [frontend, export, pdf, docx, media, video, embeds, html2pdf]
+    tags: [frontend, export, pdf, docx, media, video, embeds, html2pdf, speech, audio, stt, web-speech-api]
     category: frontend-design
 ---
 
@@ -653,7 +653,27 @@ When building single-page financial calculators and cash register systems for se
      * Section I: Executive P&L Summary (Omset, Biaya, Laba Bersih, Margin).
      * Section II: Itemized Service Revenue Breakdown.
      * Section III: Categorized Operational Expense Allocation.
-     * Dual authorization block: Signature box for *Kasir / Frontdesk* and *Owner / Management*.
+     * Strategic Operational Analysis & Clean Footer: Never include signature boxes, signature lines, or stamp blocks in reports/PDFs unless explicitly requested by the user (user explicitly dislikes signature/stamp blocks). Replace signature boxes with operational risk/strategy takeaways and an authoritative single-line footer.
+- **The Currency & Amount Column Word-Wrap Trap in Financial Tables (`white-space: nowrap`):**
+  - *Trap:* Setting narrow percentage widths (e.g. `12%–15%`) on table amount columns or increasing font size on total rows without wrapping guards.
+  - *Mechanism:* In browser print engines and headless PDF rendering, an 8.5pt–9pt bold currency string (e.g. `Rp 2.500.000`) exceeds narrow column bounds, forcing the currency prefix (`Rp` or `$`) onto a line above the number.
+  - *Rule:* Always allocate at least 18%–20% column width for amounts, declare `white-space: nowrap;` on `.col-amount`, and use tabular/monospace fonts (`font-variant-numeric: tabular-nums;` or monospace).
+- **Headless Chrome Vector A4 PDF Generation & Header/Footer Trap:**
+  - *Trap:* Passing `--print-to-pdf-no-header` in modern Chrome / Chromium (`google-chrome-stable`).
+  - *Mechanism:* In modern Chromium builds, `--print-to-pdf-no-header` is deprecated or ignored; Chrome still stamps default headers and footers (local `file:///` path, date, document title, and `1/1` page numbers in margins), ruining executive single-page reports.
+  - *Rule:* Always use `--no-pdf-header-footer` instead:
+    `google-chrome-stable --headless --disable-gpu --no-sandbox --no-pdf-header-footer --print-to-pdf=output.pdf input.html`
+  - *Verification:* Always verify page count with PyMuPDF (`len(doc) == 1`) and render the page to PNG for visual inspection (`vision_analyze`) to confirm zero word-wrap glitches, clean 1-page fit, 100% sterile margins, and absence of unwanted signature/stamp boxes.
+- **Business Entity Naming & Identity Synchronization in RAB/Financial Documents:**
+  - *Trap:* Using generic operational descriptors (e.g. "Warung Kopi Mandiri" in the sense of independent business) as document titles without confirming the specific brand/branch name.
+  - *Mechanism:* Users operate specific localized establishments (e.g. "Warung Kopi Pakojan"). Generic descriptors collide with commercial branding and require revision across multiple template tags.
+  - *Rule:* Always decouple generic descriptors from the official brand name. When updating or specifying the establishment name, update all document touchpoints in lockstep: `<title>`, `.doc-subtitle`, metadata document code prefix (e.g. `RAB-WKP/`), and `.footer-tag` verification strings.
+- **Micro-Enterprise Startup Capital & Budgeting (RAB) 3-Strata Architecture:**
+  - When structuring startup budgets (e.g. Rp 2.500.000 for F&B/Warkop):
+    1. *Capex (Asset Buyout, ~40%–45%):* Equipment (cart, 2-burner stove, 3kg gas, utensils) must be purchased outright (buyout), eliminating recurring monthly equipment lease overhead.
+    2. *Fixed Opex (Premises Lease, ~14%–15%):* First-month terrace/stall rent must be negotiated all-inclusive (electricity and water) to prevent hidden utility surcharges.
+    3. *Working Capital (~25%–26%):* Fast-moving inventory (noodles, eggs, coffee, sugar, milk) ~20% + register float cash (small change Rp 2.000–Rp 20.000) ~6%.
+    4. *Mandatory 10% Cash Contingency Buffer:* Strictly reserve 10% (Rp 250.000) as unallocated liquidity cushion. Display 3 prominent KPI summary cards at the top: Pagu Modal Awal (100%), Total Belanja Terencana (90%), and Sisa Kas Cadangan (10%).
    - Combine with a 1-click WhatsApp copy button (`copyMonthlySummary`) that formats the monthly financial summary into clean, professional text ready for instant messaging.
 6. **The Complete Financial Data Purge & Seeding Guard Pattern (`resetAllFinancialData`):**
    - *Problem:* Users wanting to put the financial calculator into real production need to wipe out all pre-populated dummy/simulation transactions (both orders and expenses) so cashflow starts completely clean from Rp 0.

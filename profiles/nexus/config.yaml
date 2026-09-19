@@ -3,13 +3,13 @@ model:
   default: ag-opus-pool
   provider: custom:local-(localhost:20128)
 toolsets:
-- file
-- web
-- todo
-- clarify
-- cronjob
-- session_search
-- kanban
+  - file
+  - web
+  - todo
+  - clarify
+  - cronjob
+  - session_search
+  - kanban
 web:
   backend: firecrawl
   search_backend: firecrawl
@@ -265,7 +265,8 @@ onboarding:
   seen:
     busy_input_prompt: true
     openclaw_residue_cleanup: true
-_config_version: 44
+    tool_progress_prompt: true
+_config_version: 45
 custom_providers:
   - api_key: REDACTED
     base_url: https://9router.indrayuda.my.id/v1
@@ -327,27 +328,29 @@ a2a_agents:
     timeout: 1800
 platform_toolsets:
   a2a:
-  - a2a
-  - clarify
-  - cronjob
-  - file
-  - hermes-a2a
-  - kanban
-  - session_search
-  - skills
-  - todo
-  - web
+    - a2a
+    - clarify
+    - connections
+    - cronjob
+    - file
+    - hermes-a2a
+    - kanban
+    - session_search
+    - skills
+    - todo
+    - web
   cli:
-  - a2a
-  - clarify
-  - cronjob
-  - file
-  - hermes-a2a
-  - kanban
-  - session_search
-  - skills
-  - todo
-  - web
+    - a2a
+    - clarify
+    - connections
+    - cronjob
+    - file
+    - hermes-a2a
+    - kanban
+    - session_search
+    - skills
+    - todo
+    - web
 known_plugin_toolsets:
   a2a:
     - a2a
@@ -361,6 +364,7 @@ known_builtin_toolsets:
     - clarify
     - code_execution
     - computer_use
+    - connections
     - context_engine
     - cronjob
     - delegation
@@ -388,6 +392,7 @@ known_builtin_toolsets:
     - clarify
     - code_execution
     - computer_use
+    - connections
     - context_engine
     - cronjob
     - delegation

@@ -6,7 +6,7 @@ author: Orion Fleet Lead
 license: MIT
 metadata:
   hermes:
-    tags: [seo, geo, local-business, google-business-profile, opengraph, meta-cache, json-ld]
+    tags: [seo, geo, local-business, google-business-profile, opengraph, meta-cache, json-ld, site-selection, spatial-feasibility, demographic-audit]
     category: software-development
 ---
 
@@ -19,6 +19,7 @@ Use this skill when:
 2. Creating and synchronizing unified JSON-LD schemas (`LocalBusiness`, `BarberShop`, `hasOfferCatalog`, `FAQPage`, `GeoCoordinates`).
 3. Resolving OpenGraph preview cache staleness across Meta platforms (Threads, WhatsApp, Instagram, Facebook).
 4. Troubleshooting Google Business Profile (GBP) validation errors (such as false-positive URL detection in descriptions).
+5. Evaluating physical site feasibility, neighborhood demographics, customer behavior, and foot/motor traffic for local offline ventures (e.g. warkop, barbershop, retail, F&B) from Google Maps links or coordinates.
 
 ---
 
@@ -192,6 +193,29 @@ When verifying a local business's live organic ranking or Google Business Profil
   - Note social media dominance: high-engagement branded Instagram accounts (`@brand.jkt`) often take Rank #1 above the official domain (`.com`).
   - Extract the Knowledge Panel / Google Maps data from container `#rhs` or `div.kp-blk`: verify star rating, total review count, and physical street address.
   - **Audit Operational Hours Mismatch:** Always cross-reference Google Maps listed hours against the website claims. For example, if GBP says "Sabtu Tutup" while the website claims "Buka Senin–Sabtu", local weekend customers will assume the business is closed, leaking high-intent weekend inquiries.
+
+## 12. Offline Site Selection & Local Demographic Feasibility Audit (Google Maps & Spatial Reconnaissance)
+
+When assessing the viability of opening an offline retail, F&B (e.g. warkop, coffee shop, warmindo), or local service shop (e.g. barbershop, laundry) from a Google Maps link or coordinates:
+
+### A. Location & Coordinate Resolution
+1. **Shortlink Expansion (`maps.app.goo.gl`):** Shortlinks must be resolved before spatial queries. Follow HTTP 302 redirects with `curl -ILs "https://maps.app.goo.gl/..." | grep -i "^location:"` or load via browser to capture canonical coordinates (`@lat,lon`), place title, and Plus Code.
+2. **Overpass API Dense-Area Radius Constraint (HTTP 504 Timeout Pitfall):**
+   - In high-density urban centers (e.g. Jakarta, Surabaya, Bandung), broad queries (`way(around:800,...)[amenity]`) trigger `HTTP 504 Gateway Timeout` on public Overpass mirrors due to node density.
+   - Bound exploratory radii to **300m–400m** maximum, or query narrow key tags (`["amenity"~"school|college|place_of_worship"]`) rather than unbounded amenity dumps.
+   - For wider context (500m–1km), combine targeted web/satellite searches with high-level area boundaries.
+
+### B. Micro-Demographic & Consumer Behavior Triad
+Map spatial anchors into 3 actionable consumer tiers:
+1. **Students & Youth (13–19 y/o):** Sourced from schools (SMP/SMA/SMK) within 500m. Peak dwell time: 12:00–16:30. Highly sensitive to price; primary basket: sachet drinks, instant noodles, gorengan, mobile gaming ("mabar") requiring accessible power sockets.
+2. **Young Workers, Commuters & Gig Economy / Ojol (20–35 y/o):** Sourced from local rental rooms (kos-kosan, kontrakan) and connecting alleys/arterials. Peak dwell time: 19:00–01:00. Looking for low-cost decompression, late-night coffee/smoking, fast reliable Wi-Fi, and quick pit-stop refreshments.
+3. **Local Families & Elders (36–55+ y/o):** Sourced from residential kampungs and neighborhood mosques. Peak dwell time: 06:00–09:00 (morning coffee/breakfast) and post-Maghrib/Isya. Sticky community word-of-mouth.
+
+### C. 4-Pillar Site Feasibility Checklist
+- **Road Class & Accessibility:** Differentiate main collector/connector roads ("jalan tikus" pemotor) from dead-end residential alleys. High motorcycle pass-by volume is an asset for impulse visits, provided off-street parking is preserved.
+- **Dedicated Off-Street Motorbike Parking:** Narrow residential roads cannot absorb on-street parking without triggering neighborhood friction. Ensure the venue has dedicated frontage for at least 4–6 motorbikes.
+- **Dwell-Time Enablers:** For high-dwell ventures (warkop/cafe), free Wi-Fi and power outlets at every seating section increase per-head spend through repeat drink orders.
+- **Environmental & Water Risk:** Check elevation and proximity to local rivers/canals (e.g. bantaran kali) against seasonal flood history before committing capital to low-lying properties.
 
 ## 10. Supporting Knowledge Base
 - **B2B Scaling, Non-PT Operations & Funnel Repositioning:** See `references/b2b-scaling-and-funnel-repositioning.md` for mathematical blueprints on scaling custom service businesses from Rp 10M retail plateau to Rp 100M/month corporate accounts without requiring a large PT legal entity (operating cleanly as an independent creative studio with SPH/Invoice, 50% upfront DP cashflow rules, single-price flat catalog structures, and the 4-tier competitor taxonomy & 5-point differentiation moat).

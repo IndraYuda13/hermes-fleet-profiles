@@ -1,4 +1,4 @@
-_config_version: 44
+_config_version: 45
 agent:
   reasoning_effort: low
   system_prompt: '# ABSOLUTE PRIORITY OVERRIDE RULE (PERCINTAAN GEN Z / ASMARA):

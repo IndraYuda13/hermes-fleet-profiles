@@ -1,9 +1,9 @@
 {
-  "last_report_path": "/root/.hermes/profiles/prism/logs/curator/20260912-132258",
-  "last_run_at": "2026-09-12T13:22:58.014976+00:00",
-  "last_run_duration_seconds": 226.390938,
-  "last_run_summary": "auto: 14 marked stale; llm: # Consolidation Pass Summary\n\nCurator consolidation pass executed across candidate skills. Identified narrow, session-specific, and redundant skills, distilling their core operational lessons into class-level umbrella skills and archiving t…\narchived 17 skill(s):\n  • bstation-streaming-bot → telegram-bot-development\n  • external-coding-agents → hermes-agent\n  • github-operations → github\n  • google-sheets-formatting-pitfalls → google-workspace\n  • hermes-operations → hermes-agent\n  • lms-automation → self-hosted-service-operations\n  • n8n-workflow-automation → express-api-development\n  • network-proxy-troubleshooting → self-hosted-service-operations\n  • nofx-operations → self-hosted-service-operations\n  • octobot-operations → self-hosted-service-operations\n  … and 7 more\nfull report: hermes curator status\nkeep an umbrella stable: hermes curator pin express-api-development",
+  "last_report_path": "/root/.hermes/profiles/prism/logs/curator/20260919-132416",
+  "last_run_at": "2026-09-19T13:24:16.161723+00:00",
+  "last_run_duration_seconds": 162.460933,
+  "last_run_summary": "auto: 8 marked stale, 32 archived, 1 reactivated; llm: ### Summary of Work\n\n#### Clusters Processed & Consolidations\n1. **Agent Tool Loop Recovery into Software Development Workflows**:\n   - Absorbed `break-tool-loops` into `software-development-workflows`.\n   - Added `## Breaking tool loops an…\narchived 2 skill(s):\n  • break-tool-loops → software-development-workflows\n  • telemetry-dashboard-verification → service-api-verification\nfull report: hermes curator status\nkeep an umbrella stable: hermes curator pin service-api-verification",
   "last_run_summary_shown_at": "2026-07-24T13:00:21.305599+00:00",
   "paused": false,
-  "run_count": 11
+  "run_count": 12
 }

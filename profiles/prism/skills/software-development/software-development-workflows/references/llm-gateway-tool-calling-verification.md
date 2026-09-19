@@ -38,10 +38,15 @@ When an API gateway fronts a stateful upstream session pool (e.g. ChatGPT Web co
    - Turn 2 (tool result): Gateway passes the recorded message ID as `parent_message_id`, maintaining tree continuity.
 3. **Session Reconnect & 404 Recovery:** If upstream returns 404 (session expired or pruned), verify that gateway falls back to replaying full conversation history as a fresh conversation (`parent_message_id="client-created-root"`) rather than propagating an unhandled 500 error.
 4. **Session Mutex Isolation:** Ensure each session ID uses an asynchronous lock (`asyncio.Lock`) so parallel requests to the same session do not corrupt upstream parent message pointers.
+5. **System Instruction Lifecycle on Continuations:** In DAG-based stateful backends, inject hidden system messages (`is_visually_hidden_from_conversation: True` or custom instructions) ONLY at root conversation creation (`parent_message_id == "client-created-root"` or `conversation_id is None`). Never re-inject them on continuation turns: re-injection creates redundant hidden nodes at every turn in the upstream message tree, bloating context and triggering model safety/RLHF disclaimers regarding "hidden or skipped messages in context".
+6. **Tool Result Channel Isolation:** When upstream backends lack a distinct `tool` author/role and force tool execution results into a `user` role message, prepend an unambiguous automated execution header (e.g. `[AUTOMATED RUNTIME TOOL OUTPUT (NOT HUMAN USER CHAT)]`) and do not echo user prompts inside tool payloads. Without structural or lexical separation, the upstream model conflates automated tool returns with human chat turns, breaking turn accounting and conversational history recall.
 
 ## 3. Adversarial Edge Cases & Failure Injection
 
-- **Truncated Arguments:** When an upstream LLM cuts off mid-argument (`{"param": "val`), verify the gateway transmits the raw argument string without crashing. Argument syntax validation belongs to the consumer, not the proxy.
+- **Truncated Arguments & Masked Finish Reason:** When an upstream LLM cuts off mid-argument (`{"param": "val`), verify the gateway transmits the raw argument string without crashing. However, if the stream terminates prematurely while inside a tool call before closing delimiters appear:
+  - Do NOT stamp `finish_reason: "tool_calls"` on an incomplete payload that fails JSON closing syntax (`}` or `]`). Client runtimes detect this as masked truncation and abort.
+  - The gateway parser must detect mid-call stream termination and surface `finish_reason: "length"`, allowing downstream runtimes to invoke token-limit recovery instead of failing JSON validation.
+  - Account for fixed upstream token generation caps: web-based backends enforce fixed generation limits (~4K-8K tokens) that client `max_tokens` cannot override. High-volume tools (DOM reads, large logs) must truncate or paginate before yielding outputs.
 - **Empty Function Parameters:** Verify arguments for zero-argument functions serialize to `"{}"`, never empty string `""` or `null`.
 - **Mismatched or Missing `tool_call_id`:** If client sends `role: "tool"` without matching `tool_call_id` or with a nonexistent ID, verify gateway returns HTTP 400 (`invalid_request_error`), not HTTP 500.
 - **`tool_choice` Semantics:**

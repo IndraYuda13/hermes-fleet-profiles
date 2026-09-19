@@ -35,5 +35,12 @@ In VPS environments without a physical monitor, Burp Suite (Java Swing GUI) runs
 
 ## 3. Installation & Verification
 1. Install Java 21 & Xvfb: `sudo apt update && sudo apt install -y openjdk-21-jre xvfb xauth libxrender1 libxtst6 libxi6`.
-2. Run headless via Xvfb: `xvfb-run -a /usr/local/BurpSuiteCommunity/BurpSuiteCommunity &`.
-3. Load BurpMCP-Ultra JAR in Burp Extensions (Java Extension).
+2. Download & Run Burp Suite Linux installer:
+   ```bash
+   wget "https://portswigger.net/burp/releases/download?product=community&version=2024.12.1&type=Linux" -O burpsuite_installer.sh
+   chmod +x burpsuite_installer.sh
+   ./burpsuite_installer.sh -q
+   ```
+3. Run headless via Xvfb: `xvfb-run -a /usr/local/BurpSuiteCommunity/BurpSuiteCommunity &` (or supervise via systemd, see `references/systemd-novnc-architecture.md`).
+4. Load BurpMCP-Ultra JAR (`/opt/burp-extensions/burpmcp-ultra-2.3.0.jar`) in Burp Extensions (Java Extension).
+5. Verify ports: `9876` (MCP SSE), `9878` (Dashboard), `6080` (noVNC web GUI), and `8080` (proxy listener).

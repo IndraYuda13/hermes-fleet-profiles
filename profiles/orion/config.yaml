@@ -72,7 +72,8 @@ approvals:
   destructive_slash_confirm: true
 command_allowlist: []
 plugins:
-  disabled: []
+  disabled:
+  - self-wake
   enabled:
   - observability/langfuse
   - platforms/a2a
@@ -103,7 +104,7 @@ onboarding:
   seen:
     busy_input_prompt: true
     openclaw_residue_cleanup: true
-_config_version: 44
+_config_version: 45
 a2a_agents:
   atlas:
     timeout: 900
@@ -160,6 +161,7 @@ known_builtin_toolsets:
   - clarify
   - code_execution
   - computer_use
+  - connections
   - context_engine
   - cronjob
   - delegation
@@ -187,6 +189,7 @@ known_builtin_toolsets:
   - clarify
   - code_execution
   - computer_use
+  - connections
   - context_engine
   - cronjob
   - delegation
@@ -214,6 +217,7 @@ known_builtin_toolsets:
   - clarify
   - code_execution
   - computer_use
+  - connections
   - context_engine
   - cronjob
   - delegation
@@ -294,4 +298,22 @@ platforms:
   telegram:
     enabled: true
   whatsapp:
-    enabled: false
+    enabled: true
+    extra:
+      allow_all_users: true
+      allow_from: []
+      group_allow_from: []
+      group_allowed_chats: []
+      group_policy: open
+      require_mention: true
+      bridge_port: 3001
+      session_path: /root/.hermes/profiles/orion/whatsapp/session
+      mention_patterns:
+      - Orion
+      - '@Orion'
+      - \bOrion\b
+      - bot
+      - '@bot'
+      - \bbot\b
+      - Bb
+      - '@Bb'

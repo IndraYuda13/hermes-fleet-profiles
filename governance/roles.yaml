@@ -84,7 +84,7 @@ profiles:
     production_write: false
     allowed_write_scopes: [documentation, runbook, release-communication]
     allowed_root_toolsets: [file, web, todo, clarify, cronjob, session_search, kanban]
-    allowed_platform_toolsets: [a2a, clarify, cronjob, file, hermes-a2a, kanban, session_search, skills, todo, web]
+    allowed_platform_toolsets: [a2a, clarify, connections, cronjob, file, hermes-a2a, kanban, session_search, skills, todo, web]
     forbidden_toolsets: [code_execution, computer_use, delegation, terminal]
 
   prism:

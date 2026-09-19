@@ -83,11 +83,12 @@ When payment succeeds, PaKasir dispatches a `POST` request to the project's conf
 1. **Match Project Slug:** Ignore any payload where `payload.project != configured_project`.
 2. **Re-query Transaction Detail & URL Secret Token:**
    - PaKasir payloads do not feature asymmetric HMAC signatures. Always make an independent verification call to `GET /api/transactiondetail` to confirm `status == 'completed'`.
-   - **Anti-Amplification DoS:** Because verification requires an outbound HTTP call to PaKasir, protect the endpoint against fake-payload flooding by registering a secret query/path token in the PaKasir dashboard URL (e.g. `/webhook/pakasir?token=<secret>`). Immediately reject requests with invalid tokens before executing any outbound verification.
+   - **Anti-Amplification DoS & Fail-Closed Token Guard:** Because verification requires an outbound HTTP call to PaKasir, protect the endpoint against fake-payload flooding by registering a secret query/path token in the PaKasir dashboard URL (e.g. `/webhook/pakasir?token=<secret>`). Immediately reject requests with invalid tokens before executing any outbound verification.
+   - **Fail-Closed Secret Invariant:** If the webhook secret is empty, undefined, or missing from environment variables, verification must **fail-closed** (`return false`). Never default to `true` on missing configuration (`if (!secret) return true;`), as that allows unauthorized external callers to forge completed transactions when environment configuration is incomplete.
 3. **Atomic DB State Lock (Anti-Double Fulfillment):** When a webhook and background poller run concurrently, both can detect a paid order at the same time. Never use a read-then-write pattern or return truthy order objects if already paid. Use atomic SQL transitions:
    ```sql
-   UPDATE orders 
-   SET status = 'paid', paid_at = datetime('now') 
+   UPDATE orders
+   SET status = 'paid', paid_at = datetime('now')
    WHERE order_id = ? AND status = 'pending';
    ```
    Only proceed to `deliver_product()` if `cur.rowcount > 0`. If `rowcount == 0` (another worker already won the race), return `200 OK` and skip duplicate delivery.
@@ -122,6 +123,57 @@ When payment succeeds, PaKasir dispatches a `POST` request to the project's conf
    - For bulk / multi-item orders (`qty > 1` or `qty > 5`): generate an in-memory `.txt` file attachment containing all items/tokens/links and send via `send_document` to prevent Telegram's 4096 character message truncation error.
 13. **Admin-Buyer Deduplication:**
    - If `buyer_user_id == ADMIN_USER_ID`, suppress the separate admin sales notification to prevent duplicate pings in the admin's personal chat.
+
+## Web E-Commerce Dual-Payment Architecture (Wallet Balance vs Direct QRIS)
+
+In web stores supporting both wallet balance and direct QRIS checkout:
+
+### 1. Distinct Order ID Namespaces
+Distinguish transaction types via deterministic prefixes in `order_id` so the shared webhook handler routes correctly without ambiguous table lookups:
+- `DEP-<timestamp>-<user_id>` for balance deposit.
+- `ORD-<timestamp>-<user_id>` for direct cart checkout.
+
+### 2. Atomic Wallet Ledger Invariant (Append-Only)
+When checking out using stored user balance, bypass PaKasir entirely and use an atomic conditional decrement inside a database transaction paired with an immutable ledger entry:
+```sql
+-- 1. Decrement cached balance with row-level safety
+UPDATE wallet_accounts
+SET balance = balance - :total_amount, updated_at = NOW()
+WHERE user_id = :user_id AND balance >= :total_amount;
+
+-- 2. In the same transaction, write the immutable ledger entry
+INSERT INTO wallet_ledger (id, user_id, entry_type, amount, balance_after, reference_type, reference_id, description, created_at)
+VALUES (:ledger_id, :user_id, 'PURCHASE', -:total_amount, :new_balance, 'ORDER', :order_id, 'Pembayaran pesanan', NOW());
+```
+- If `rowcount == 0`, immediately fail checkout with `400 Insufficient Balance`.
+- Enforce deposit bounds: min deposit (e.g. Rp5.000), max deposit per transaction (e.g. Rp1.000.000), and max balance ceiling (e.g. Rp2.000.000).
+- Saldo tidak boleh ditimpa langsung (`balance = X`). Setiap koreksi saldo wajib via entry ledger baru bertipe `ADJUSTMENT` dengan reason dan audit trail aktor/IP.
+
+### 3. Pre-Order Quota, Reservation Window & Grace Period (10m + 2m)
+- **Direct QRIS Reservation Hold:** Decrement available stock/quota conditionally when issuing the QRIS invoice (`available = on_hand - reserved - committed`):
+  ```sql
+  UPDATE variant_stock SET reserved = reserved + :qty WHERE variant_id = :variant_id AND (on_hand - reserved - committed) >= :qty;
+  ```
+- **Cart Does Not Hold Stock:** Keranjang belanja strictly tidak menahan stok; reservasi hanya terjadi saat checkout QRIS di-submit dan invoice dibuat.
+- **10-Minute Expiration + 2-Minute Grace Period:** Invoice PaKasir kedaluwarsa dalam 10 menit, namun latensi kliring bank atau network webhook sering tiba pada menit 10:00–12:00. Worker background baru boleh melepaskan reservasi stok dan membatalkan invoice setelah `12 menit` (10m window + 2m grace period).
+- **Late Payment Fee Exclusion on Auto-Credit:** Jika pembayaran valid tiba setelah 12 menit dan stok varian sudah habis direbut pembeli lain:
+  - Sistem **tidak boleh melakukan silent oversell**.
+  - Atomik kreditkan dana produk ke wallet internal pembeli (`entry_type = 'RECONCILIATION_CREDIT'`).
+  - **Biaya QRIS (gateway fee) tidak dikembalikan** ke wallet karena biaya tersebut sudah dipotong agregator/bank.
+  - Tandai status pesanan menjadi `RECONCILIATION_REQUIRED` dengan audit trail lengkap.
+
+### 4. Three-Tier Status Decoupling (Payment vs Order vs Item Fulfillment)
+Jangan pernah mencampur status pembayaran dengan status pemenuhan ke dalam 1 kolom `status`:
+- **Payment Status:** `UNPAID` / `PENDING` -> `PAID` -> `EXPIRED` / `FAILED`
+- **Order Status:** `AWAITING_PAYMENT` -> `PAID` / `PROCESSING` -> `PARTIALLY_COMPLETED` -> `COMPLETED` / `CANCELLED`
+- **OrderItem Fulfillment Status:** `PENDING` -> `PROCESSING` -> `COMPLETED` / `REFUNDED`
+Pemisahan ini esensial untuk pesanan multi-item di mana sebagian produk selesai diproses seketika sementara item lain masih menunggu antrean.
+
+### 5. Real-Time Payment Screen Sync (Polling / SSE)
+Web frontends cannot rely on push notifications like Telegram. Expose a lightweight status endpoint `GET /api/orders/{order_id}/status`:
+- Frontend polls every 2.5s while active.
+- Re-check immediately on `visibilitychange` (user returning from m-banking/e-wallet app).
+- Redirect automatically to order confirmation upon `status === 'paid'`.
 
 ## Telegram Bot + FastAPI Architecture Pattern
 

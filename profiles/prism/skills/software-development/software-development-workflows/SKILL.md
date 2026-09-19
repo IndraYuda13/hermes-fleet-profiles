@@ -20,6 +20,7 @@ Use this umbrella for the engineering loop around a change: prove the problem, c
 
 | Situation | Start here | Completion criterion |
 |---|---|---|
+| Stuck in repetitive tool errors or empty turns | Breaking tool loops | Strategy pivoted, file state verified, and batch findings reported |
 | Failure, regression, or unexpected behavior | Root-cause debugging | A reproducible cause and a focused regression check |
 | New behavior or a bug fix | Test-first implementation | A check failed before the change and passes after it |
 | `ModuleNotFoundError`, import, or pip/venv conflict | Python environment diagnosis | The intended interpreter imports the intended package |
@@ -42,6 +43,14 @@ If a frontend appears to lose dynamic components such as categories or catalog i
 4. Only then make one root-cause change. Keep the reproducer as the regression check.
 
 Do not stack speculative fixes. After repeated failed fixes, return to the evidence and question the design rather than adding a fourth workaround. See `references/root-cause-debugging.md` for the full investigation discipline.
+
+## Breaking tool loops and stuck states
+
+When an agent enters repetitive failure loops (repeated identical errors or empty conversational responses):
+- **Never retry identical actions:** If a tool call fails, do not repeat it with identical parameters. Change the approach or inspect live state first.
+- **Resolve patch ambiguity:** If `patch` fails with "Could not find a match", read the target file with `read_file` or `skill_view` to inspect live state and widen context lines. If "Found multiple matches" occurs, supply more surrounding context. If patching fails 2-3 times, overwrite with `write_file`.
+- **Pre-empt test failure loops:** When a test fails due to missing modules or syntax errors, fix the underlying code before re-running the test suite.
+- **Synthesize tool outputs:** After multi-tool execution batches, synthesize findings into a clear conversational summary explaining what succeeded, what failed, and the next step; avoid returning empty responses.
 
 ## Test-first implementation
 

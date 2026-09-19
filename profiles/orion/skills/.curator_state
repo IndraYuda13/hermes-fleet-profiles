@@ -1,9 +1,9 @@
 {
-  "last_report_path": "/root/.hermes/profiles/orion/logs/curator/20260911-171436",
-  "last_run_at": "2026-09-11T17:14:36.450038+00:00",
-  "last_run_duration_seconds": 341.719354,
-  "last_run_summary": "auto: no changes; llm: ### Consolidation Pass Summary\n\nDuring this background curator consolidation pass across the 33 curator-managed skills, the library was evaluated to distill narrow, incident-specific, and fragmented skills into class-level umbrellas. Five m…",
+  "last_report_path": "/root/.hermes/profiles/orion/logs/curator/20260918-172240",
+  "last_run_at": "2026-09-18T17:22:40.321745+00:00",
+  "last_run_duration_seconds": 322.49247,
+  "last_run_summary": "auto: no changes; llm: # Umbrella Consolidation Summary\n\nConsolidated 16 narrow and duplicate agent-created skills into 6 comprehensive class-level umbrellas, preserving supporting references and scripts while removing redundant micro-entries.\n\n### 1. Burp Suite …\narchived 16 skill(s):\n  • a2a-fleet-orchestration → fleet-orchestration-suite\n  • agent-session-and-cli-auth → agent-browser-and-cli-auth\n  • bstation-ogv-catalog-architecture → bstation-ogv-pipeline\n  • bstation-ogv-catalog-curation → bstation-ogv-pipeline\n  • bstation-ogv-streaming-engine → bstation-ogv-pipeline\n  • burpsuite-headless-mcp → burpsuite-headless-operations\n  • burpsuite-headless-mcp-operations → burpsuite-headless-operations\n  • fleet-defect-rembukan → fleet-orchestration-suite\n  • fleet-impeccable-orchestration → fleet-orchestration-suite\n  • headless-ui-visual-audit-and-scroll-reveal → frontend-craft-and-hardening\n  … and 6 more\nfull report: hermes curator status\nkeep an umbrella stable: hermes curator pin agent-browser-and-cli-auth",
   "last_run_summary_shown_at": "2026-07-24T13:00:21.305599+00:00",
   "paused": false,
-  "run_count": 12
+  "run_count": 13
 }
