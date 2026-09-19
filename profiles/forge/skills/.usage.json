@@ -353,14 +353,14 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-19T18:13:58.552177+00:00",
-    "last_viewed_at": "2026-09-19T18:13:58.542312+00:00",
+    "last_used_at": "2026-09-19T21:22:11.172951+00:00",
+    "last_viewed_at": "2026-09-19T21:22:11.147240+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": true,
     "state": "active",
-    "use_count": 19,
-    "view_count": 19
+    "use_count": 20,
+    "view_count": 20
   },
   "claude-code": {
     "archived_at": "2026-07-24T13:16:36.776250+00:00",
@@ -933,14 +933,14 @@
     "created_by": "agent",
     "last_patched_at": "2026-09-02T06:54:49.574485+00:00",
     "last_reused_patch_generation": 3,
-    "last_used_at": "2026-09-19T13:25:38.797276+00:00",
-    "last_viewed_at": "2026-09-19T13:25:38.768226+00:00",
+    "last_used_at": "2026-09-19T21:24:55.944042+00:00",
+    "last_viewed_at": "2026-09-19T21:24:55.934934+00:00",
     "patch_count": 7,
     "patch_generation": 3,
     "pinned": false,
     "state": "active",
-    "use_count": 24,
-    "view_count": 24
+    "use_count": 27,
+    "view_count": 27
   },
   "github-pr-workflow": {
     "archived_at": "2026-07-24T13:16:38.984523+00:00",
@@ -1138,14 +1138,14 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-19T14:49:12.484993+00:00",
-    "last_viewed_at": "2026-09-19T14:49:12.476631+00:00",
+    "last_used_at": "2026-09-19T21:15:50.509626+00:00",
+    "last_viewed_at": "2026-09-19T21:15:50.499050+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 32,
-    "view_count": 32
+    "use_count": 34,
+    "view_count": 34
   },
   "hermes-agent-backup": {
     "archived_at": "2026-07-17T12:39:09.955118+00:00",
@@ -2136,16 +2136,16 @@
     "archived_at": null,
     "created_at": "2026-07-17T12:30:21.314339+00:00",
     "created_by": "agent",
-    "last_patched_at": "2026-09-19T13:28:00.954830+00:00",
-    "last_reused_patch_generation": 56,
-    "last_used_at": "2026-09-19T18:39:03.757498+00:00",
-    "last_viewed_at": "2026-09-19T18:39:03.750247+00:00",
-    "patch_count": 96,
-    "patch_generation": 56,
+    "last_patched_at": "2026-09-19T21:18:47.643192+00:00",
+    "last_reused_patch_generation": 57,
+    "last_used_at": "2026-09-19T21:22:11.164716+00:00",
+    "last_viewed_at": "2026-09-19T21:22:11.156914+00:00",
+    "patch_count": 97,
+    "patch_generation": 57,
     "pinned": false,
     "state": "active",
-    "use_count": 137,
-    "view_count": 131
+    "use_count": 141,
+    "view_count": 134
   },
   "software-development/software-development-workflows": {
     "archived_at": null,
@@ -2153,14 +2153,14 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-19T16:10:37.786281+00:00",
-    "last_viewed_at": "2026-09-19T16:10:37.777108+00:00",
+    "last_used_at": "2026-09-19T21:21:32.279468+00:00",
+    "last_viewed_at": "2026-09-19T21:21:32.262118+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 7,
-    "view_count": 7
+    "use_count": 9,
+    "view_count": 9
   },
   "software-development:dogfood": {
     "archived_at": null,

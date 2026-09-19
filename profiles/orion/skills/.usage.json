@@ -725,14 +725,14 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-19T21:05:58.190891+00:00",
-    "last_viewed_at": "2026-09-19T21:05:58.180244+00:00",
+    "last_used_at": "2026-09-19T21:34:40.049485+00:00",
+    "last_viewed_at": "2026-09-19T21:34:40.033486+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 22,
-    "view_count": 22
+    "use_count": 26,
+    "view_count": 26
   },
   "fleet-execution-provenance": {
     "archived_at": null,
@@ -740,14 +740,14 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-19T20:12:00.958721+00:00",
-    "last_viewed_at": "2026-09-19T20:12:00.920990+00:00",
+    "last_used_at": "2026-09-19T21:34:40.082466+00:00",
+    "last_viewed_at": "2026-09-19T21:34:40.074977+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 15,
-    "view_count": 15
+    "use_count": 16,
+    "view_count": 16
   },
   "fleet-hardening-and-sanitizer": {
     "archived_at": null,
@@ -755,14 +755,14 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-19T20:38:58.173491+00:00",
-    "last_viewed_at": "2026-09-19T20:38:58.162971+00:00",
+    "last_used_at": "2026-09-19T21:28:53.113120+00:00",
+    "last_viewed_at": "2026-09-19T21:28:53.097861+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 10,
-    "view_count": 10
+    "use_count": 11,
+    "view_count": 11
   },
   "fleet-impeccable-orchestration": {
     "archived_at": "2026-09-18T17:27:07.956403+00:00",
@@ -783,16 +783,16 @@
     "archived_at": null,
     "created_at": "2026-09-11T17:19:03.646145+00:00",
     "created_by": "agent",
-    "last_patched_at": "2026-09-19T21:06:38.677496+00:00",
-    "last_reused_patch_generation": 41,
-    "last_used_at": "2026-09-19T21:08:26.269745+00:00",
-    "last_viewed_at": "2026-09-19T21:08:26.237249+00:00",
-    "patch_count": 41,
-    "patch_generation": 41,
+    "last_patched_at": "2026-09-19T21:43:49.192668+00:00",
+    "last_reused_patch_generation": 53,
+    "last_used_at": "2026-09-19T21:50:29.936240+00:00",
+    "last_viewed_at": "2026-09-19T21:50:29.928452+00:00",
+    "patch_count": 53,
+    "patch_generation": 53,
     "pinned": false,
     "state": "active",
-    "use_count": 72,
-    "view_count": 72
+    "use_count": 88,
+    "view_count": 88
   },
   "fleet-runtime-containment-and-recovery": {
     "archived_at": null,
@@ -800,14 +800,14 @@
     "created_by": "agent",
     "last_patched_at": "2026-09-19T20:10:25.615173+00:00",
     "last_reused_patch_generation": 5,
-    "last_used_at": "2026-09-19T20:10:36.347689+00:00",
-    "last_viewed_at": "2026-09-19T20:10:36.339196+00:00",
+    "last_used_at": "2026-09-19T21:21:36.100714+00:00",
+    "last_viewed_at": "2026-09-19T21:21:36.090928+00:00",
     "patch_count": 5,
     "patch_generation": 5,
     "pinned": false,
     "state": "active",
-    "use_count": 5,
-    "view_count": 5
+    "use_count": 6,
+    "view_count": 6
   },
   "fleet-v22-governance": {
     "archived_at": null,
@@ -815,14 +815,14 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-19T18:56:31.080715+00:00",
-    "last_viewed_at": "2026-09-19T18:56:31.072543+00:00",
+    "last_used_at": "2026-09-19T21:32:43.563542+00:00",
+    "last_viewed_at": "2026-09-19T21:32:43.538327+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 27,
-    "view_count": 27
+    "use_count": 30,
+    "view_count": 30
   },
   "fleet-visual-intelligence": {
     "archived_at": null,
@@ -1025,14 +1025,14 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-19T20:27:55.625464+00:00",
-    "last_viewed_at": "2026-09-19T20:27:55.613209+00:00",
+    "last_used_at": "2026-09-19T21:40:32.300721+00:00",
+    "last_viewed_at": "2026-09-19T21:40:32.254092+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 31,
-    "view_count": 31
+    "use_count": 33,
+    "view_count": 33
   },
   "hermes-operations": {
     "archived_at": null,
@@ -1295,14 +1295,14 @@
     "created_by": "learn",
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-19T21:08:26.262500+00:00",
-    "last_viewed_at": "2026-09-19T21:08:26.254050+00:00",
+    "last_used_at": "2026-09-19T21:32:43.547152+00:00",
+    "last_viewed_at": "2026-09-19T21:32:43.492394+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 15,
-    "view_count": 15
+    "use_count": 19,
+    "view_count": 19
   },
   "network-proxy-troubleshooting": {
     "archived_at": null,
@@ -1550,14 +1550,14 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-19T21:05:49.926540+00:00",
-    "last_viewed_at": "2026-09-19T21:05:49.890777+00:00",
+    "last_used_at": "2026-09-19T21:50:26.514997+00:00",
+    "last_viewed_at": "2026-09-19T21:50:26.506994+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 17,
-    "view_count": 13
+    "use_count": 23,
+    "view_count": 15
   },
   "self-hosted-service-operations": {
     "archived_at": null,
@@ -1565,14 +1565,14 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-19T14:15:45.916204+00:00",
-    "last_viewed_at": "2026-09-19T14:15:45.897712+00:00",
+    "last_used_at": "2026-09-19T21:21:51.607915+00:00",
+    "last_viewed_at": "2026-09-19T21:21:51.596996+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 72,
-    "view_count": 72
+    "use_count": 73,
+    "view_count": 73
   },
   "sms-activate-and-5sim-otp": {
     "archived_at": null,
@@ -1595,13 +1595,13 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-19T15:58:09.890762+00:00",
+    "last_used_at": "2026-09-19T21:21:08.738985+00:00",
     "last_viewed_at": "2026-09-19T14:53:04.404540+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 11,
+    "use_count": 12,
     "view_count": 10
   },
   "software-development:dogfood": {

@@ -3,13 +3,13 @@ model:
   default: ag-opus-pool
   provider: custom:local-(localhost:20128)
 toolsets:
-  - file
-  - web
-  - todo
-  - clarify
-  - cronjob
-  - session_search
-  - kanban
+- file
+- web
+- todo
+- clarify
+- cronjob
+- session_search
+- kanban
 web:
   backend: firecrawl
   search_backend: firecrawl
@@ -328,29 +328,29 @@ a2a_agents:
     timeout: 1800
 platform_toolsets:
   a2a:
-    - a2a
-    - clarify
-    - connections
-    - cronjob
-    - file
-    - hermes-a2a
-    - kanban
-    - session_search
-    - skills
-    - todo
-    - web
+  - a2a
+  - clarify
+  - connections
+  - cronjob
+  - file
+  - hermes-a2a
+  - kanban
+  - session_search
+  - skills
+  - todo
+  - web
   cli:
-    - a2a
-    - clarify
-    - connections
-    - cronjob
-    - file
-    - hermes-a2a
-    - kanban
-    - session_search
-    - skills
-    - todo
-    - web
+  - a2a
+  - clarify
+  - connections
+  - cronjob
+  - file
+  - hermes-a2a
+  - kanban
+  - session_search
+  - skills
+  - todo
+  - web
 known_plugin_toolsets:
   a2a:
     - a2a

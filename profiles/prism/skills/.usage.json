@@ -1963,14 +1963,14 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-19T20:44:20.358817+00:00",
-    "last_viewed_at": "2026-09-19T20:44:20.316182+00:00",
+    "last_used_at": "2026-09-19T21:42:15.486925+00:00",
+    "last_viewed_at": "2026-09-19T21:42:15.464042+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 32,
-    "view_count": 30
+    "use_count": 33,
+    "view_count": 31
   },
   "searxng-operations": {
     "archived_at": "2026-07-17T12:39:17.405782+00:00",
@@ -2019,14 +2019,14 @@
     "created_by": "agent",
     "last_patched_at": "2026-09-19T13:26:17.442464+00:00",
     "last_reused_patch_generation": 2,
-    "last_used_at": "2026-09-19T20:44:20.349626+00:00",
-    "last_viewed_at": "2026-09-19T20:44:20.306713+00:00",
+    "last_used_at": "2026-09-19T21:42:15.419615+00:00",
+    "last_viewed_at": "2026-09-19T21:42:15.410209+00:00",
     "patch_count": 2,
     "patch_generation": 2,
     "pinned": false,
     "state": "active",
-    "use_count": 9,
-    "view_count": 9
+    "use_count": 14,
+    "view_count": 14
   },
   "service-connectivity-troubleshooting": {
     "archived_at": "2026-07-17T12:42:04.222160+00:00",
@@ -2114,14 +2114,14 @@
     "created_by": "agent",
     "last_patched_at": "2026-09-19T13:25:53.843885+00:00",
     "last_reused_patch_generation": 16,
-    "last_used_at": "2026-09-19T20:44:11.679032+00:00",
-    "last_viewed_at": "2026-09-19T18:50:15.226322+00:00",
+    "last_used_at": "2026-09-19T21:42:15.454989+00:00",
+    "last_viewed_at": "2026-09-19T21:42:15.442229+00:00",
     "patch_count": 56,
     "patch_generation": 16,
     "pinned": false,
     "state": "active",
-    "use_count": 85,
-    "view_count": 81
+    "use_count": 90,
+    "view_count": 82
   },
   "software-development/software-development-workflows": {
     "archived_at": null,
@@ -2129,14 +2129,14 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-19T20:44:45.057192+00:00",
-    "last_viewed_at": "2026-09-19T20:44:45.046007+00:00",
+    "last_used_at": "2026-09-19T21:42:11.387014+00:00",
+    "last_viewed_at": "2026-09-19T21:42:11.368249+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 6,
-    "view_count": 6
+    "use_count": 9,
+    "view_count": 9
   },
   "software-development:dogfood": {
     "archived_at": null,
@@ -2473,14 +2473,14 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-19T20:44:20.369641+00:00",
-    "last_viewed_at": "2026-09-19T20:44:20.336391+00:00",
+    "last_used_at": "2026-09-19T21:42:15.496915+00:00",
+    "last_viewed_at": "2026-09-19T21:42:15.473145+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 51,
-    "view_count": 50
+    "use_count": 57,
+    "view_count": 56
   },
   "verification-gate": {
     "archived_at": null,
@@ -2488,14 +2488,14 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-19T20:44:20.325438+00:00",
-    "last_viewed_at": "2026-09-19T20:44:20.290185+00:00",
+    "last_used_at": "2026-09-19T21:42:15.509958+00:00",
+    "last_viewed_at": "2026-09-19T21:42:15.479940+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 89,
-    "view_count": 89
+    "use_count": 93,
+    "view_count": 93
   },
   "video-algorithmic-qa": {
     "archived_at": null,
