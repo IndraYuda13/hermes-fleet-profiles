@@ -8,7 +8,13 @@ description: "Use when integrating PaKasir QRIS, VA, and webhook APIs."
 ## Overview
 PaKasir is an Indonesian payment gateway service supporting Dynamic QRIS and multi-bank Virtual Accounts (BCA, BRI, BNI, CIMB, Permata, etc.) under PT. Geksa.
 
+Official documentation publishes two concurrent profiles:
+1. **Legacy Non-Versioned Profile:** Documented at `/p/docs` with base URL `https://app.pakasir.com/api`.
+2. **Candidate v2 Profile:** Documented at `/p/get-started`, `/p/create-transaction`, `/p/transaction-status`, `/p/webhook`, and `/p/fee-calculator`.
+
 ## API Endpoints & Contracts
+
+### A. Legacy Non-Versioned Profile (`app.pakasir.com/api`)
 
 Base URL: `https://app.pakasir.com/api`
 
@@ -43,6 +49,7 @@ Base URL: `https://app.pakasir.com/api`
 ### 2. Check Transaction Detail / Status
 - **Method:** `GET`
 - **URL:** `https://app.pakasir.com/api/transactiondetail?project={slug}&amount={amount}&order_id={order_id}&api_key={api_key}`
+- **Security Rule:** Legacy detail endpoint places `api_key` in the query string. Redact query parameters before logging outbound requests to APM, proxies, or error monitors.
 - **Response Structure:**
   ```json
   {
@@ -57,11 +64,55 @@ Base URL: `https://app.pakasir.com/api`
   }
   ```
 
-### 3. Cancel Transaction
+### 3. Cancel Transaction & Simulation
+- **Cancel URL:** `POST https://app.pakasir.com/api/transactioncancel` with `project`, `order_id`, `amount`, `api_key`.
+- **Simulation URL (Sandbox):** `POST https://app.pakasir.com/api/paymentsimulation` with same parameters.
+
+### B. Candidate v2 Profile (`app.pakasir.com/api/v2`)
+
+#### 1. Create Transaction (v2)
 - **Method:** `POST`
-- **URL:** `https://app.pakasir.com/api/transactioncancel`
-- **Request Body (JSON):** Same as create (`project`, `order_id`, `amount`, `api_key`).
-- **Response:** `{"success": true}`
+- **URL:** `https://app.pakasir.com/api/v2/create-transaction/{slug}/{order_id}`
+- **Headers:** `Content-Type: application/json`, `X-Signature: <signature>`
+- **Request Body (JSON):**
+  ```json
+  {
+    "method": "qris",
+    "amount": 10000
+  }
+  ```
+- **Behavior:** Public docs describe this endpoint as idempotent *find-or-create new* (repeating identical parameters returns the existing response). Rate limit is 2 requests/second.
+- **Response:** Returns top-level object containing `txn_id`, `qr_string`, `fee`, `total_payment`, `status`, `completed_at`, `expired_at`.
+
+#### 2. Check Transaction Status (v2)
+- **Method:** `GET`
+- **URL:** `https://app.pakasir.com/api/v2/transaction-status/{slug}/{txn_id}`
+- **Headers:** `X-Api-Key: <project_api_key>`
+- **Behavior:** Public rate limit is 1 query every 4 seconds per transaction. Returns `payment_id`, `status` (`pending`, `completed`, `canceled`), `completed_at`.
+
+#### 3. Public Fee Calculator (v2)
+- **Method:** `GET`
+- **URL:** `https://app.pakasir.com/api/v2/payment-fee/{amount}`
+- **Note:** Public estimate endpoint; does not establish contractual fee allocation (merchant-paid vs customer-paid).
+
+## Critical Architectural Invariants & Integration Traps
+
+1. **Strict Profile Isolation (No Silent Fallback):**
+   Legacy and v2 profiles differ in endpoint paths, auth headers (`api_key` in payload/query vs `X-Signature`/`X-Api-Key`), and response schema (`payment_number` vs `qr_string`, nested `payment` vs top-level `txn_id`). Never implement automatic fallback between legacy and v2. Keep the profile explicitly configured (`PAKASIR_API_PROFILE=legacy` or `v2`) or fail closed as `UNRESOLVED` (mock-only).
+2. **v2 `X-Signature` Canonical Input Trap:**
+   Public v2 documentation displays `X-Signature` in create requests but does NOT publish the canonical string format, secret key source, or hashing algorithm. Never invent an HMAC formula. The exact signature specification must be confirmed with merchant support or official sandbox test vectors before enabling v2 in production.
+3. **Internal Business Cutoff vs Remote Provider Expiry:**
+   Do not assume a remote 10-minute hard QR death. Public v2 status documentation explicitly states cancellation occurs after 24 hours (`melewati 1x24 jam`). The 10-minute (+2m grace) window is an internal business cutoff in your local database. If a buyer pays after 12 minutes, the gateway may still clear the funds. Handle late payments via `ReconciliationCase` and wallet credit rather than silent overselling.
+4. **Webhook Inconsistency & Mandatory Authenticated Inquiry:**
+   In official v2 webhook documentation, the example payload for a "successful payment" paradoxically displayed `"status": "pending"` and `"completed_at": null`. Webhook callbacks must be treated strictly as untrusted notification hints. Never settle an order or deliver goods directly from the webhook payload. Always execute an authoritative status inquiry (`/api/transactiondetail` or `/api/v2/transaction-status`) before updating order status.
+5. **Merchant Category Restrictions (`PK-MERCHANT`):**
+   Pakasir terms explicitly list digital/premium account sales among unsupported/non-focus categories. Keep live QRIS activation blocked (`PAYMENTS_LIVE_ENABLED=false`) until merchant account KYC and written project approval for the specific SKU/business model are verified.
+6. **Query Credential Sanitization:**
+   Legacy `GET /api/transactiondetail` places `api_key` in the URL query string. Always scrub or redact query parameters in logging middleware, reverse proxies, and error monitoring tools to prevent secret leakage.
+7. **Zero Fabricated QR on Creation Timeout/Error Invariant:**
+   When QR creation fails or times out, never catch the error and substitute a hardcoded, static, or placeholder QR string to appease the UI. A fabricated QR leads to payment misdirection where users pay an untracked target while the system registers an unverified invoice. Instead, record the payment attempt as `CREATE_UNKNOWN` (or fail-closed), initiate authenticated inquiry or recovery using the same immutable order ID, and withhold QR display until a verified provider response matches accepted amounts and expiry.
+8. **Simulation Endpoint Segregation (Zero In-Source Forced-Paid Simulator):**
+   Never implement state-changing simulation query parameters (e.g. `GET .../check?simulate=paid`) in production application routes. Client-triggered payment settlement, stock commitment, and fulfillment advancement without provider inquiry bypass the money source-of-truth and expose routes to CSRF, prefetching crawlers, and unauthorized fulfillment. Mocks must live strictly in isolated test harnesses or dedicated mock adapters (`MockPakasirAdapter`) under `NODE_ENV !== 'production'`, never accessible in public route handlers.
 
 ## Webhook Handling Protocol
 

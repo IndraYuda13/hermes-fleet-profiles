@@ -16,6 +16,30 @@ Operate, troubleshoot, and maintain the 5 Telethon reseller instances (`reseller
 - `share9.service` -> `/mnt/MYvps_partial/sharefile9/indexnew.py` (Bot file share @Aulia66_bot)
 - `share10.service` -> `/mnt/MYvps_partial/sharefile10/indexnew.py` (Bot file share @Rendy13_bot)
 
+### Personal Account Lanes (all1 & all2 vs cust1-5)
+- **Distinct Ownership:** `all1` and `all2` are the user's **personal accounts**, NOT reseller customer accounts (`cust1..cust5`).
+- **Host State & Historical Location:** They originally resided at `/root/MYvps/allacc/all1` and `/root/MYvps/allacc/all2`. On the current host, `/root/MYvps` is purged and there are no active systemd units or screens for `all1`/`all2`.
+- **Remote Snapshot & Recovery Source:** The session files and runners are tracked in the remote git repository `origin/main` (under `/mnt/MYvps_partial` / `IndraYuda13/MYvps` commit `47788d8`):
+  - `allacc/all1`: 8 primary sessions (`session/*.session`), 8 backup sessions (`backup/*.session`), 47 account configs (`cf/*.json`).
+  - `allacc/all2`: 6 primary sessions, 8 backup sessions, 33 account configs.
+  - Runners: `start4.py`, `index.py`, `checklogin.py`, `login.py`.
+- **Backup Distinction:** The encrypted backup in `cust-telethon-backup` only captures `/root/cust/reseller*`. Personal accounts in `allacc` are NOT included in `cust-telethon-backup`; their fallback is the `MYvps` repository snapshot.
+- **Recovery Precaution & Read-Only Audit Procedure:**
+  - Always copy `.session` files to a temporary directory (`tempfile.TemporaryDirectory`) before testing, never operating on the archive directly.
+  - To extract `api_id` and `api_hash` from archived runner scripts safely without executing code or failing on whitespace/comments, use `ast.parse` and check AST assignment targets rather than brittle regex.
+  - Configure the Telethon client with `retry_delay=0, auto_reconnect=False` so disconnected or invalid sessions fail immediately instead of hanging.
+  - Use `await client.connect()`, `await client.is_user_authorized()`, and `await client.get_me()` to retrieve account name, phone, username, and `user_id`. Insert `await asyncio.sleep(0.8)` between connections to prevent IP-level rate limits.
+  - **Deduplication Rule:** Both `session/` and `backup/` folders often hold copies of the same account. Always deduplicate by `user_id` when reporting active account counts and lists.
+  - **Verified Baseline (Commit 47788d8):** Across 30 total session files in `all1` and `all2` (14 primary + 16 backup), 15 files are authorized representing **11 unique active accounts** (5 in `all1`, 6 in `all2`), and 15 files are deauthorized (`not_authorized`).
+- **Zero-Blast Group Send Permission Audit Protocol:**
+  - When testing whether authorized sessions can post to groups without polluting external groups or triggering spam reports:
+  - Create a temporary private supergroup with one authorized session using `CreateChannelRequest(title, about="", megagroup=True)`.
+  - Export an invite link via `ExportChatInviteRequest(peer=channel)` and extract the invite hash (strip `+` and URL prefix).
+  - Have remaining accounts join via `ImportChatInviteRequest(invite_hash)`.
+  - **Telethon Join Result Pitfall:** `ImportChatInviteRequest` return types vary across Telethon versions; accessing `result.chats` causes `AttributeError: 'ChatInviteJoinResultOk' object has no attribute 'chats'`. Resolve the channel entity reliably by calling `dialogs = await client.get_dialogs(limit=100)` and finding `dialog.entity.id == temporary_group.channel_id` with its `access_hash`.
+  - Send one neutral verification message per account and verify delivery via read-back: `await client.get_messages(channel_peer, ids=sent.id)`.
+  - Always clean up in a `finally` block: execute `DeleteChannelRequest(temporary_group)` from the creator client and verify deletion by asserting `GetFullChannelRequest` throws an RPC error.
+
 ### Verifying Bot File Share Health (share9 / share10)
 When user asks if `share9` or `share10` is dead or not responding:
 1. Check service and PID: `systemctl status share9 share10`.

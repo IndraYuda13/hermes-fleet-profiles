@@ -43,6 +43,22 @@ wait_for_load()
 
 ## Procedure
 
+### 0. Expired LMS session: retry Microsoft SSO before treating it as a login blocker
+When CeLOE shows **“Your session has timed out. Please log in again.”**, click **“Connect with Office365” once** and wait for navigation. The browser may retain a valid Microsoft SSO session, in which case Moodle returns directly to `https://lms.telkomuniversity.ac.id/my/` without asking for credentials. Verify the resulting dashboard and only use vault/login escalation if the Microsoft identity page actually asks for credentials.
+
+```python
+# On LMS timed-out login page: start the retained Office365 SSO flow once
+js("""(() => {
+  const el = [...document.querySelectorAll('a, button')]
+    .find(x => /Connect with Office365/i.test(x.innerText || ''));
+  if (!el) throw new Error('Office365 connect control not found');
+  el.click();
+})()""")
+wait_for_load()
+print(js("(() => ({url: location.href, title: document.title}))()"))
+# Success is the LMS dashboard (/my/), not a credential form.
+```
+
 ### 1. Cloudflare Clearance & Session Injection
 Before accessing CeLOE, obtain cookies from FlareSolverr and inject stored session cookies:
 ```python
