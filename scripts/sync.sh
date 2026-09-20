@@ -52,7 +52,9 @@ sync_skills() {
   local destination_dir="$2"
   if [[ -d "${source_dir}" ]]; then
     mkdir -p "${destination_dir}"
-    rsync -a --delete \
+    # --delete-excluded purges obsolete runtime artifacts copied from the
+    # repository into the staging snapshot before validation can inspect it.
+    rsync -a --delete --delete-excluded \
       "${SKILL_RUNTIME_EXCLUDES[@]}" \
       "${source_dir}/" "${destination_dir}/"
   fi

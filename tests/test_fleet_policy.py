@@ -18,6 +18,10 @@ from scripts.validate_fleet import (
 
 
 class SanitizerTests(unittest.TestCase):
+    def test_sync_uses_delete_excluded_for_staged_runtime_artifacts(self):
+        sync_script = (ROOT / "scripts/sync.sh").read_text(encoding="utf-8")
+        self.assertIn("rsync -a --delete --delete-excluded", sync_script)
+
     def test_rejects_skill_runtime_telemetry_and_lockfiles(self):
         candidates = (
             "global/skills/.bundled_manifest",
