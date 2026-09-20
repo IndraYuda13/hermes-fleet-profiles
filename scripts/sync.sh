@@ -82,8 +82,8 @@ python3 "${STAGE_REPO}/scripts/apply_role_policy.py" --repo-root "${STAGE_REPO}"
 python3 "${STAGE_REPO}/scripts/validate_fleet.py" --repo-root "${STAGE_REPO}"
 
 echo "Proposed declarative changes:"
-rsync -ain --delete --exclude='.git/' "${STAGE_REPO}/global/" "${REPO_DIR}/global/"
-rsync -ain --delete --exclude='.git/' "${STAGE_REPO}/profiles/" "${REPO_DIR}/profiles/"
+rsync -ainc --no-times --delete --exclude='.git/' "${STAGE_REPO}/global/" "${REPO_DIR}/global/"
+rsync -ainc --no-times --delete --exclude='.git/' "${STAGE_REPO}/profiles/" "${REPO_DIR}/profiles/"
 
 if [[ "${APPLY}" != true ]]; then
   echo "Dry-run complete. Re-run with --apply after reviewing the itemized diff."

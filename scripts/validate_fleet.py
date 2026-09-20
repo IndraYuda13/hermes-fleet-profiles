@@ -70,6 +70,12 @@ def tracked_files(root: Path) -> list[str]:
         return [str(path.relative_to(root)) for path in root.rglob("*") if path.is_file()]
 
 
+def candidate_tracked_file(root: Path, relative: str) -> Path | None:
+    """Return a file still present in the candidate tree, not a stale index entry."""
+    path = root / relative
+    return path if path.is_file() else None
+
+
 ARTIFACT_SCOPE_MAP: dict[str, str] = {
     "PRODUCT_CONTEXT.md": "research-evidence",
     "CONTENT_MAP.md": "content-map",
@@ -536,10 +542,15 @@ def validate(root: Path) -> Validation:
 
     files = tracked_files(root)
     for relative in files:
+        # A scripted sync may have removed a formerly tracked runtime artifact
+        # before its deletion is staged. Validate the candidate working tree,
+        # not the stale index entry that will be removed by the snapshot commit.
+        path = candidate_tracked_file(root, relative)
+        if path is None:
+            continue
         if any(pattern.search(relative) for pattern in BANNED_TRACKED):
             result.errors.append(f"tracked runtime/cache artifact: {relative}")
-        path = root / relative
-        if not path.is_file() or path.stat().st_size > 2_000_000:
+        if path.stat().st_size > 2_000_000:
             continue
         try:
             text = path.read_text(encoding="utf-8")

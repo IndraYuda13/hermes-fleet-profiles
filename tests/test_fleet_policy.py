@@ -11,6 +11,7 @@ from scripts.sanitize_skill_examples import sanitize_text as sanitize_skill_text
 from scripts.validate_fleet import (
     BANNED_TRACKED,
     Validation,
+    candidate_tracked_file,
     validate_canonical_skills,
     validate_runtime_core,
     validate_ui_workflow,
@@ -21,6 +22,7 @@ class SanitizerTests(unittest.TestCase):
     def test_sync_uses_delete_excluded_for_staged_runtime_artifacts(self):
         sync_script = (ROOT / "scripts/sync.sh").read_text(encoding="utf-8")
         self.assertIn("rsync -a --delete --delete-excluded", sync_script)
+        self.assertIn("rsync -ainc --no-times --delete", sync_script)
 
     def test_rejects_skill_runtime_telemetry_and_lockfiles(self):
         candidates = (
@@ -39,6 +41,17 @@ class SanitizerTests(unittest.TestCase):
         for candidate in candidates:
             with self.subTest(candidate=candidate):
                 self.assertTrue(any(pattern.search(candidate) for pattern in BANNED_TRACKED))
+
+    def test_deleted_index_entry_is_not_a_candidate_artifact(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            temp_root = Path(temporary)
+            relative = "profiles/orion/skills/.usage.json"
+            path = temp_root / relative
+            path.parent.mkdir(parents=True)
+            path.write_text("runtime telemetry", encoding="utf-8")
+            self.assertEqual(candidate_tracked_file(temp_root, relative), path)
+            path.unlink()
+            self.assertIsNone(candidate_tracked_file(temp_root, relative))
 
     def test_removes_dashboard_and_connector_secrets(self):
         source = """dashboard:
