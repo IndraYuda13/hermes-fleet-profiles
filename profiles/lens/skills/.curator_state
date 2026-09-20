@@ -1,9 +1,0 @@
-{
-  "last_report_path": "/root/.hermes/profiles/lens/logs/curator/20260919-132457",
-  "last_run_at": "2026-09-19T13:24:57.507186+00:00",
-  "last_run_duration_seconds": 23.785263,
-  "last_run_summary": "auto: no changes; llm: ### Curator Consolidation Summary\n\nAll candidate skills provided in this run are explicitly pinned (`pinned=yes`):\n- `interaction-coverage-gate` (`pinned=yes`) — Skipped per Rule 3.\n- `visual-defect-forensics` (`pinned=yes`) — Skipped per R…",
-  "last_run_summary_shown_at": null,
-  "paused": false,
-  "run_count": 4
-}

@@ -1,9 +1,0 @@
-{
-  "last_report_path": "/root/.hermes/profiles/forge/logs/curator/20260919-132450",
-  "last_run_at": "2026-09-19T13:24:50.508542+00:00",
-  "last_run_duration_seconds": 260.09225,
-  "last_run_summary": "auto: 17 marked stale, 41 archived; llm: # Umbrella-Building Consolidation Pass Summary\n\n### Clusters & Landscape Evaluated\n\nOut of the 14 agent-created skills provided in the candidate list:\n- **`change-impact-verification`**: Skipped unconditionally (`pinned=yes`).\n- **`break-to…\narchived 4 skill(s):\n  • break-tool-loops → software-development-workflows\n  • express-api-development → software-development-workflows\n  • payment-and-fulfillment-reliability → software-development-workflows\n  • postman-mcp → software-development-workflows\nfull report: hermes curator status\nkeep an umbrella stable: hermes curator pin software-development-workflows",
-  "last_run_summary_shown_at": "2026-07-24T13:00:21.305599+00:00",
-  "paused": false,
-  "run_count": 12
-}

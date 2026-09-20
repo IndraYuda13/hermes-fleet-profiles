@@ -1,9 +1,0 @@
-{
-  "last_report_path": "/root/.hermes/profiles/aurora/logs/curator/20260919-141321",
-  "last_run_at": "2026-09-19T14:13:21.685202+00:00",
-  "last_run_duration_seconds": 269.824538,
-  "last_run_summary": "auto: no changes; llm: Consolidated all five eligible local, non-pinned candidate skills into a new class-level umbrella, `domain-ux-architecture`. Its trigger fits the indexed description window, and four topical references retain distilled depth for learning ac…\narchived 5 skill(s):\n  • accessible-learning-ux-architecture → domain-ux-architecture\n  • document-builder-ux-architecture → domain-ux-architecture\n  • fintech-checkout-ux-architecture → domain-ux-architecture\n  • ops-dashboard-design → domain-ux-architecture\n  • ops-dashboard-design-patterns — pruned (stale)\nfull report: hermes curator status\nkeep an umbrella stable: hermes curator pin domain-ux-architecture",
-  "last_run_summary_shown_at": null,
-  "paused": false,
-  "run_count": 4
-}

@@ -1,7 +1,7 @@
 ---
 name: whatsapp-platform-operations
 description: Operate WhatsApp bridge, allowlists, and group JIDs.
-version: 1.0.0
+version: 1.1.0
 author: Hermes Agent Curator
 license: MIT
 metadata:
@@ -270,7 +270,7 @@ WHATSAPP_DEBUG=true
       defaultQueryTimeoutMs: 60000,
       markOnlineOnConnect: true,
       ```
-    - **`link-preview-js` Dependency Crash:** Baileys attempts automatic URL link parsing when users send links. If `link-preview-js` is missing from `node_modules`, it triggers uncaught background errors. Always ensure `npm install link-preview-js` is run in `/usr/local/lib/hermes-agent/scripts/whatsapp-bridge`.
+    - **`link-preview-js` Dependency Crash:** Baileys attempts automatic URL link parsing when users send links. If `link-preview-js` is missing from `node_modules`, it throws `ERR_MODULE_NOT_FOUND: Cannot find package 'link-preview-js'` and causes silent connection drops or poll stalls.
   - Clean restart: `kill -9 <bridge_pid>`; the parent gateway supervisor automatically respawns a clean bridge instance and re-establishes TCP socket linkage on port 3000 without crashing gateway.
 - **WebSocket Keep-Alive & Dependency Hardening:** See `references/whatsapp-group-troubleshooting-and-mention-matrix.md` (Sections 6 & 7) for WebSocket ping interval (25s), `link-preview-js` crash fix, and group member authorization gate bypass.
 - **Detailed Reference:** See `references/whatsapp-group-troubleshooting-and-mention-matrix.md` for full trigger precedence, LID mention regex rules, and group policy checklists.
@@ -331,3 +331,13 @@ WHATSAPP_DEBUG=true
      ```
   3. Set `SOUL.md` guidelines for the profile so when a user requests voice note / VN / audio, the bot calls `text_to_speech` and formats output with `[[audio_as_voice]]\nMEDIA:<path>`.
   4. Ensure `ffmpeg` is installed on the host (`apt-get install -y ffmpeg`) so the Baileys bridge can transcode MP3/WAV chunks on the fly into native WhatsApp PTT Opus.
+
+### 11. Inbound Third-Party & Service Interaction Protocol (Couriers, Vendors, Unknown Contacts)
+- **Sender Role Identification & Anti-Echo Invariant:**
+  When an incoming message arrives from an external party (e.g. logistics courier confirming delivery/COD, vendor, customer service, or marketplace seller):
+  - **Do NOT treat the message as an advisory prompt from the account owner.** The external party is speaking *to* the account owner, not asking the AI to draft a template, explain what their own message means, or provide theoretical advice.
+  - **Never echo or parrot the sender's operational question back to them.** If a courier asks whether a package should be delivered or cancelled (*"Paketnya mau dianter apa mau dicancel?"*), echoing that exact question back to the sender causes an immediate conversational breakdown and loop.
+  - **No Autonomous Financial or Contractual Decisions:** The agent does NOT own real-world purchasing or delivery acceptance decisions (COD payments, order cancellations, package acceptance) unless explicit owner instructions exist. If the owner's intent is unconfirmed, reply neutrally that the recipient will verify and confirm shortly, or alert the owner directly.
+- **Honorific & Conversational Calibration:**
+  - Avoid blindly assuming gendered honorifics (*"Bu"*, *"Pak"*) based on unverified recipient handles or conversational snippets. Use neutral addressing (*"Kak"*, *"Mas/Mba"*) or direct neutral phrasing.
+  - **Loop Breaker:** If an external sender states their role (*"Gua kurirnya loh"*, *"Saya yang antar"*), immediately acknowledge their role and stop repeating previous questions or offering unprompted advice.

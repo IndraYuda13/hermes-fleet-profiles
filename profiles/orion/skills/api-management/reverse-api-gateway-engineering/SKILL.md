@@ -440,10 +440,31 @@ When bridging web chat backends that possess native internal capabilities (Pytho
      ```
    - *Mechanism*: Telling the model that tools are executed *by the API caller outside ChatGPT Web* satisfies upstream factuality alignment. The model knows it does not need SSH or local host access; its sole duty is emitting the delimiter block, while the external caller executes the tool on the VPS and feeds the output back into the conversation.
 
-9. **Dynamic Token Usage Accounting & Aggregator Fallback Trap**:
-   - *Pitfall*: Returning empty or zeroed usage (`usage: {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}`) in responses API or chat completion chunks when upstream does not report token counts.
-   - *Failure Mechanism*: Intermediate multi-model routers (such as 9router) inspect `usage.prompt_tokens`. When missing or zero, 9router applies a fallback estimator function that adds a hardcoded static value (`prompt_tokens += 2000` for custom model system prompts). This locks the reported context size in downstream agent platforms (such as Hermes Agent `/status`) to a flat `Context: 2,000 / 950,000 (0%)` forever, regardless of actual conversation depth.
-   - *Rule*: Always compute dynamic token estimation (e.g. ~4 characters per token across system instructions, conversation messages, and streamed deltas) when upstream token reporting is absent. Emit valid `prompt_tokens`, `completion_tokens`, and `total_tokens` in both `response.completed` and streaming chunk `usage` objects so client context monitors display real-time usage.
+9. **Dynamic Token Usage Accounting & Streaming Terminal Usage Chunk (`stream_options: {"include_usage": true}`)**:
+   - *Pitfall*: Returning empty or zeroed usage (`usage: {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}`) in responses API, or omitting `usage` entirely from `/v1/chat/completions` SSE streaming chunks.
+   - *Failure Mechanism*:
+     1. Intermediate multi-model routers (such as 9router) inspect `usage.prompt_tokens`. When missing or zero, 9router applies a fallback estimator function that adds a hardcoded static value (`prompt_tokens += 2000` for custom model system prompts), locking reported context size to a flat `Context: 2,000 / 950,000 (0%)`.
+     2. Agent runtimes (such as Hermes Agent) stream all conversational turns via SSE (`stream: true`). If the SSE stream completes without a chunk carrying `usage: {"prompt_tokens": N, "completion_tokens": M, "total_tokens": N+M}`, the client parser records `usage=unavailable` and sets session token counters to 0 (`sessions.json`). Consequently, downstream status commands (such as Telegram `/status`) report `Context: 0 / <capacity> (0%)` indefinitely, even after dozens of tool calls.
+   - *Rule*: In `/v1/chat/completions` SSE streams, always emit a terminal streaming chunk carrying `usage` before `data: [DONE]`. The usage object must contain `prompt_tokens`, `completion_tokens`, and `total_tokens` (where `total_tokens == prompt_tokens + completion_tokens`), using dynamic estimation (~4 characters per token across system instructions, conversation history, and emitted deltas) if upstream does not report tokens. Emit it either in the final choice chunk (`choices: [{"delta": {}, "finish_reason": "stop"}]`, `usage: {...}`) or as an empty-choices terminal chunk matching OpenAI's `stream_options.include_usage: true` convention:
+   - *Strict OpenAI Streaming Usage Wire Contract*:
+     When `stream_options.include_usage: true` is requested:
+     1. Emit exactly **one** terminal usage chunk, positioned immediately after the final content/finish chunk and strictly **before** `data: [DONE]`.
+     2. The terminal chunk MUST have an empty choices array: `"choices": []` (never `null`, never omitted, and never containing an empty delta).
+     3. The `usage` object must strictly validate: `total_tokens == prompt_tokens + completion_tokens`. If dynamic estimation is used (~4 chars/token across system context, conversation history, and deltas), compute components first and assign `total_tokens` as their exact sum to prevent client arithmetic assertion failures.
+     4. Format:
+        ```json
+        {"id": "chatcmpl-...", "object": "chat.completion.chunk", "created": 1700000000, "model": "...", "choices": [], "usage": {"prompt_tokens": 1200, "completion_tokens": 85, "total_tokens": 1285}}
+        ```
+     5. If `stream_options.include_usage` is omitted or false, suppress the terminal usage chunk to preserve strict OpenAI compatibility.
+   - *Telegram Bot UI & Live Tool Progress Display Synchronization*:
+     - In agent gateways connected to Telegram (such as Hermes Agent), Telegram mobile profiles default `display.tool_progress` to `off`. Even with standard tool calling functioning, users see zero live progress indicators during execution.
+     - In the agent profile's `config.yaml`, configure:
+       ```yaml
+       display:
+         tool_progress: all
+         tool_progress_grouping: accumulate
+       ```
+     - Setting `tool_progress: all` surfaces real-time tool execution status, while `grouping: accumulate` edits a single progress bubble in-place, eliminating Telegram message spam while keeping long multi-tool tasks transparent.
 
 10. **Multi-Turn Delimiter Nonce Divergence & Raw Tool Call Leakage Prevention**:
    - *Pitfall*: When the gateway generates a unique random hex nonce per turn (e.g. `<<<TOOL_CALL_{nonce}>>>`), upstream web chat models retain earlier turns in conversation memory. In subsequent turns (e.g. Turn 3), the model frequently reuses the delimiter nonce from Turn 1 rather than the new nonce specified for Turn 3.
@@ -468,6 +489,18 @@ When bridging web chat backends that possess native internal capabilities (Pytho
      - *Rule*: Verification probes (`verify_<gateway>_live.py`) must isolate test state:
        1. Direct session pool persistence to an ephemeral or dedicated test target (e.g. `data/session_pool_test.json` or in-memory override via request headers/env).
        2. If requests hit the live gateway, execute explicit teardown or verify that production file hashes (`data/credentials.json`, `data/session_pool.json`) remain byte-for-byte identical before and after the probe.
+
+12. **Tool Calling Protocol Execution Boundary & Long-Task Streaming Verification Matrix**:
+   - *The Tool Execution Responsibility Invariant*:
+     - *Pitfall*: Conflating the gateway's tool-calling protocol role with caller-side execution. Operators or clients may mistakenly expect the reverse gateway daemon to run host binaries, execute shell commands, or invoke remote APIs when a tool call is produced.
+     - *Rule*: An OpenAI-compatible reverse gateway's sole responsibility is **protocol translation**: compiling schemas, capturing delimiters, and emitting valid OpenAI tool-call structures (`choice.finish_reason = "tool_calls"`, `tool_calls: [...]` with valid JSON arguments). Tool execution belongs 100% to the downstream agent runtime (e.g. Hermes Agent, Codex CLI, user script), which invokes the local action and returns a `role: "tool"` or tool-result message back to the gateway. The gateway must never execute unvetted client commands locally.
+   - *Extended Streaming (Long-Task) Verification Probe*:
+     - *Pitfall*: A reverse gateway passing short single-turn pings (`"reply OK"`) can silently crash or drop connections during real agent workloads (e.g. multi-page synthesis, code generation, extensive reasoning) due to reverse-proxy idle timeouts, socket buffer overruns, or unhandled chunk fragmentation.
+     - *Rule*: Validate long-task streaming stability with a dedicated continuous generation test:
+       1. Request a sustained response generating ≥1,500 characters / 500+ tokens over SSE.
+       2. Assert that chunks arrive continuously without stream disconnects or buffer timeouts.
+       3. Assert that the terminal stream chunk strictly delivers `finish_reason: "stop"` followed by `data: [DONE]`.
+       4. Assert that no delimiter fragments or raw JSON framing leak into text deltas.
 
 ---
 

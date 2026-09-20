@@ -1,9 +1,0 @@
-{
-  "last_report_path": "/root/.hermes/profiles/atlas/logs/curator/20260919-132314",
-  "last_run_at": "2026-09-19T13:23:14.758797+00:00",
-  "last_run_duration_seconds": 202.572963,
-  "last_run_summary": "auto: 11 marked stale, 54 archived; llm: ### Curator Consolidation Summary\n\n#### Landscape & Candidates Reviewed\nEvaluated all 7 agent-created candidate skills in the `atlas` profile:\n- `deployment-smoke-rollback` (`pinned=yes`) — Preserved per Rule 3.\n- `fleet-v22-governance` (`p…\narchived 1 skill(s):\n  • vps-llm-sizing → self-hosted-service-operations\nfull report: hermes curator status\nkeep an umbrella stable: hermes curator pin self-hosted-service-operations",
-  "last_run_summary_shown_at": "2026-07-24T13:00:21.305599+00:00",
-  "paused": false,
-  "run_count": 12
-}

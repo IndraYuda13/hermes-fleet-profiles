@@ -1,9 +1,0 @@
-{
-  "last_report_path": "/root/.hermes/profiles/prism/logs/curator/20260919-132416",
-  "last_run_at": "2026-09-19T13:24:16.161723+00:00",
-  "last_run_duration_seconds": 162.460933,
-  "last_run_summary": "auto: 8 marked stale, 32 archived, 1 reactivated; llm: ### Summary of Work\n\n#### Clusters Processed & Consolidations\n1. **Agent Tool Loop Recovery into Software Development Workflows**:\n   - Absorbed `break-tool-loops` into `software-development-workflows`.\n   - Added `## Breaking tool loops an…\narchived 2 skill(s):\n  • break-tool-loops → software-development-workflows\n  • telemetry-dashboard-verification → service-api-verification\nfull report: hermes curator status\nkeep an umbrella stable: hermes curator pin service-api-verification",
-  "last_run_summary_shown_at": "2026-07-24T13:00:21.305599+00:00",
-  "paused": false,
-  "run_count": 12
-}

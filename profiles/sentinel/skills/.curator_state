@@ -1,9 +1,0 @@
-{
-  "last_report_path": "/root/.hermes/profiles/sentinel/logs/curator/20260919-132527",
-  "last_run_at": "2026-09-19T13:25:27.787721+00:00",
-  "last_run_duration_seconds": 85.56272,
-  "last_run_summary": "auto: 23 archived; llm: ### Cluster Analysis & Audit Summary\n\nThe curator candidate list contains 4 agent-created skills (all external and bundled skills are excluded per Rule 1):\n\n1. **`evidence-adversary`**\n   - **Status:** `pinned=yes`\n   - **Action:** Skipped …",
-  "last_run_summary_shown_at": "2026-07-24T13:00:21.305599+00:00",
-  "paused": false,
-  "run_count": 12
-}

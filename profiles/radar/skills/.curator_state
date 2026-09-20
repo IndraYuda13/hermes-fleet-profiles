@@ -1,9 +1,0 @@
-{
-  "last_report_path": "/root/.hermes/profiles/radar/logs/curator/20260919-132505",
-  "last_run_at": "2026-09-19T13:25:05.192162+00:00",
-  "last_run_duration_seconds": 118.92505,
-  "last_run_summary": "auto: 8 marked stale, 54 archived, 4 reactivated; llm: # Umbrella-Building Consolidation Pass Report\n\n## Landscape & Candidate Scan\n\nThe candidate set comprises **7 agent-created skills** in the `radar` profile:\n\n| Skill | Category | Pinned | Cron | Uses / Activity | Last Activity | Status |\n|-…",
-  "last_run_summary_shown_at": "2026-07-24T13:00:21.305599+00:00",
-  "paused": false,
-  "run_count": 12
-}

@@ -1,9 +1,0 @@
-{
-  "last_report_path": "/root/.hermes/profiles/quant/logs/curator/20260919-132410",
-  "last_run_at": "2026-09-19T13:24:10.553713+00:00",
-  "last_run_duration_seconds": 66.919612,
-  "last_run_summary": "auto: 11 marked stale, 58 archived; llm: ### Consolidation Pass Summary\n\n- **Candidate Pool Analyzed**: 1 agent-created skill (`market-data-integrity-gate`).\n- **Clusters Evaluated**: None. The only local candidate is flagged `pinned=yes` (`last_activity=2026-08-23T17:23:24.813812…",
-  "last_run_summary_shown_at": "2026-07-24T13:00:21.305599+00:00",
-  "paused": false,
-  "run_count": 12
-}
