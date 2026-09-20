@@ -9,6 +9,7 @@ import yaml
 from scripts.sanitize_config import sanitize_identity_config, sanitize_text
 from scripts.sanitize_skill_examples import sanitize_text as sanitize_skill_text
 from scripts.validate_fleet import (
+    BANNED_TRACKED,
     Validation,
     validate_canonical_skills,
     validate_runtime_core,
@@ -17,6 +18,24 @@ from scripts.validate_fleet import (
 
 
 class SanitizerTests(unittest.TestCase):
+    def test_rejects_skill_runtime_telemetry_and_lockfiles(self):
+        candidates = (
+            "global/skills/.bundled_manifest",
+            "profiles/orion/skills/.usage.json",
+            "profiles/orion/skills/.usage.json.lock",
+            "profiles/orion/skills/.usage.json.lockfile",
+            "profiles/atlas/skills/.curator_state",
+            "profiles/atlas/skills/.curator_suppressed",
+            "profiles/atlas/skills/.curator_ledger.jsonl",
+            "profiles/atlas/skills/.curator_backups/2026-09-20.json",
+            "profiles/orion/skills/.locks/live.lock",
+            "profiles/frame/skills/.hub/index-cache/hermes-index.json",
+            "profiles/orion/skills/.archive/old/SKILL.md",
+        )
+        for candidate in candidates:
+            with self.subTest(candidate=candidate):
+                self.assertTrue(any(pattern.search(candidate) for pattern in BANNED_TRACKED))
+
     def test_removes_dashboard_and_connector_secrets(self):
         source = """dashboard:
   basic_auth:

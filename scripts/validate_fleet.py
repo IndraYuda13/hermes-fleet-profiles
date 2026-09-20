@@ -29,11 +29,13 @@ SECRET_PATTERNS = (
     re.compile(r"\bsk-[A-Za-z0-9_-]{20,}\b"),
 )
 BANNED_TRACKED = (
-    re.compile(r"(?:^|/)skills/\.hub/"),
+    re.compile(r"(?:^|/)(?:\.archive|\.hub|\.curator_backups|\.locks)(?:/|$)"),
+    re.compile(
+        r"(?:^|/)(?:\.bundled_manifest|\.usage\.json(?:\.lock)?|\.curator_state|"
+        r"\.curator_suppressed|\.curator_ledger\.jsonl)$"
+    ),
     re.compile(r"(?:^|/)hermes-index\.json$"),
-    re.compile(r"(?:^|/)\.archive/"),
-    re.compile(r"\.log$"),
-    re.compile(r"\.jsonl$"),
+    re.compile(r"\.(?:db(?:\..*)?|lock(?:\.json|file)?|log|jsonl)$"),
 )
 
 

@@ -23,18 +23,28 @@ for command_name in git python3 rsync; do
 done
 
 PROFILES=(atlas aurora forge frame groupbot lens nexus orion prism quant radar sentinel)
+SKILL_RUNTIME_EXCLUDES=(
+  --exclude='.archive/'
+  --exclude='.hub/'
+  --exclude='.curator_backups/'
+  --exclude='.curator_*'
+  --exclude='.locks/'
+  --exclude='.bundled_manifest'
+  --exclude='.usage.json'
+  --exclude='hermes-index.json'
+  --exclude='*.db*'
+  --exclude='*.lock*'
+  --exclude='*.log'
+  --exclude='*.jsonl'
+  --exclude='__pycache__/'
+)
 STAGE_PARENT="$(mktemp -d)"
 STAGE_REPO="${STAGE_PARENT}/repo"
 trap 'rm -rf -- "${STAGE_PARENT}"' EXIT
 
 rsync -a \
   --exclude='.git/' \
-  --exclude='.archive/' \
-  --exclude='.hub/' \
-  --exclude='*.db*' \
-  --exclude='*.log' \
-  --exclude='*.jsonl' \
-  --exclude='__pycache__/' \
+  "${SKILL_RUNTIME_EXCLUDES[@]}" \
   "${REPO_DIR}/" "${STAGE_REPO}/"
 
 sync_skills() {
@@ -43,12 +53,7 @@ sync_skills() {
   if [[ -d "${source_dir}" ]]; then
     mkdir -p "${destination_dir}"
     rsync -a --delete \
-      --exclude='.archive/' \
-      --exclude='.hub/' \
-      --exclude='*.db*' \
-      --exclude='*.log' \
-      --exclude='*.jsonl' \
-      --exclude='__pycache__/' \
+      "${SKILL_RUNTIME_EXCLUDES[@]}" \
       "${source_dir}/" "${destination_dir}/"
   fi
 }

@@ -9,6 +9,8 @@ __pycache__/
 *.db-wal
 *.db.*
 *.lock
+*.lock.json
+*.lockfile
 *.sock
 *.pid
 
@@ -65,6 +67,11 @@ hermes-index.json
 **/hermes-index.json
 .archive/
 **/.archive/
+**/skills/.bundled_manifest
+**/skills/.usage.json
+**/skills/.usage.json.lock
+**/skills/.curator_*
+**/skills/.locks/
 *.log
 *.jsonl
 *.tmp
