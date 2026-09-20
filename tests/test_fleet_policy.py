@@ -10,6 +10,7 @@ from scripts.sanitize_config import sanitize_identity_config, sanitize_text
 from scripts.sanitize_skill_examples import sanitize_text as sanitize_skill_text
 from scripts.validate_fleet import (
     BANNED_TRACKED,
+    NODE_DEBUGGER_SKILL_COPIES,
     Validation,
     candidate_tracked_file,
     validate_canonical_skills,
@@ -245,6 +246,33 @@ class UIWorkflowV4InvariantTests(unittest.TestCase):
             drift_val = Validation()
             validate_canonical_skills(temp_root, drift_val)
             self.assertTrue(any("checksum drift in profile frame" in err for err in drift_val.errors))
+
+    def test_node_debugger_skills_reject_literal_tilde_filesystem_paths(self):
+        val = Validation()
+        validate_canonical_skills(ROOT, val)
+        self.assertEqual(val.errors, [])
+
+        with tempfile.TemporaryDirectory() as temporary:
+            temp_root = Path(temporary)
+            for relative in NODE_DEBUGGER_SKILL_COPIES:
+                source = ROOT / relative
+                destination = temp_root / relative
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(source, destination)
+            target = temp_root / NODE_DEBUGGER_SKILL_COPIES[1]
+            target.write_text(
+                target.read_text(encoding="utf-8").replace(
+                    "require('fs').writeFileSync(require('path').join(scratchPath, 'cpu.cpuprofile'), JSON.stringify(profile));",
+                    "require('fs').writeFileSync('~/.hermes/cache/scratch/cpu.cpuprofile', JSON.stringify(profile));",
+                    1,
+                ),
+                encoding="utf-8",
+            )
+            drift_val = Validation()
+            validate_canonical_skills(temp_root, drift_val)
+            self.assertTrue(
+                any("Node filesystem API path must not begin with literal ~" in err for err in drift_val.errors)
+            )
 
     def test_runtime_core_is_embedded_once_and_prompt_budgeted(self):
         val = Validation()

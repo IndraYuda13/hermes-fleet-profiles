@@ -37,6 +37,22 @@ BANNED_TRACKED = (
     re.compile(r"(?:^|/)hermes-index\.json$"),
     re.compile(r"\.(?:db(?:\..*)?|lock(?:\.json|file)?|log|jsonl)$"),
 )
+NODE_DEBUGGER_SKILL_COPIES = (
+    "global/skills/software-development/node-inspect-debugger/SKILL.md",
+    "profiles/forge/skills/software-development/node-inspect-debugger/SKILL.md",
+    "profiles/groupbot/skills/software-development/node-inspect-debugger/SKILL.md",
+    "profiles/orion/skills/software-development/node-inspect-debugger/SKILL.md",
+    "profiles/prism/skills/software-development/node-inspect-debugger/SKILL.md",
+    "profiles/sentinel/skills/software-development/node-inspect-debugger/SKILL.md",
+)
+NODE_FILESYSTEM_TILDE_PATH = re.compile(
+    r"""(?x)
+    (?:access|appendFile|chmod|chown|copyFile|cp|exists|lstat|mkdir|mkdtemp|open|opendir|
+       readFile|readdir|readlink|realpath|rename|rm|rmdir|stat|symlink|truncate|unlink|utimes|
+       watch|watchFile|writeFile)(?:Sync)?
+    \s*\(\s*[\"']~
+    """
+)
 
 
 class Validation:
@@ -280,6 +296,31 @@ def validate_ui_workflow(root: Path, roles: dict[str, Any], result: Validation) 
 
 
 def validate_canonical_skills(root: Path, result: Validation) -> None:
+    # Node filesystem APIs receive literal strings, not shell-expanded paths.
+    # These declarations are intentionally byte-identical so profile copies
+    # cannot drift from the canonical sample.
+    canonical_node_debugger = root / NODE_DEBUGGER_SKILL_COPIES[0]
+    result.require(
+        canonical_node_debugger.is_file(),
+        f"missing {NODE_DEBUGGER_SKILL_COPIES[0]}",
+    )
+    if canonical_node_debugger.is_file():
+        canonical_node_debugger_bytes = canonical_node_debugger.read_bytes()
+        for relative in NODE_DEBUGGER_SKILL_COPIES:
+            path = root / relative
+            result.require(path.is_file(), f"missing {relative}")
+            if not path.is_file():
+                continue
+            text = path.read_text(encoding="utf-8")
+            result.require(
+                NODE_FILESYSTEM_TILDE_PATH.search(text) is None,
+                f"{relative}: Node filesystem API path must not begin with literal ~",
+            )
+            result.require(
+                path.read_bytes() == canonical_node_debugger_bytes,
+                f"node-inspect-debugger SKILL.md checksum drift in {relative}",
+            )
+
     # 1. visual-authoring-core parity between global and profiles/aurora
     global_vac = root / "global/skills/visual-authoring-core/SKILL.md"
     aurora_vac = root / "profiles/aurora/skills/custom/visual-authoring-core/SKILL.md"

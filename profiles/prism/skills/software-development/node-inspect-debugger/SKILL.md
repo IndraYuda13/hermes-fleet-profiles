@@ -246,7 +246,8 @@ await client.Profiler.enable();
 await client.Profiler.start();
 await new Promise(r => setTimeout(r, 5000));
 const { profile } = await client.Profiler.stop();
-require('fs').writeFileSync('~/.hermes/cache/scratch/cpu.cpuprofile', JSON.stringify(profile));
+const scratchPath = require('path').join(require('os').homedir(), '.hermes', 'cache', 'scratch');
+require('fs').writeFileSync(require('path').join(scratchPath, 'cpu.cpuprofile'), JSON.stringify(profile));
 // Open ~/.hermes/cache/scratch/cpu.cpuprofile in Chrome DevTools → Performance tab
 ```
 
@@ -256,7 +257,8 @@ await client.HeapProfiler.enable();
 const chunks = [];
 client.HeapProfiler.addHeapSnapshotChunk(({ chunk }) => chunks.push(chunk));
 await client.HeapProfiler.takeHeapSnapshot({ reportProgress: false });
-require('fs').writeFileSync('~/.hermes/cache/scratch/heap.heapsnapshot', chunks.join(''));
+const scratchPath = require('path').join(require('os').homedir(), '.hermes', 'cache', 'scratch');
+require('fs').writeFileSync(require('path').join(scratchPath, 'heap.heapsnapshot'), chunks.join(''));
 ```
 
 ## Common Pitfalls
