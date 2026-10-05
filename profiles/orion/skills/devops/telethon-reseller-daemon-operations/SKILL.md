@@ -69,8 +69,8 @@ python3 index.py +628xxx
   - Because `start4.py` remains running as long as at least one worker is still connected, systemd reports `custX.service` as `active (running)`, creating a zombie state where the service appears alive but 80–90% of customer bots are dead.
   - **Verification Rule:** NEVER rely solely on `systemctl status custX`. Always verify the total running worker count against actual session files:
     `ps -ef | grep index.py | grep -v grep | wc -l`
-    This count must match the total `.session` files (`find /root/cust/reseller*/session -name "*.session" | wc -l`). Currently 54 total across the 5 instances (11 in cust1, 11 in cust2, 11 in cust3, 11 in cust4, 10 in cust5).
-  - In `systemctl status custX`, healthy units show `Tasks: 21` (for 10 workers) or `Tasks: 23` (for 11 workers). A unit showing `Tasks: 5` has dropped all but 2 workers.
+    This count must match the total `.session` files (`find /root/cust/reseller*/session -name "*.session" | wc -l`). Across the 5 instances, session counts fluctuate around ~50-55 (e.g. 11 in cust1, 10 in cust2, 10 in cust3, 11 in cust4, 10 in cust5; 52 total currently).
+  - In `systemctl status custX`, healthy units show Tasks count equal to `2 * workers + 1` (e.g. 23 for 11 workers, 21 for 10 workers, 19 for 9 workers). A unit showing `Tasks: 3` or `Tasks: 5` has dropped almost all child workers.
   - **Quick Remediation:** Run `systemctl restart cust1 cust2 cust3 cust4 cust5` to respawn all workers cleanly.
 
 - **"Bot Gak Nyebar":**
@@ -100,7 +100,7 @@ systemctl status cust1 cust2 cust3 cust4 cust5
 # Comprehensive audit probe: running status, FloodWait cooldown, and active paid slots
 /usr/local/lib/hermes-agent/venv/bin/python3 -c "
 import os, glob, json, time, psutil
-running = {p.info['cmdline'][2]: p.info['pid'] for p in psutil.process_iter(['cmdline']) if p.info.get('cmdline') and len(p.info['cmdline']) >= 3 and 'index.py' in p.info['cmdline'][1]}
+running = {p.info['cmdline'][2]: p.info['pid'] for p in psutil.process_iter(['pid', 'cmdline']) if p.info.get('cmdline') and len(p.info['cmdline']) >= 3 and 'index.py' in p.info['cmdline'][1]}
 now = int(time.time())
 for res in ['reseller', 'reseller2', 'reseller3', 'reseller4', 'reseller5']:
     base = f'/root/cust/{res}'
@@ -129,18 +129,26 @@ To log in a new customer account under Hermes:
    `terminal(command="/usr/local/lib/hermes-agent/venv/bin/python3 login.py +628xxx", workdir="/root/cust/resellerX", background=True, pty=True)`
 4. Monitor prompt using `process_manage(action='poll', session_id=...)` or `action='log'`:
    - Note: Telethon's `"Please enter the code you received: "` prompt lacks a trailing newline, so `action='poll'` immediately surfaces it in `output_preview` even before `action='log'` forms a full line.
-5. When user provides OTP, submit via `process_manage(action='submit', session_id=..., data='<OTP>')`.
-   - Check `action='log'` immediately after: if output shows `Please enter your password: `, the account has 2FA (Cloud Password) enabled. Ask user for the 2FA password and submit via `process_manage(action='submit', session_id=..., data='<PASSWORD>')`.
+5. When user provides OTP, check process uptime before submitting:
+   - **Telegram Auth Socket / OTP TTL Window (2–3 Minutes):** If uptime > 150 seconds, the Telegram DC connection drops into `FIN-WAIT-1` and socket times out. Submitting an OTP after >150s will cause `login.py` to hang silently in `ep_poll` with unacknowledged Send-Q bytes.
+   - If uptime > 150s: Kill the stale PID (`kill -9`), delete `/root/cust/resellerX/session/<phone>.session`, re-run `login.py` immediately to trigger a brand-new code from Telegram, and ask the user for the fresh code.
+   - If uptime <= 150s: Submit via `process_manage(action='submit', session_id=..., data='<OTP>\n')`.
+   - **Handling `PhoneCodeExpiredError`:** If code was entered late or expired, Telethon throws `PhoneCodeExpiredError: The confirmation code has expired` and `login.py` terminates. Immediately inform user, trigger a fresh `login.py` in background PTY, wait until the code prompt appears, and ask for the fresh OTP.
+   - Check `action='log'` immediately after: if output shows `Please enter your password: `, the account has 2FA (Cloud Password) enabled. Ask user for the 2FA password and submit via `process_manage(action='submit', session_id=..., data='<PASSWORD>\n')`.
+   - **Verify Auth via SQLite:** Confirm authentication succeeded by checking `sqlite3 /root/cust/resellerX/session/<phone>.session "SELECT count(*) FROM entities;"` (must return >= 1). If count is 0 and process hangs, socket was dropped; kill and restart.
 6. **Post-Login Daemon Reload & Verification:**
-   - Tunggu hingga proses `login.py` exit cleanly (status `exit: 0` atau pesan berhasil di log).
+   - Tunggu hingga proses `login.py` exit cleanly (status `exit: 0` atau pesan berhasil di log: `Signed in successfully as <Name>`).
    - Pastikan file `.session` terbentuk di `/root/cust/resellerX/session/+628xxx.session`.
    - Restart service terkait agar `start4.py` mendeteksi dan menjalankan worker `index.py` untuk akun baru:
      `systemctl restart custX.service`
-   - Verifikasi worker baru berjalan: `ps aux | grep "index.py +628xxx"` dan cek total worker (`ps -ef | grep index.py | grep -v grep | wc -l`).
+     *(Catatan: `start4.py` dan `checklogin.py` hanya membaca daftar session pada saat inisialisasi boot; worker untuk session baru TIDAK akan jalan tanpa restart service)*.
+   - Verifikasi worker baru berjalan: `ps aux | grep "index.py +628xxx"` dan pastikan task count naik (`Tasks: 2 * N + 1` pada `systemctl status custX.service`).
    - Backup session baru ke private repo: `bash /mnt/cust-telethon-backup/scripts/backup.sh`.
 7. If user requests a **reseller unique code** ("kode unik N hari/minggu"):
    - Hitung timestamp Unix epoch: `int(time.time()) + (N * 86400)`.
    - Contoh 1 minggu = 7 hari = `now + 604800` (format 10 digit epoch).
+   - Selalu berikan kode epoch 10-digit dalam format code block/monospace agar mudah di-copy oleh user/cust, sertakan tanggal & jam kedaluwarsa dalam WIB untuk verifikasi.
+   - Jika user meminta kode unik berbarengan dengan proses login, berikan kodenya langsung tanpa menunda proses submit OTP.
 8. Jika login butuh kirim ulang kode (resend), kill session aktif via `process_manage(action='kill', session_id=...)` lalu jalankan ulang perintah login baru.
 9. **Mengecek Pesan Masuk / Kode Login Baru Telegram (777000):**
    Jika user/pelanggan menanyakan apakah ada kode OTP/login masuk yang baru ke akun yang sudah login di daemon:
@@ -173,7 +181,7 @@ To log in a new customer account under Hermes:
    Customer slot expiry is automatically extended by the exact duration of the FloodWait penalty.
 
 ## Encrypted Private GitHub Backup
-All 54 Telethon SQLite `.session` files (~245 MB) are backed up securely in private repo `IndraYuda13/cust-telethon-backup`:
+All Telethon SQLite .session files (~52 sessions, ~245 MB) are backed up securely in private repo `IndraYuda13/cust-telethon-backup`:
 - Backup script: `/mnt/cust-telethon-backup/scripts/backup.sh` (uses `sqlite3 .backup` + `age` asymmetric encryption with SSH Ed25519 key).
 - Note on baseline warning: `backup.sh` may display `WARNING: Expected 49 session files, got N`; this is a legacy baseline warning in the script. The backup dynamically stages and encrypts all detected sessions cleanly.
 - Restore script: `/mnt/cust-telethon-backup/scripts/restore.sh`.

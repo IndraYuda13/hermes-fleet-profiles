@@ -96,6 +96,10 @@ Standardized architecture, reverse-engineering methodology, and execution protoc
 4. Provide interactive withdrawal threshold selection ($0.10, $0.50, $1.00, $5.00, Custom) with local storage sync, per-account payout buttons, live transaction status tracking (`PAID` status code `"1"`), and global "Auto Withdraw All Ready" batch execution.
 
 ## Reference Documentation Index
+- `references/autonomous_web_navigation.md`: State machine loop, interactive element normalization, depth-aware backtracking, and heuristic safety fallbacks for autonomous web navigation agents.
+- `references/browser-session-and-cli-authentication.md`: Headless browser session auth, cookie injection via CDP, Google stealth headless bypass, and multi-profile synchronization.
+- `references/youtube-bot-mitigation-2026.md`: YouTube headless ingestion, EJS runtime, Netscape cookie conversion, and datacenter anti-bot mitigation.
+- `references/headless-google-oauth-youtube.md`: Headless Google OAuth2 with PKCE, auto-refresh tokens, and YouTube Data API v3 automation.
 - `references/watch_claim_reverse_engineering.md`: Complete playbook for Nuxt 3 chunk extraction, payload reconstruction, and reward attribution flows.
 - `references/visual_icon_captcha_and_dataset_flywheel.md`: SOP for 3-icon sequence captchas, Vision LLM integration, latency constraints, coordinate math, and self-training dataset harvesting.
 - `references/turnstile_and_session_lifecycle.md`: Turnstile token resolution, datacenter IP bypass strategies, cross-node solving fallback, security challenge resolution (`checkSecurity`), and session cookie caching.

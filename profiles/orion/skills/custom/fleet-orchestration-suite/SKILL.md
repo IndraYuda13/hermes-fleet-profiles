@@ -7,6 +7,12 @@ description: Use when orchestrating multi-agent fleet pipelines & QA.
 
 Comprehensive standard operating procedure for orchestrating specialized autonomous AI agent fleets (ORION, AURORA, FRAME, LENS, FORGE, ATLAS, PRISM, SENTINEL) across A2A pipelines, Kanban DAG dispatches, Impeccable design overhauls, and runtime defect rembukan.
 
+## Pre-dispatch profile compatibility gate
+
+- Before setting `skills` on a Kanban task, verify every named skill is installed and loadable in the assigned profile, not merely in ORION's profile.
+- Prefer no forced task skill unless it materially changes the worker's execution quality. A missing forced skill can crash a worker before it inspects the artifact.
+- If a task crashes only because of an unavailable forced skill, preserve the same task and review target: clear only the invalid task-scoped skill metadata, record before/after values in the task events, then retry. Do not create a duplicate review task or alter production artifacts.
+
 ## 1. Fleet Role Separation & Impeccable Ownership Matrix
 | Fleet Role | Ownership Boundary | Impeccable Tools & Primary Deliverables | Execution Invariant |
 |---|---|---|---|

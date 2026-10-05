@@ -585,3 +585,38 @@ When bridging web chat backends that possess native internal capabilities (Pytho
    4. **Zero-Hardcoding & Multi-Tier Credential Resolution**:
    - Resolve credentials in priority order: explicit environment variables (`OPENAI_BASE_URL`, `OPENAI_API_KEY`, `OPENAI_MODEL`) -> fallback legacy vendor keys (`GEMINI_API_KEY`) -> local router defaults (`http://127.0.0.1:20128/v1`).
    - This allows seamless zero-code model swapping between Gemini, GPT, Claude, or DeepSeek via `.env` without modifying application source files.
+
+---
+
+## 14. Vercel AI SDK, n8n Assistant & Framework Client Gateway Compatibility
+
+1. **The `/v1/responses` Probe & 404 Fallback Handshake (`Invalid JSON response` Prevention)**:
+   - *Pitfall*: Client frameworks powered by `@ai-sdk/openai` (such as n8n Assistant, Next.js AI apps, and Vercel AI SDK tools) default to probing `POST /v1/responses` (OpenAI Responses API) during connection setup and model verification.
+   - *Failure Mechanism*: If a reverse proxy or multi-model router returns an SSE stream (`event: ...\ndata: ...`), HTML, or non-standard JSON for `/responses`, client-side JSON parsers fail with `Invalid JSON response` and abort.
+   - *Rule*: Reverse gateways that do not implement native Responses API must intercept `/responses` and return standard HTTP 404 JSON:
+     ```json
+     {
+       "error": {
+         "message": "OpenAI Responses API not supported, use chat completions",
+         "type": "invalid_request_error",
+         "code": "unknown_url"
+       }
+     }
+     ```
+     This triggers `@ai-sdk/openai`'s internal `withChatCompletionsFallback()` to immediately redirect the request to `POST /v1/chat/completions`.
+
+2. **Omitted `stream` Parameter & Non-Streaming JSON Enforcement**:
+   - *Pitfall*: The official OpenAI wire specification states that `stream` defaults to `false`. However, verification calls from Vercel AI SDK, n8n, and web UIs frequently omit `"stream": false` in their request bodies.
+   - *Failure Mechanism*: If an upstream proxy or router (such as 9Router) defaults to streaming SSE (`text/event-stream`) when `stream` is undefined, verification requests receive chunked `data: {"id":..., "object":"chat.completion.chunk"}` instead of a single completion object, causing `Invalid JSON response`.
+   - *Rule*: Always enforce non-streaming JSON mode when `stream !== true`:
+     ```javascript
+     if (url.includes('/chat/completions') && body.stream !== true) {
+       body.stream = false;
+     }
+     ```
+     Reserve SSE streaming strictly for requests where `stream === true`.
+
+3. **Container-to-Host Network Bridging for Dockerized Clients (n8n, OpenWebUI)**:
+   - *Pitfall*: Inside containerized apps (e.g. Docker n8n), `localhost` or `127.0.0.1` points to the container itself, not the host VPS where the reverse gateway runs.
+   - *Rule*: Bind the gateway or compatibility bridge to `0.0.0.0` (e.g. port 20129) and route container requests through the Docker network gateway IP (e.g. `http://172.19.0.1:20129/v1`).
+   - *Architecture*: Run a lightweight compatibility bridge between containerized clients and host routers to handle `/responses` 404 fallback, `stream: false` enforcement, and Docker bridge ingress without modifying host router internals.

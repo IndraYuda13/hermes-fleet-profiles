@@ -298,7 +298,7 @@ onboarding:
     openclaw_residue_cleanup: true
     tool_progress_prompt: true
     profile_build_offered: true
-_config_version: 45
+_config_version: 49
 custom_providers:
   - api_key: REDACTED
     base_url: https://9router.indrayuda.my.id/v1

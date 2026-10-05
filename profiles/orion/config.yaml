@@ -42,9 +42,13 @@ display:
       busy_ack_detail: true
       show_reasoning: false
   tool_progress: all
+  pet:
+    enabled: false
+    slug: socksy
 dashboard:
   cors_origins: '[''https://hermes.indrayuda.my.id'']'
   host: 0.0.0.0
+  public_url: https://hermes.indrayuda.my.id
 tts:
   edge:
     voice: id-ID-ArdiNeural
@@ -104,7 +108,8 @@ onboarding:
   seen:
     busy_input_prompt: true
     openclaw_residue_cleanup: true
-_config_version: 45
+    tool_progress_prompt: true
+_config_version: 49
 a2a_agents:
   atlas:
     timeout: 900
@@ -250,13 +255,6 @@ known_plugin_toolsets:
   telegram:
   - a2a
   - spotify
-mcp_servers:
-  monetag:
-    url: https://mcp.monetag.com/mcp
-    headers:
-      Authorization: Bearer ${MONETAG_MCP_TOKEN}
-    timeout: 60
-    enabled: false
 platform_toolsets:
   a2a:
   - a2a
@@ -309,11 +307,10 @@ platforms:
       bridge_port: 3001
       session_path: /root/.hermes/profiles/orion/whatsapp/session
       mention_patterns:
-      - Orion
       - '@Orion'
-      - \bOrion\b
-      - bot
-      - '@bot'
-      - \bbot\b
-      - Bb
-      - '@Bb'
+timezone: Asia/Jakarta
+mcp_servers:
+  n8n-official:
+    url: https://n8n.indrayuda.my.id/mcp-server/http
+    auth: oauth
+    enabled: true

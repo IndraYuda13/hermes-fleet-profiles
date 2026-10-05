@@ -45,4 +45,12 @@ When the user desires a vibrant, visually captivating, and fun tech portfolio ra
 - **Unified Visual Flow & Width Balancing:** When stacking elements (like `snk` contribution grids and `skillicons.dev`), stretch the icon container to match the wide 52-week horizontal grid width (e.g. 1 continuous row of 14 icons instead of narrow stacked clusters) to prevent disjointed "hourglass" layout defects.
 - **Dynamic Header & Telemetry Cards:** Pair with waving gradient headers (`capsule-render`), real-time streak telemetry (`streak-stats`), and dynamic tech quotes (`quotes-github-readme`). Always verify third-party card uptime/response beforehand to prevent broken image cards.
 
+## 8. Technical Certifications, Credentials & SKPI Vaulting
+When curating developer certifications, digital badges, and academic credentials:
+- **Tier Prioritization:** Prioritize Tier 1 official vendor credentials with Credly verification (Microsoft Applied Skills, AWS Educate, Cisco NetAcad, IBM Cognitive Class) for LinkedIn licenses and resume headers over non-verifiable completion slips. See `references/platform_matrix.md`.
+- **Speedrun Verification Standards:** Fast-track through interactive scenario assessments or project submissions without violating academic integrity; bypass tutorial videos to launch directly into validated skill assessments (HackerRank, freeCodeCamp).
+- **Consolidated Identity:** Register all platforms under one primary email to aggregate all verifiable badges on a single Credly profile URL.
+- **Academic SKPI Compliance:** Enforce study-period date validity (`T_enroll <= T_issue <= T_defense`), exact name/NIM matching, vector PDF formats under 2MB, and directory naming conventions: `[YYYYMMDD]_[KATEGORI]_[PENERBIT]_[NAMA]_[ID].pdf`. See `references/skpi_compliance_checklist.md`.
+- **Anti-Spam LinkedIn Discipline:** Never auto-broadcast micro-badges to the LinkedIn main feed; add them quietly to Licenses & Certifications to avoid recruiter feed fatigue.
+
 

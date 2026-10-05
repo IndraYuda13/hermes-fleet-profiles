@@ -450,5 +450,29 @@ When auditing or building production on-the-fly media streaming backends (FastAP
     4. **Credential & Cookie Stubs:** Provide `backend/cookies.txt.example` and clearly document environment variables (`BILI_PROXY_URL`) so cloned environments can be configured and run without code modification. Ensure `.gitignore` explicitly prevents committing live session cookies (`backend/cookies.txt`).
     5. **Up-to-Date Setup & Run Commands in Root README:** Every time project dependencies, modules, or ports change, immediately verify and patch the root `README.md` with explicit, copy-pasteable quickstart instructions (clone -> install dependencies -> setup cookies/proxy -> run backend & frontend) so users cloning the repo can run it with zero friction.
 
+## 24. Automated Media Pipeline Quality Control & Verification Gate
+When building automated video clipping, transcription, rendering, and publishing workers:
+- **Duration Semantics & Mode Separation:** Parameterize QC into `mode="fixture"` (offline structural validation) and `mode="production"` (strictly enforcing 30–55s product bounds). Never relax production QC checks to accommodate test fixtures.
+- **ASR Ground Truth & Word Timing:** Use clip-local word-level faster-whisper timestamps for generated subtitles rather than phrase-level segments. Assert zero overlapping Dialogue events in the authoritative `.ass` file (`max_simultaneous == 1`). Clear subtitles during speech gaps (>300ms).
+- **Scene-Cut Boundary Awareness:** Partition face tracking into discrete scene segments. Never interpolate crop coordinates across hard scene cuts (causes visual morphing). Hold framing across 1–2 frame detector misses using temporal hysteresis.
+- **Zero Duplicate Subtitles:** Preflight candidate footage for existing burned-in or embedded subtitles. When present, enforce `subtitle_policy = "SOURCE_EXISTING"` and assert `ASS_FILTER_COUNT == 0` on the compiled filtergraph.
+- **Downscale-First Ambient Blur:** Downscale background layers (270x480) before applying `boxblur` and scaling to 1080x1920 to accelerate render speeds up to 10x and prevent CPU timeouts. Crop out bottom subtitle regions before blurring to eliminate ghost subtitles.
+- **Catalog Harvesting Invariants (`platform=android` & Dracin Filtering):** When querying `ogv/index/items_v2`, pass `platform='android'` to unlock 78 Japanese anime titles (+28 titles vs web's 50). Filter out short drama (dracin) spam by checking for empty `style_list: []` and `styles: ""`. Discovered seeds must be stored locally to access unlisted blockbuster franchises (One Piece, Naruto, Jujutsu Kaisen).
+- See `references/media-pipeline-qc-gate.md` for the complete 47-point verification standard and multimodal publishing gate rules.
+
+## 25. Client-Side Web Video Editors vs. Headless Server Video Automation
+When evaluating open-source video editors (e.g. OpenCut, CapCut clones, WebCodecs/WASM editors) for AI agent integration or server automation:
+- **Local-First / Client-Side Architecture Trap:**
+  - Modern web video editors run timeline state, video decoding, compositing, and canvas rendering 100% inside the client browser using WebCodecs API, WebGL shaders, Web Audio API, and FFmpeg WASM.
+  - Media files never transit the backend server. Consequently, any backend API routes (`/api/sounds`, `/api/auth`, `/api/feedback`, or worker endpoints) are strictly ancillary metadata/asset search services—**NOT** video processing or export APIs.
+  - The term "Editor API" in web editor roadmaps typically denotes internal core engine decoupling (e.g. extracting a Rust core from the UI shell) rather than an HTTP REST endpoint for rendering video on a server.
+- **AI Agent Automation Boundary:**
+  - Driving a client-side GUI video editor via headless browser automation (`browser_exec`, synthetic canvas mouse/touch drag-and-drop) is extremely fragile, high-latency, and prone to WebGL context loss and frame drops.
+  - For server-side agentic video generation, assembly, and automated editing, strictly use headless deterministic engines:
+    1. **FFmpeg CLI / Filtergraphs:** Trimming, concatenation, split-screens, burned-in ASS subtitles, audio ducking, and direct stream remuxing without GUI overhead.
+    2. **Python Automation Pipelines (MoviePy / OpenCV):** Dynamic algorithmic assembly, clip analysis, and automated batch processing.
+    3. **Programmatic Video Frameworks (Remotion):** Code-first React video composition rendered headlessly to MP4 via CLI.
+    4. **Headless Engine / MCP Bindings:** Only consider web editor integrations when the engine explicitly ships an official Headless CLI, RPC daemon, or Model Context Protocol (MCP) server.
+
 See `references/bstation-and-mobile-player.md` for extended reference notes on Bstation franchise search patterns and mobile player implementation, and `references/streaming-monetization-and-compliance.md` for in-depth compliance and monetization guidelines.
 

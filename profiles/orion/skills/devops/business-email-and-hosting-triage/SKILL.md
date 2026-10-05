@@ -274,10 +274,23 @@ When automating file operations via REST API:
 2. **File Upload / Save:**
    - *Direct Text/Payload:* Use UAPI `POST /execute/Fileman/save_file_content` with `dir`, `file` (NOT `filename`), and `content`.
    - *Client Library Signature Invariant (`save_file_content`):* In Python wrapper modules (e.g. `cpanel_client.py`), the function signature is strictly `save_file_content(remote_dir, remote_filename, content_bytes_or_str)` — 3 distinct positional parameters. Passing a concatenated path like `save_file_content("public_html/epda/index.html", content)` fails with `TypeError: missing 1 required positional argument`. Always split the directory and filename: `save_file_content("public_html/epda", "index.html", content)`. Note also that the module uses `save_file_content`, not `upload_file`.
+   - *Large Obfuscated / Form-Encoded Upload Timeout Invariant:*
+     - *Trap:* Uploading dense single-page applications or AST-obfuscated files (300KB–1MB+) via `save_file_content` fails with command timeout (Exit 124) or socket timeout when using default 30s timeouts.
+     - *Mechanism:* `save_file_content` transmits content inside standard `application/x-www-form-urlencoded` POST bodies. Hex-escaped JavaScript strings (`\x...`) cause significant URL-encoding body expansion. Over residential/datacenter forward proxies to port 2083, large form uploads require 35–45+ seconds to transmit and commit to disk.
+     - *Rule:* Always set client HTTP connection and read timeout to at least **120 seconds** in `cpanel_client.py` for `save_file_content`.
    - *Binary/Multipart Upload:* Use UAPI `POST /execute/Fileman/upload_files` with `multipart/form-data` containing form fields `dir` (e.g. `public_html/apps`) and `file-1` with filename and binary content.
 3. **Directory Listing:** Use UAPI `GET /execute/Fileman/list_files?dir=<dir>`.
 4. **File Deletion (Unlink):** Do NOT call non-existent UAPI `delete_file` or `delete_files`. Use cPanel API 2 `Fileman/fileop`:
    `/json-api/cpanel?cpanel_jsonapi_user=<user>&cpanel_jsonapi_apiversion=2&cpanel_jsonapi_module=Fileman&cpanel_jsonapi_func=fileop&op=unlink&sourcefiles=<path>`.
+
+### Client-Side Web Armor & Anti-Inspect Deployment Pipeline
+When deploying public-facing web tools (e.g. `papiaw.my.id`) requiring strong client-side code protection against casual inspection:
+1. **Workspace Separation (`_source` vs `_dist`):**
+   - Never develop inside obfuscated files. Keep raw, human-readable source code in a dedicated `*_source/` directory and compile into `*_dist/` via an automated build pipeline (`build_armor.py`).
+2. **Multi-Layer Armor Architecture:**
+   - *Shortcut & Context Menu Defense:* Suppress `contextmenu` (blocks right-click Inspect) and intercept `keydown` events for DevTools shortcuts (`F12`, `Ctrl+Shift+I/J/C`, `Ctrl+U`, `Ctrl+S`).
+   - *DevTools Killer (Infinite Debugger Freeze):* Inject a background interval timer (every 100ms) triggering recursive `debugger` evaluation. If DevTools is opened via browser menus, the developer console locks in an unclosable freeze loop.
+   - *AST Hex Obfuscation & Single-Line Minification:* Flatten control flow into state machines, mangle identifiers to hexadecimal tokens (`_0x...`), split string literals, and strip all line breaks into exactly 1 line of HTML.
 
 ### Dedicated FTP Deployment Fallback
 - When cPanel port 2083 is firewalled against external datacenter IPs or UAPI endpoints return 403 due to shared hosting policy constraints, pivot immediately to a dedicated **FTP Account**:
@@ -360,6 +373,15 @@ When automating hosting, DNS, or server infrastructure from remote agents or CI/
     - Multi-Recipient Audit Pattern: When investigating bounce alerts on multi-recipient dispatches, parse every entry in `relay_events`. If one recipient failed with `550 No Such User Here` but a companion address (e.g. personal Gmail) shows `250 2.0.0 Ok`, delivery succeeded to the person's secondary inbox. Inform operators immediately to eliminate false-alarm vessel downtime while removing the invalid corporate recipient.
   - *VPS Automation (`/api/vps/v1`):* Performance metrics (CPU, RAM, disk), power state cycling, and firewall management.
 
+### Hostinger Mail API vs. Mailbox Content Privacy Boundary
+- **Management Plane vs. Content Plane Isolation:** The Hostinger REST API (`developers.hostinger.com`) is strictly a server infrastructure and delivery management interface. It manages orders, quotas, usage summaries (`storage_used`, `messages_used`), forwarders, DNS records, and delivery logs (`/logs/outbound`, `/logs/inbound`).
+- **Zero Mailbox Content Access:** The REST API does **NOT** expose mailbox content, folder structures, message bodies, or attachment metadata (`/api/mail/v1/orders/{order_id}/mailboxes/{mailbox_id}/messages` returns `404 Not Found`). It cannot query individual emails or identify which specific email holds heavy attachments.
+- **Large Mailbox Triage (Accumulation vs. Single Spike):**
+  - When investigating why an operational mailbox has grown to 20GB–50GB, recognize that in shipping, logistics, or legal operations, this is virtually never caused by a few rogue emails. It is the cumulative buildup of tens of thousands of routine messages (e.g. 25,000–30,000+ emails averaging 1–2 MB) containing daily cargo reports, stowage plans, SOFs, manifests, and vessel scans over years.
+  - Do not waste time attempting to construct REST API scripts or scrape webmail to locate the largest messages. Direct the operator to native mail client sorting:
+    1. *Hostinger Webmail (`mail.hostinger.com`):* Open Inbox/Sent -> click **Urutkan / Sort By** -> select **Ukuran (Size)** -> **Terbesar ke Terkecil (Descending)**.
+    2. *Desktop Outlook:* Use search query `size:>10MB` or `messagesize:>25MB`.
+
 ## 13. Large Mailbox Archival & Migration Operations (30GB+ Mailbox Triage)
 
 When managing multi-gigabyte mailboxes (e.g. 30GB–50GB in maritime, logistics, or legal operations loaded with heavy PDF manifests, drawings, and high-res attachments):
@@ -440,6 +462,30 @@ When designing quotation and port accounting systems for shipping agencies:
   4. *Port Logistics & Operational Ancillaries:* Speedboat / motor launch service for boarding agents and customs; garbage and sludge disposal; freshwater supply.
   5. *Agency Remuneration:* Official agency fee (standardized in USD for foreign vessels, IDR for domestic); agency communication and local transport allowance.
 - **Output Artifacts:** Dual-currency calculation (USD primary for international owners, IDR for local disbursements), explicit bank remittance instructions for Advance Disbursement, and standard BIMCO/FONASBA-aligned liability disclaimers.
+
+## 16. Remote Endpoint & Office Workstation Triage (Hardware Glitches vs Software Faults)
+
+When diagnosing end-user workstation issues reported via chat (e.g. BGM staff laptops):
+
+### The "Disappearing Cursor While Typing" Syndrome (Touchpad Lockout)
+- **Symptom:** User reports cursor vanished while actively typing, touchpad is unresponsive ("tidak touchable"), and restarting the laptop did not restore the cursor.
+- **Root Cause Mechanism:**
+  1. *Hardware Toggle Actuation:* Typing posture frequently causes palms or thumbs to accidentally hit `Fn` + the function key assigned to touchpad toggle (`F1`–`F12`).
+  2. *Persistence Across Reboots:* Unlike software crashes, modern laptop BIOS/UEFI firmware retains the hardware-level disable flag across soft restarts. Restarting the operating system will NOT re-enable the touchpad.
+  3. *HP Corner Double-Tap:* HP laptops feature an embedded touch sensor in the top-left corner of the trackpad; double-tapping it toggles hardware lock and illuminates an amber indicator LED.
+- **Fast Diagnostic Oracle (USB Mouse Test):**
+  - Instruct the user to plug in an external USB or wireless mouse.
+  - If the cursor instantly appears and tracks normally, the OS display server, window manager, and input subsystem are 100% healthy. The issue is definitively isolated to touchpad lockout.
+- **Brand-Specific Touchpad Toggle Hotkeys:**
+  - *Asus:* `Fn + F9` (or `F9`)
+  - *Lenovo:* `Fn + F6` (or `F6`)
+  - *Acer:* `Fn + F7` (or `F7`)
+  - *HP:* `Fn + F11` (or double-tap top-left corner LED)
+  - *Dell:* `Fn + F3` or `Fn + F5`
+  - *Fn Lock Toggle:* `Fn + Esc`
+- **WhatsApp Support Etiquette:**
+  - Provide a numbered, low-friction diagnostic procedure in conversational Indonesian.
+  - Avoid technical device-manager jargon in the initial message; give the brand-specific key combinations first so the user can resolve the issue in under 10 seconds.
 
 
 

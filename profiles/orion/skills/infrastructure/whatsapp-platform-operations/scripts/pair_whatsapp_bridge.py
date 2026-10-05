@@ -96,6 +96,12 @@ def main():
             try:
                 proc.wait(timeout=10)
                 print("[INFO] Bridge process exited cleanly after saving creds.json.", flush=True)
+                # Auto-backup creds.json immediately after flush
+                backup_path = os.path.join(os.path.dirname(args.session.rstrip("/")), "creds_backup.json")
+                if os.path.exists(creds_path) and os.path.getsize(creds_path) > 0:
+                    import shutil
+                    shutil.copy2(creds_path, backup_path)
+                    print(f"[INFO] Created credential backup at {backup_path}", flush=True)
             except subprocess.TimeoutExpired:
                 print("[WARN] Bridge process timed out on exit, terminating.", flush=True)
                 proc.terminate()

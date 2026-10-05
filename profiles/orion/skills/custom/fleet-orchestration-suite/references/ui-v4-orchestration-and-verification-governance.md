@@ -100,3 +100,9 @@ This reference defines the authoritative orchestration and verification standard
 9. **Contextual Motifs vs. Syntax Bans:**
    - Pure black (`#000000`), gradients, borders, cards, sans-serif typography (such as Inter), pill navigation, and Lenis are NOT universally forbidden.
    - The defect is unmotivated usage irrelevant to product truth—not the CSS syntax itself.
+
+10. **Task Execution Timeouts & Runtime Protection (`max_runtime_seconds`):**
+    - Hermes Kanban provides **no global default per-task timeout** (`max_runtime_seconds` defaults to `None`). Tasks created without an explicit cap run without a task-level timer and are only subject to the 4-hour stale watchdog (`dispatch_stale_timeout_seconds = 14400`) after 1 hour of missing heartbeats.
+    - When orchestrating fleet tasks (`kanban_create` or `hermes kanban create`), **always explicitly set `max_runtime_seconds`** (e.g. `1800` for 30m, `3600` for 1h, or `--max-runtime 30m` on CLI) for bounded stages (design candidates, implementation slices, audits, remediation).
+    - Setting `max_runtime_seconds` automatically scales the child worker's `TERMINAL_TIMEOUT` and `TERMINAL_MAX_FOREGROUND_TIMEOUT` environment variables (with a 30s grace window: `max(1, runtime - 30)`) so inner terminal commands do not get prematurely killed by the generic 180s terminal tool default.
+    - *Pitfall:* Assuming Kanban tasks have a built-in 30-minute default timeout. Without explicit `max_runtime_seconds`, looping or stuck workers consume resources until manual intervention or 4-hour stale reclamation.

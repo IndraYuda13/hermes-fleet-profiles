@@ -1,4 +1,4 @@
-_config_version: 45
+_config_version: 49
 a2a_agents:
   atlas:
     timeout: 900

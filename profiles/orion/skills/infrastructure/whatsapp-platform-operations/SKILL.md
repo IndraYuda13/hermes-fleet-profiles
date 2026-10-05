@@ -1,13 +1,21 @@
 ---
 name: whatsapp-platform-operations
 description: Operate WhatsApp bridge, allowlists, and group JIDs.
-version: 1.1.0
+version: 1.6.0
 author: Hermes Agent Curator
 license: MIT
 metadata:
   hermes:
-    tags: [whatsapp, operations, allowlist, group-jid, gateway, baileys]
-    related_skills: [hermes-agent, hermes-operations]
+    related_skills:
+    - hermes-agent
+    - hermes-operations
+    tags:
+    - whatsapp
+    - operations
+    - allowlist
+    - group-jid
+    - gateway
+    - baileys
 ---
 
 # WhatsApp Platform Operations
@@ -17,7 +25,7 @@ Hermes Agent uses a standalone Node.js subprocess bridge (`@whiskeysockets/baile
 
 - Bridge script: `/usr/local/lib/hermes-agent/scripts/whatsapp-bridge/bridge.js`
 - Bridge port: default `3000` (loopback)
-- Session directory: `~/.hermes/profiles/<profile>/platforms/whatsapp/session`
+- Session directory: configured via `platforms.whatsapp.extra.session_path` in `config.yaml` (typically `~/.hermes/profiles/<profile>/platforms/whatsapp/session` or `~/.hermes/profiles/<profile>/whatsapp/session`). Always check `config.yaml` before inspecting, backing up, or wiping session files.
 - Gateway adapter: `/usr/local/lib/hermes-agent/plugins/platforms/whatsapp/adapter.py` & `gateway/platforms/whatsapp_common.py`
 
 ## Configuration Keys
@@ -27,6 +35,7 @@ In `~/.hermes/profiles/<profile>/config.yaml`:
 platforms:
   whatsapp:
     enabled: true
+    reply_to_mode: "first" # "first" (quote first chunk, recommended) | "all" | "off"
     extra:
       group_policy: "allowlist" # "open" | "allowlist" | "disabled" | "pairing"
       group_allow_from:
@@ -36,7 +45,6 @@ platforms:
         - "@<WHATSAPP_ID>"
         - "Akun Wa Gpt"
         - "\\bOrion\\b"
-        - "\\bbot\\b"
       allow_from:
         - "<WHATSAPP_ID>"
         - "<WHATSAPP_ID>"
@@ -51,7 +59,7 @@ WHATSAPP_ALLOWED_USERS=<WHATSAPP_ID>,<WHATSAPP_ID>
 WHATSAPP_GROUP_POLICY=allowlist
 WHATSAPP_GROUP_ALLOW_FROM=<WHATSAPP_JID>,...
 WHATSAPP_REQUIRE_MENTION=true
-WHATSAPP_MENTION_PATTERNS=["@<WHATSAPP_ID>", "Akun Wa Gpt", "\\bOrion\\b", "\\bbot\\b"]
+WHATSAPP_MENTION_PATTERNS=["@<WHATSAPP_ID>", "Akun Wa Gpt", "\\bOrion\\b"]
 WHATSAPP_DEBUG=true
 ```
 
@@ -102,14 +110,17 @@ WHATSAPP_DEBUG=true
   - Phone number (`@628...`)
   - LID prefix (`@<WHATSAPP_ID>`)
   - Display name (`AW.ai`, `@AW.ai`, `Akun Wa Gpt`)
-  - Profile alias and generic handles (`\\bOrion\\b`, `\\bbot\\b`)
+  - Profile alias (`\\bOrion\\b`)
+- **The Generic Noun & Pop-Culture Name Collision Trap (`bot`, `@bot`, `ai`, character names):** Never include generic conversational nouns like `"bot"`, `"\bbot\b"`, `"@bot"`, or `"ai"` in `mention_patterns`. Furthermore, beware of agent names that collide with games or pop-culture (e.g. `Orion` in Mobile Legends, anime, or astronomy). In active human group chats, users constantly discuss these terms in casual banter, causing intrusive unwanted wakeups and burning context tokens. When collisions occur, strip conversational name triggers (`\b<Name>\b`, `@<Name>`) from `mention_patterns` and restrict triggers strictly to the bot's exact WhatsApp phone number tag (`@<phone>`, `<phone>`) and native quote-replies (`reply_to_mode: first`, handled by `_message_is_reply_to_bot`).
+- **Synchronizing Dual Stores (`config.yaml` and `.env`):** Mention patterns are evaluated from both `config.yaml` (`platforms.whatsapp.extra.mention_patterns`) and `.env` (`WHATSAPP_MENTION_PATTERNS`). Updating only one store leaves the bot waking on old patterns. Update `config.yaml` via `hermes config set` and synchronize `.env` in tandem before issuing a delayed gateway restart.
 - **Important Pitfall:** When a user tags the bot using UI autocomplete, the rendered text in WhatsApp often prefixes an `@` before the custom contact name (e.g. `@AW.ai` or `@<WHATSAPP_ID>AW.ai`). If `mention_patterns` only contains `AW.ai` or phone numbers, strict word-boundary matching or regex may fail to trigger. Always include `@<DisplayName>`, `<DisplayName>`, and the LID identifier `@<LID>`.
 - **Group Self-Sent Message Drop (`from_me_group`):** When the owner/operator tests the bot in a group chat from the *same phone/number* that is linked to the bot session, Baileys emits `msg.key.fromMe = true`. By default, `bridge.js` ignores `fromMe` group messages to prevent infinite self-echo loops. To test group bot responsiveness, always instruct another group member to mention the bot or use a secondary WhatsApp account.
 - **Group Policy & Inbound Mention Optimization:**
   - Keep `platforms.whatsapp.extra.group_policy: "allowlist"` and `require_mention: true` when operating in shared groups.
   - Do **not** set `group_policy: "open"` blindly if `allow_from` / `WHATSAPP_ALLOWED_USERS` is strictly filtered; always preserve the explicit `group_allow_from` and `group_allowed_chats` pattern to avoid unauthorized authorization dropouts or unwanted global group triggers.
-- On official upstream Hermes, `_message_is_reply_to_bot` compares raw `quotedParticipant` strings without device-index stripping or LID alias expansion. Always instruct users in WhatsApp groups to explicitly tag/mention the bot (`@bot` / display name) rather than relying solely on quote-replies.
+- **Quote-Reply Triggering Without Mention:** In WhatsApp groups where `require_mention: true`, quoting or replying directly to any message sent by the bot triggers the agent turn without requiring `@mention` or name tags (`_message_is_reply_to_bot`). The Baileys bridge emits both phone JID (`@s.whatsapp.net`) and LID (`@lid`) in `botIds`, and `whatsapp_common.py` strips device suffixes (`:device`) before comparing against `quotedParticipant`. Quoting another human member's message still requires an explicit mention to wake the bot.
 - **Bare Mentions & Presence Check / Ping Handling:** When an inbound message consists solely of a mention tag (e.g. `@<LID>`, `@bot`, `@<phone>`) or an informal roll-call / presence check (e.g. `absen`, `absen bree`, `p`, `ping`, `tes`), treat it immediately as a conversational liveness ping. Acknowledge presence promptly, casually, and concisely without running background terminal diagnostics (`ps aux`) or inspecting session directory files; investigating a bare identifier as an anomaly delays the response, leading to user interruptions.
+- **Multi-Bot Group Co-existence & Isolation:** When multiple distinct agent bots operate in the same WhatsApp group, keep them strictly independent. Never cross-contaminate `mention_patterns` (e.g. bot B must not listen to `@Orion` or bot A's handles), and do not link them via A2A or cross-network RPC unless explicitly authorized. Each bot must respond exclusively to its own unique handle and its own quote-replies.
 - Always keep upstream framework files (`/usr/local/lib/hermes-agent`) clean and vanilla—rely on official `hermes update` / `git pull` rather than in-place framework edits.
 
 ### 5. Multi-User WhatsApp Group Hardening & Sandboxing Protocol (Profile Isolation)
@@ -185,8 +196,6 @@ WHATSAPP_DEBUG=true
                     - "@Orion"
                     - "Orion"
                     - "\\bOrion\\b"
-                    - "@bot"
-                    - "bot"
             ```
             *Why:* In group builder mode, `require_mention: true` prevents ambient chatter from burning tokens. `allow_all_users: true` prevents gateway authz drops on collaborator messages. All project generation is locked to an isolated workspace (`/root/workspace/web-collab/`), with collaborator role permissions sandboxed in `SOUL.md`.
        4. **Session Symlink Collision Trap:**
@@ -341,3 +350,132 @@ WHATSAPP_DEBUG=true
 - **Honorific & Conversational Calibration:**
   - Avoid blindly assuming gendered honorifics (*"Bu"*, *"Pak"*) based on unverified recipient handles or conversational snippets. Use neutral addressing (*"Kak"*, *"Mas/Mba"*) or direct neutral phrasing.
   - **Loop Breaker:** If an external sender states their role (*"Gua kurirnya loh"*, *"Saya yang antar"*), immediately acknowledge their role and stop repeating previous questions or offering unprompted advice.
+
+### 12. Outbound Media Attachment Path Sandbox (`MEDIA:<path>`)
+- When delivering outbound media attachments in chat via `MEDIA:/absolute/path/to/file`, the file must NOT reside inside hidden configuration directories (e.g. `~/.config/...`), root root-owned system directories, or internal harness temporary folders (`~/.config/browser-harness/tmp/...`).
+- Files located in hidden system folders like `.config` are silently dropped or blocked by gateway path security filters, causing the message to arrive without the attachment.
+- **Rule:** Always copy or save outbound media into the agent profile's designated scratch cache directory (`~/.hermes/profiles/<profile>/cache/scratch/` or `$TMPDIR`), verify file existence and non-zero size, and send the scratch path via `MEDIA:`.
+
+### 13. Headless Gateway Reconnect Timeout Loop & Revoked Session (Code 401) Diagnostics
+- **The Symptom & Asymmetric Outage Mechanism:**
+  When companion device authorization expires or is unlinked from the phone app ("Perangkat Tertaut"), Baileys receives `DisconnectReason.loggedOut (code 401)`.
+  1. On code 401, Baileys deletes or zeroes out `creds.json` (0 bytes).
+  2. The supervised gateway (`hermes --profile <profile> gateway run`) attempts to reconnect by launching `bridge.js`.
+  3. With `creds.json` missing or empty, `bridge.js` enters QR pairing mode and prints a new ASCII/terminal QR code into its log file (`bridge.log`).
+  4. In headless systemd services, nobody is watching `bridge.log` to scan the QR. After 30s, Hermes gateway times out:
+     `WARNING gateway.run: Reconnect whatsapp error: whatsapp connect timed out after 30s, next retry in 300s`
+  5. The gateway kills the bridge and sleeps for 300s, repeating the loop indefinitely. Meanwhile, token-based channels (such as Telegram bots) remain completely healthy, creating an asymmetric outage where Telegram is online but WhatsApp is dead.
+- **Triage & Diagnosis Steps:**
+  1. Check `platforms.whatsapp.extra.session_path` in `config.yaml` to locate the exact session directory (never assume default path).
+  2. Check for 0-byte or missing credentials:
+     `find ~/.hermes/profiles/*/whatsapp/session/ ~/.hermes/profiles/*/platforms/whatsapp/session/ ~/.hermes/platforms/whatsapp/session/ -name "creds.json" -size 0`
+  3. Inspect recent gateway logs for the 30s timeout / 300s retry pattern:
+     `journalctl --user -u "hermes-gateway-*" -n 40 --no-pager | grep -i "reconnect whatsapp error"`
+  4. Probe socket state directly with a fast headless Baileys handshake check to distinguish transient network drops from authentic 401 logouts.
+- **Recovery Protocol:**
+  1. Instruct the user to open WhatsApp on their phone -> Linked Devices (Perangkat Tertaut) -> tap stale Linux/Google Chrome session -> Log out ("Keluar") to clear server linkage.
+  2. Delete any 0-byte `creds.json` in the session directory.
+  3. Launch `scripts/pair_whatsapp_bridge.py` or run `bridge.js --pair-json` inside a detached tmux session.
+  4. Render the emitted QR string to a PNG using `qrcode.make()` and deliver it in the active conversation via `MEDIA:<path>`.
+  5. **Mandatory Credential Flush Invariant:** Wait 2-3 seconds after the `connected` event before killing the pairing bridge so Baileys writes non-empty `creds.json`.
+  6. **Credential Backup Invariant:** Immediately make an atomic backup:
+     `cp <session_dir>/creds.json <session_dir>/../creds_backup.json`
+     to preserve valid credentials against accidental 0-byte truncations during crashes.
+  7. **Standalone Bridge Teardown & Port Free Invariant (Anti-`EADDRINUSE` & Anti-Drop):**
+     - **The In-Flight Pairing Bridge Inbound Drop Trap:** Standalone pairing bridges (e.g. run via tmux or python supervisor) usually lack the full gateway environment variables (`WHATSAPP_ALLOWED_USERS`, `WHATSAPP_DM_POLICY`). Any test message sent while the temporary bridge is still holding the port is dropped with `reason: "allowlist_mismatch"` because Baileys cannot match the sender's `@lid` to `WHATSAPP_ALLOWED_USERS`.
+     - **Rule:** Never instruct the user to test chatting while the temporary pairing bridge is active. Immediately upon detecting the `connected` event and credential flush, terminate the temporary pairing bridge (`tmux kill-session` or kill PID) and verify the port (3000/3001) is completely free (`lsof -i :<port>`).
+  8. **Service Restart & Managed Bridge Handover:**
+     Restart the profile gateway service via D-Bus:
+     `busctl --user call org.freedesktop.systemd1 /org/freedesktop/systemd1 org.freedesktop.systemd1.Manager RestartUnit ss "hermes-gateway-<profile>.service" "replace"`
+     This allows the official gateway to spawn its own managed bridge loaded with the full profile `.env`, allowlists, and active `/messages` long-polling loop.
+  9. **Gateway State Verification & Active Outbound Handshake (Anti-False-Positive Test):**
+     - Verify real-time platform status in `/root/.hermes/profiles/<profile>/gateway_state.json` (`platforms.whatsapp.state == "connected"`).
+     - Probe bridge health: `GET http://127.0.0.1:<port>/health` (expect `status: "connected"`).
+     - **Mandatory Outbound Ping Handshake:** Do not wait passively for the user to chat. Proactively send an outbound test ping to the user's phone via `POST http://127.0.0.1:<port>/send` (`{"chatId": "<owner_phone>@s.whatsapp.net", "message": "Pesan tes..."}`), confirm HTTP 200 with `success: true` and `messageId`, and instruct the user to reply to that specific message. This guarantees bi-directional routing (outbound push + inbound long-polling intake) on the new session.
+
+### 14. Quoted Media (Images/Docs/Audio) in Replies & Inbound Text-Only Fallback Pitfall
+- **The Symptom & Mechanism:**
+  When a user in a WhatsApp group or DM replies to or quotes another member's media message (for example, replying to an image, PDF document, or voice note with `@bot bantu kerjain ini` or `bantu ni`):
+  - The upstream Hermes WhatsApp gateway adapter extracts only the text caption of the quoted message into `reply_to_text` (delivered to the agent as `[Replying to: "..."] <user_text>`).
+  - The actual binary media from the quoted message (`quotedMessage.imageMessage`, `documentMessage`, or `audioMessage`) is NOT automatically downloaded or passed into the current agent turn's input prompt.
+- **The Pitfall:** The agent sees only the quoted caption string, leading to false assumptions (e.g. assuming the user forgot to attach a file, querying unrelated LMS/web sources, or asking the user "mana tugasnya/gambarnya?").
+- **Inspection & Extraction Pattern:**
+  1. Identify the inbound message ID from `state.db`:
+     `SELECT platform_message_id FROM messages ORDER BY id DESC LIMIT 1;`
+  2. Inspect the stored message in the Baileys bridge or memory store (`__messageStore.get(platform_message_id)`).
+  3. Traverse to `message.extendedTextMessage.contextInfo.quotedMessage` and locate `imageMessage`, `documentMessage`, or `audioMessage`.
+  4. For immediate visual recognition, `quotedMessage.imageMessage.jpegThumbnail` provides a valid JPEG byte buffer directly without network decryption.
+  5. For full-resolution media: pass the synthetic message object `{ key: { id: stanzaId, remoteJid }, message: { imageMessage } }` to Baileys `downloadMediaMessage(synthetic, 'buffer', ...)`, save the decrypted buffer into the profile scratch cache (`~/.hermes/profiles/<profile>/cache/scratch/quoted_media.jpg`), and inspect it with `vision_analyze`.
+
+### 15. Inbound WhatsApp Media Intake Location & Discovery (`/root/.hermes/cache/images/`)
+- **The Mechanism:** When a user sends photos or an image album via WhatsApp with or without an accompanying prompt (e.g. asking *"lu bisa liat 4 foto ini?"* or *"tolong baca gambar ini"*), the WhatsApp gateway downloads the inbound media files directly to the centralized image cache:
+  `/root/.hermes/cache/images/img_<hex>.jpg`
+- **Zero-Refusal Invariant:** Never claim you cannot see the images or ask the user to re-upload without first checking the cache.
+- **Workflow to Inspect Inbound WhatsApp Images:**
+  1. Locate the latest received media by modification time:
+     `ls -lrt /root/.hermes/cache/images/ | tail -n <N>`
+     or:
+     `find /root/.hermes/cache/images/ -type f -mmin -15`
+  2. Inspect each image directly with `vision_analyze(image_url="/root/.hermes/cache/images/img_<hash>.jpg", question="...")`.
+  3. Batch multiple `vision_analyze` calls in a single assistant turn when the user sends multiple photos or an album for rapid, comprehensive review.
+
+### 16. Comprehensive Profile WhatsApp Audit & Settings Inspection Procedure
+When an operator or user requests a complete preview or audit of all WhatsApp configurations on a profile ("semuanya ya tanpa terkecuali"):
+1. **Primary Config (`~/.hermes/profiles/<profile>/config.yaml`):**
+   - Inspect `platforms.whatsapp`: `enabled`, `home_channel` (`chat_id`, `name`, `platform`, `user_id`), and all `extra` fields (`group_policy`, `group_allow_from`, `group_allowed_chats`, `allow_all_users`, `allow_from`, `require_mention`, `bridge_port`, `session_path`, `mention_patterns`).
+   - Inspect `platform_toolsets.whatsapp`: Check permitted tools (`terminal`, `file`, `web`, `vision`, `code_execution`, etc.). Note that tools omitted here cannot be invoked when responding to WhatsApp messages even if enabled in global `toolsets`.
+2. **Environment Variables (`~/.hermes/profiles/<profile>/.env`):**
+   - **Credential Store Read Barrier:** Hermes file tools (`read_file`, `search_files`) block reading `.env` directly as a credential store. Use terminal grep:
+     `grep -i "^WHATSAPP_" ~/.hermes/profiles/<profile>/.env`
+     to audit `WHATSAPP_MODE`, `WHATSAPP_DM_POLICY`, `WHATSAPP_ALLOWED_USERS`, `WHATSAPP_REQUIRE_MENTION`, `WHATSAPP_HOME_CHANNEL`, `WHATSAPP_MENTION_PATTERNS`, `WHATSAPP_GROUP_POLICY`, `WHATSAPP_ALLOW_ALL_USERS`, `WHATSAPP_ALLOW_ALL_GROUP_MEMBERS`, `WHATSAPP_DEBUG`, and `WHATSAPP_GROUP_ALLOW_FROM`.
+3. **Runtime Bridge Process & Supervisor:**
+   - Active process arguments: `ps aux | grep -E "whatsapp-bridge|bridge.js"` to confirm live `--port` (3000 vs 3001), `--session` directory, and `--mode` (`bot` vs `self-chat`).
+   - Supervisor service unit: `systemctl --user status hermes-gateway.service` or check `gateway_state.json`.
+4. **Session Directory Integrity:**
+   - Check `session_path` directory: verify `creds.json` exists and has non-zero size (`ls -la <session_path>/creds.json`), and confirm whether `creds_backup.json` exists.
+5. **Channel Routing Directory (`~/.hermes/profiles/<profile>/channel_directory.json`):**
+   - Inspect registered WhatsApp entries under `platforms.whatsapp` (`home_destination`, direct message `@lid` records, and known `@g.us` group chats).
+
+### 17. Outbound Quote-Reply Bubble Configuration (`reply_to_mode`) & Trigger-by-Reply Diagnostics
+- **Outbound Quote-Reply Bubble Behavior (`reply_to_mode`):**
+  Controls whether Hermes attaches the incoming user message as a native quoted reply bubble in its responses.
+  - Options:
+    - `"first"`: Quoted reply bubble is attached to the **first message chunk only** (recommended). Prevents long multi-chunk responses from quoting repeatedly.
+    - `"all"`: Every message chunk quotes the user's incoming message.
+    - `"off"`: Sends replies as standalone, unthreaded WhatsApp messages.
+  - Set via CLI:
+    ```bash
+    hermes config set platforms.whatsapp.reply_to_mode first
+    ```
+  - Or via `~/.hermes/profiles/<profile>/config.yaml`:
+    ```yaml
+    platforms:
+      whatsapp:
+        reply_to_mode: "first"
+    ```
+  - Mechanism: Gateway adapter passes inbound `reply_to` message ID to `/send`. The Baileys bridge looks up the message in `messageStore.get(replyTo)` and injects `options.quoted = quoted`.
+- **Inbound Trigger-by-Reply Diagnostics (When replying without @mention doesn't trigger):**
+  - **Quoting Bot Message vs Human Message:** The gateway's `_message_is_reply_to_bot` specifically checks if `quotedParticipant` matches `botIds`. Replying to a message sent by a human in a group will NOT wake the bot unless an explicit `@mention` or mention pattern is included.
+  - **Baileys Quoted Participant & Bot ID Device Suffix Trap (`quotedParticipant` vs `botIds`):**
+    Baileys emits `quotedParticipant` and user credentials with device suffixes (e.g. `628xxx:12@s.whatsapp.net` or `12345:0@lid`).
+    *The Suffix Normalization Pitfall:* In unpatched bridge scripts (`bridge_helpers.js`), `normalizeWhatsAppId` used a naive string replace (`replace(':', '@')`), which turned `628xxx:7@s.whatsapp.net` into `628xxx@7@s.whatsapp.net`. This corrupted `botIds` with duplicate `@` symbols, preventing any quote-reply from matching.
+    *The Correct Fix in `bridge_helpers.js`:*
+    ```javascript
+    export function normalizeWhatsAppId(value) {
+      if (!value) return '';
+      return String(value).replace(/\:\d+(?=@)/, '').replace(/\:\d+$/, '');
+    }
+    ```
+  - **The Node.js In-Memory Code Retention Pitfall on Gateway Restarts:**
+    When restarting the gateway service (e.g. via `systemctl --user restart` or `busctl RestartUnit`), if systemd `KillMode=mixed` is set or the bridge process is detached, the Node.js bridge process (`bridge.js`) continues running on port 3000/3010.
+    When the new Python gateway process boots, it checks if port 3000/3010 is already listening. If alive, it reuses the running bridge instead of spawning a new Node.js process!
+    Because Node.js holds imported modules in memory, any disk patches to `bridge.js` or `bridge_helpers.js` remain completely inactive in the running process.
+    *The Mandatory Action:* When patching bridge scripts, you MUST explicitly kill the Node.js bridge process (`kill -9 <bridge_pid>`). The gateway supervisor detects the socket drop and automatically respawns a fresh Node.js bridge from disk within 3 seconds. Always verify bridge uptime drops to <10s via `curl -s http://127.0.0.1:<port>/health` to confirm the fresh code is live.
+  - **Group Authorization Drop:** If non-owner group members reply to the bot and get no response, check `gateway/authz_mixin.py`. The sender must be allowed via `group_allowed_chats` containing the group JID, or `allow_all_users: true` on open groups. Otherwise inbound events are dropped with `Unauthorized user`.
+  - **Self-Account Testing Trap (`from_me_group`):** Quoting the bot from the same phone number running the bot session emits `fromMe: true`, which `bridge.js` silently drops to prevent infinite self-echo loops. Always test quote-reply behavior with a separate phone number.
+
+### 18. Ambient Group Context Ingestion & Quoted Message Bridging
+- **Ambient Message Discard Invariant:** In WhatsApp groups where `require_mention: true`, the gateway adapter drops all messages that do not contain an explicit mention, bot quote-reply, or slash command (`_should_process_message`). These unmentioned messages are discarded immediately at the transport layer—they are never committed to `state.db` and never enter the agent's LLM context window. The agent cannot inspect or recall past unmentioned group messages.
+- **On-Demand Context Bridging via Quoted Replies:** To bring an unaddressed third-party message or task into the agent's context, instruct the user to **quote-reply to that message while tagging the bot** (e.g. `[Replying to: "..."] @bot tolong analisis ini`). WhatsApp packs the target message's text into `quotedText` (`reply_to_text`), cleanly injecting that specific prior message into the turn prompt without ambient leakage.
+- **The `require_mention: false` Anti-Pattern in Active Groups:** Avoid setting `require_mention: false` or adding busy group JIDs to `free_response_chats`. Doing so forces every conversational statement from all members to trigger an LLM turn, burning token quota, creating conversational spam, and risking concurrent session race conditions.
+
