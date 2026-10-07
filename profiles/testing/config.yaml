@@ -11,25 +11,25 @@ providers:
     transport: chat_completions
     default_model: gpt-5.6-sol
 toolsets:
-  - a2a
-  - browser
-  - clarify
-  - code_execution
-  - computer_use
-  - connections
-  - cronjob
-  - delegation
-  - file
-  - image_gen
-  - kanban
-  - memory
-  - session_search
-  - skills
-  - terminal
-  - todo
-  - video
-  - vision
-  - web
+- a2a
+- browser
+- clarify
+- code_execution
+- computer_use
+- connections
+- cronjob
+- delegation
+- file
+- image_gen
+- kanban
+- memory
+- session_search
+- skills
+- terminal
+- todo
+- video
+- vision
+- web
 terminal:
   backend: local
 approvals:
@@ -39,11 +39,11 @@ approvals:
   destructive_slash_confirm: false
 plugins:
   enabled:
-    - platforms/a2a
-    - ponytail
-    - superpowers
-    - web-firecrawl
-    - web-searxng
+  - platforms/a2a
+  - ponytail
+  - superpowers
+  - web-firecrawl
+  - web-searxng
 web:
   backend: firecrawl
   search_backend: firecrawl
@@ -97,60 +97,62 @@ onboarding:
 _config_version: 49
 platform_toolsets:
   cli:
-    - a2a
-    - browser
-    - clarify
-    - code_execution
-    - computer_use
-    - connections
-    - cronjob
-    - delegation
-    - file
-    - image_gen
-    - kanban
-    - memory
-    - session_search
-    - skills
-    - terminal
-    - todo
-    - video
-    - vision
-    - web
+  - a2a
+  - browser
+  - clarify
+  - code_execution
+  - computer_use
+  - connections
+  - cronjob
+  - delegation
+  - file
+  - image_gen
+  - kanban
+  - memory
+  - session_search
+  - skills
+  - terminal
+  - todo
+  - video
+  - vision
+  - web
   telegram:
-    - a2a
-    - browser
-    - clarify
-    - code_execution
-    - computer_use
-    - connections
-    - cronjob
-    - delegation
-    - file
-    - image_gen
-    - kanban
-    - memory
-    - session_search
-    - skills
-    - terminal
-    - todo
-    - video
-    - vision
-    - web
+  - a2a
+  - browser
+  - clarify
+  - code_execution
+  - computer_use
+  - connections
+  - cronjob
+  - delegation
+  - file
+  - image_gen
+  - kanban
+  - memory
+  - session_search
+  - skills
+  - terminal
+  - todo
+  - video
+  - vision
+  - web
 platforms:
   telegram:
     enabled: true
     dm_policy: allowlist
     group_policy: disabled
     allow_from:
-      - 696907598
+    - 696907598
+    - 1834772281
     allowed_chats:
-      - __dm_only__
+    - __dm_only__
     guest_mode: false
     require_mention: true
     home_channel:
       platform: telegram
       chat_id: '696907598'
-      name: ㅤㅤ||𝙻𝙴𝙼𝙾𝙽||ㅤㅤ
+      name: "\u3164\u3164||\U0001D67B\U0001D674\U0001D67C\U0001D67E\U0001D67D||\u3164\
+        \u3164"
       user_id: '696907598'
 display:
   tool_progress: all

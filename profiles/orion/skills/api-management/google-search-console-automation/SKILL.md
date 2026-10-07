@@ -1,7 +1,7 @@
 ---
 name: google-search-console-automation
 description: Use when automating Google Search Console API operations.
-version: 1.4.0
+version: 1.5.0
 author: Orion Fleet Lead
 license: MIT
 metadata:
@@ -167,6 +167,24 @@ Inspect real-time indexing status without waiting for aggregated dashboard chart
   | `NEUTRAL` | `URL is unknown to Google` | Page URL is registered in sitemap queue but Googlebot has not visited yet. Normal for newly deployed content. |
   | `FAIL` | `Crawled - currently not indexed` or `Discovered - currently not indexed` | Quality, thin content, canonical, or server response issue. Requires content/E-E-A-T audit. |
 
+#### Executable Python Inspection Function
+```python
+def inspect_url_status(creds_path, site_url, target_url):
+    token = get_gsc_access_token(creds_path)
+    inspect_url = "https://searchconsole.googleapis.com/v1/urlInspection/index:inspect"
+    payload = json.dumps({"inspectionUrl": target_url, "siteUrl": site_url}).encode('utf-8')
+    req = urllib.request.Request(
+        inspect_url,
+        data=payload,
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+        method="POST"
+    )
+    ctx = ssl.create_default_context()
+    with urllib.request.urlopen(req, context=ctx, timeout=15) as resp:
+        res = json.loads(resp.read().decode('utf-8'))
+        return res.get("inspectionResult", {}).get("indexStatusResult", {})
+```
+
 ### B. Web Search Indexing API Protocol (Bulk Priority Crawling)
 The Web Search Indexing API (`https://indexing.googleapis.com/v3/urlNotifications:publish`) allows programmatic notification to Googlebot to recrawl or index URLs with priority latency (hours instead of days/weeks):
 * **Endpoint**: `POST https://indexing.googleapis.com/v3/urlNotifications:publish`
@@ -207,6 +225,15 @@ Webmasters, clients, and automated agents frequently conflate three distinct ope
     `verdict: "NEUTRAL"`, `coverageState: "URL is unknown to Google"`, `lastCrawlTime: null`.
   - **Operational Rule**: Never report this to the user as an error, broken link, or failed submission. It simply means the URL is in the normal Googlebot crawl queue between Stage 2 and Stage 3. Googlebot typically processes new sitemap items within 2 to 24 hours.
   - To accelerate Stage 2 to Stage 3 for time-sensitive articles, instruct the webmaster to perform a manual priority crawl request via the Search Console Web UI (paste URL in the inspection bar -> click "Request Indexing" / *Minta Pengindeksan*).
+
+#### Stakeholder Communication Protocol: Web Visibility vs SERP Indexing
+When users or clients ask: *"Apakah halaman sudah terindeks di GSC dan orang bisa melihat?"*:
+1. **Differentiate Public Availability from Search Indexing Immediately**:
+   - **Bisa Dilihat (Public Web Accessibility)**: State unambiguously that if Stage 1 is verified (HTTP 200 OK, navbar link, homepage card), the page is **100% accessible right now**. Any user clicking the URL, accessing the domain, or opening links from social media/chat can see and use the page instantly.
+   - **Terindeks di GSC (Google SERP Indexing)**: Clarify that Google search engine indexing is an asynchronous crawler pipeline. Submitting via Google Indexing API places the URL in the crawler queue; Googlebot smartphone crawler will visit and render the page within hours to 1–2 days.
+2. **Explain `URL is unknown to Google` with Technical Context**:
+   - Never report `verdict: "NEUTRAL"` or `coverageState: "URL is unknown to Google"` as a failure or broken URL.
+   - Explain clearly that for content published within the last few hours, this status confirms the URL is in the standard crawl queue awaiting its initial crawler visit, and compare it against an established URL (which shows `verdict: "PASS"`, `coverageState: "Submitted and indexed"`).
 
 ### D. Automated 3-Stage Verification Script (Probe + Sitemap + Inspection)
 ```python
@@ -275,6 +302,7 @@ def verify_publication_pipeline(target_url, sitemap_url, gsc_client):
 
 ## 6. Pitfalls & Anti-Patterns
 
+- **Conflating Public Web Accessibility with Search Engine Indexing**: Telling stakeholders a newly launched feature or page "is not yet visible to people" when it is merely awaiting Googlebot's asynchronous crawl queue. The page is immediately accessible to any human visitor while Googlebot processes indexing asynchronously.
 - **Assigning 'Full' Instead of 'Owner' Permissions for Indexing API**: While 'Full' permission in Search Console allows reading analytics and submitting sitemaps, the Web Search Indexing API (`urlNotifications:publish`) strictly enforces verified ownership and fails with HTTP 403 `Permission denied. Failed to verify the URL ownership.` The service account must be designated as 'Owner' (Pemilik) in GSC Users and permissions.
 - **Premature DNS Verification Clicking**: Triggering domain verification in GSC before verifying that Google Public DNS (`8.8.8.8`) has purged negative caches and resolved the new `google-site-verification` TXT record. Always run `dig @8.8.8.8 <domain> TXT +short | grep google-site-verification` first.
 - **Misinterpreting "URL is unknown to Google" as a Submission Failure**: Assuming that `coverageState: "URL is unknown to Google"` indicates an indexing error on newly published content. Newly deployed pages take hours to be crawled by Googlebot; if the sitemap is submitted with `isPending: true` and 0 errors, the page is properly queued.

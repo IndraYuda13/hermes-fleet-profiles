@@ -127,6 +127,15 @@ For ASN-owned ranges, sweep IPs directly with `naabu`/`httpx` and read served ce
 - Shared-hosting neighbors on the same IP (vhost co-tenancy, not the target's asset)
 - Stale historical DNS entries pointing at reassigned infrastructure
 - Wildcard-cert-implied hostnames that never actually resolve or serve content
+- **SPA catch-all HTML**: an SPA/router site returns 200 + its index HTML for ANY path, so scanners report `/actuator/heapdump`, `/Dockerfile`, `/docker-compose.yml`, `/vendor/phpunit/.../eval-stdin.php` as hits. Verify the body/Content-Type is REAL (JSON/spring types for actuator, `[core]`/`ref:` for .git) — if it is `text/html` identical to the home page, it is a false positive.
+- **WAF "block" pages served with HTTP 200**: Cloudflare/other WAFs may return a custom HTML page (e.g. Indonesian "Situs dalam perbaikan", "Laman diblokir") with 200 for a known-sensitive path. This looks like a successful exposure but is a block. Always save the raw body and inspect it; real `.git/HEAD` starts with `ref:`, real config backups contain keys.
+- **Server-side .sql fallback**: some Apache/Nginx configs serve a single dump for EVERY `*.sql` path (same ETag/Content-Length across `/db.sql`, `/dump.sql`, ...). This is one finding, not many.
+
+## Environment pitfalls (this sandbox)
+
+- Use `/usr/bin/python3` for async HTTP tooling: it has `aiohttp`/`requests`, while the default `python3` on PATH (a Hermes toolchain build) does not.
+- Download projectdiscovery binaries from `https://api.github.com/repos/<org>/<repo>/releases/latest` (the `releases/latest/download/<name>` shortcut 404s when version is in the asset name); `subfinder`/`httpx`/`nuclei` are static linux_amd64 zips.
+- Run long scans with a background terminal + notify, and give each stage a distinct output file so progress survives timeouts.
 
 ## Impact
 

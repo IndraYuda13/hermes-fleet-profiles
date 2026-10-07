@@ -43,9 +43,11 @@ When an implementer finishes work and requests review:
 ### 3. Worker Timeout Diagnosis & Retry Management
 Heavy builds, framework scaffolding, and multi-suite integration tests frequently exceed standard per-task execution budgets (e.g. 1800s):
 1. **Differentiate Timeout from Failure:** A `timed_out` event with `retry_status: ready` indicates the dispatcher is actively continuing the task in a new run.
-2. **Inspect Before Intervening:** Run read-only filesystem or git status checks on the target workspace before canceling or re-creating cards.
-3. **Preserve In-Flight Artifacts:** If untracked components, build outputs, or partial test passes exist, avoid touching workspace files. Allow the spawned retry run to finish its build and tests cleanly.
-4. **Enforce Idempotent Continuity:** When workers resume on an existing workspace, they must detect pre-existing files, avoid redundant scaffolding steps, and proceed directly to testing and completion.
+2. **Do Not Recreate Tasks on Automatic Notifications:** When receiving an automated notification that a task timed out and dispatcher will retry, inspect the board (`kanban show <id>`). Verify the active retry run exists before taking any action. Never spawn duplicate tasks or rebuild existing DAGs.
+3. **Inspect Before Intervening:** Run read-only filesystem or git status checks on the target workspace before canceling or re-creating cards.
+4. **Preserve In-Flight Artifacts:** If untracked components, build outputs, or partial test passes exist, avoid touching workspace files. Allow the spawned retry run to finish its build and tests cleanly.
+5. **Enforce Idempotent Continuity:** When workers resume on an existing workspace, they must detect pre-existing files, avoid redundant scaffolding steps, and proceed directly to testing and completion.
+6. **Recover Exhausted Timeouts with Working Tree Audit:** When a task exhausts retries and stays timed out, audit the workspace immediately with `git status` and test logs before rescheduling. If the worker completed code generation, compilation, and tests before the deadline, lock the commit and complete the card with `--force` rather than discarding working artifacts or recreating duplicate tasks.
 
 ## Pitfalls & Defensive Rules
 
@@ -53,6 +55,8 @@ Heavy builds, framework scaffolding, and multi-suite integration tests frequentl
 - **Do not permit implementers to certify their own deliverables.** An implementer claiming tests pass does not replace an independent verification pass against the frozen commit SHA.
 - **Never design UI against unverified backend contracts.** Frontend implementations built against hypothetical schemas require costly refactoring once backend realities diverge.
 - **Do not poll status in tight loops.** Rely on platform notification webhooks and wake events (`notify+wake`) rather than issuing repetitive heartbeat or status calls.
+- **Supply compliant production credentials when testing Next.js servers locally:** `next start` forces `NODE_ENV=production`. If schemas strictly validate production secrets (e.g. `SESSION_SECRET`, `GOOGLE_CLIENT_ID`), verification runners must pass compliant dummy secrets to prevent immediate exit crashes during local E2E or visual audits. Ensure port 3000 is clean of dangling previous processes before starting.
+- **Never invoke virtual environments or binaries outside the current repository/profile:** Calling external Python binaries or virtualenvs from unrelated host paths (e.g. other project dirs) triggers command execution security filters, wastes turn budget, and causes timeouts. Use the active project venv or system binaries.
 
 ## Lifecycle Verification Checklist
 

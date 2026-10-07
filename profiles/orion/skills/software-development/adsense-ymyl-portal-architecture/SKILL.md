@@ -1,12 +1,12 @@
 ---
 name: adsense-ymyl-portal-architecture
 description: Use when building AdSense-ready YMYL or financial portals.
-version: 1.18.0
+version: 1.20.0
 author: Orion Fleet Lead
 license: MIT
 metadata:
   hermes:
-    tags: [adsense, ymyl, e-e-a-t, fintech, pinjol, financial-education, cpanel-deploy, vehicle-credit-calculator, dealer-rate-detector, technical-seo, affiliate-banner-placement, sticky-sidebar, sponsor-banner, hilltopads, leaderboard-728x90, news-paraphrase, editorial-copyright-compliance, photo-attribution-schema, root-favicon, heading-hierarchy, gsc-sitemap-put, pre-adsense-sanitization, zero-visual-hole, google-share-extraction, tech-diaspora-profiling, hero-asset-synchronization, photo-caption-attribution, favicon-verification, bidirectional-asset-sync]
+    tags: [adsense, ymyl, e-e-a-t, fintech, pinjol, financial-education, cpanel-deploy, vehicle-credit-calculator, dealer-rate-detector, technical-seo, affiliate-banner-placement, sticky-sidebar, sponsor-banner, hilltopads, leaderboard-728x90, news-paraphrase, editorial-copyright-compliance, photo-attribution-schema, root-favicon, heading-hierarchy, gsc-sitemap-put, pre-adsense-sanitization, zero-visual-hole, google-share-extraction, tech-diaspora-profiling, hero-asset-synchronization, photo-caption-attribution, favicon-verification, bidirectional-asset-sync, transit-route-engine, transjakarta-brt-solver, high-res-map-optimization, skywalk-transfer-graph, commuter-mobility-utility, affiliate-monetization, accesstrade-pipeline, hybrid-financial-monetization, cpa-cpl-integration]
     category: software-development
 ---
 
@@ -41,6 +41,9 @@ Use this skill when:
 20. Profiling high-tech diaspora figures and industry leaders (e.g. AI architects, Silicon Valley engineers) from interviews and social media posts into E-E-A-T and Google AI Overview (GEO) optimized features with local asset extraction, WebP transcoding, and photographic attribution.
 21. Replacing and synchronizing article hero imagery, social cards, archive thumbnails, and explicit photographic attribution captions ('Foto diambil dari: ...') with instant cPanel re-deployment and Google Indexing API re-crawl notifications.
 22. Verifying live user-uploaded favicon replacements, inspecting multi-layer raster dimensions, and executing bidirectional synchronization between production server, local workspace mirror, and modern format derivatives (`assets/img/favicon-32.png`).
+23. Engineering public transit, commuter routing, and city mobility calculators (e.g. Transjakarta BRT 14-corridor network, LRT/MRT feeder integration) with in-memory graph search engines (direct, shared platform, and skywalk/bridge transfer routing), high-resolution map modal optimization, and 1-click mobile route sharing.
+24. Monetizing financial portals via hybrid revenue architectures (Affiliate CPA/CPL + Direct Sponsors + AdSense) to reach revenue targets (e.g. IDR 20M/mo) with realistic traffic budgets (3k–5k daily visits) vs unattainable pure-AdSense pageview volumes.
+25. Onboarding and navigating regional affiliate networks (e.g. AccessTrade Indonesia, Involve Asia) for banking, micro-insurance, and fintech campaigns, avoiding dashboard search filter blindspots and compliant tracking link placement.
 
 ---
 
@@ -661,8 +664,73 @@ When a website favicon is replaced or uploaded directly by the user on the hosti
 
 ---
 
+### Step 22: Public Transit & Commuter Route Engine Architecture (BRT Ingestion, Skywalk Graphs, & High-Res Map Delivery)
+When building interactive city mobility and public transportation route engines (e.g. Transjakarta BRT 14-corridor network, LRT/MRT feeder integration) to drive daily commuter traffic and high-session utility dwell time:
+
+1. **Corridor & Halte Dataset Ingestion (`assets/js/transjakarta-data.js`)**:
+   - Model corridors with unique IDs, official transit authority line colors, AMARI (24-hour service) flags, and ordered list of stop objects (`{id, name, code}`).
+   - Maintain an indexed lookup table of all unique stops mapping stop names and codes to their serviced corridors.
+   - **Skywalk & Transfer Bridge Topology (`TRANSIT_BRIDGES`)**:
+     - Modern BRT systems frequently connect elevated or separated stations via closed pedestrian skywalks without requiring tap-out (e.g. CSW [K13] ↔ ASEAN [K1], Dukuh Atas [K1] ↔ Galunggung [K4], Semanggi [K9] ↔ Bendungan Hilir [K1], Velbak [K13] ↔ Kebayoran Lama [K8], Cempaka Mas [K2] ↔ Cempaka Timur [K10], Juanda [K2] ↔ Pasar Baru [K3]).
+     - Model transit bridges as explicit graph edges so routing algorithms recognize transfer paths between disconnected corridor lines.
+
+2. **In-Memory Multi-Tier Routing Algorithm (`assets/js/transjakarta-router.js`)**:
+   - **Tier 1: Direct Routes (0 transfer)**: Origin and destination share >= 1 corridor. Calculate travel time (~2.8 min/stop) and station traversal direction.
+   - **Tier 2: 1-Transit Shared Platform Routes**: Origin and destination share an intersecting station without leaving the platform.
+   - **Tier 3: 1-Transit Skywalk / Bridge Routes**: Traversing official transfer bridges between physically separated platforms.
+   - Deduplicate paths sharing the same interchange and corridor pairs. Sort by: fastest duration, minimum transfers, and fewest stops.
+   - Output standard fare breakdown: Reguler Rp 3.500 vs Tarif Pagi (05:00–07:00 WIB) Rp 2.000.
+
+3. **High-Resolution Master Map Optimization Protocol**:
+   - Master transit maps from municipal authorities are often high-resolution raster files (e.g. 8K, 14+ MB JPEG). Embedding them directly causes browser tab crashes and severe LCP / mobile memory bottlenecks.
+   - Optimize via PIL to WebP (<= 3200px width, 90% quality, ~700–800 KB) with a fallback JPEG (~1 MB).
+   - Implement a full-screen Modal Pop-up Viewer in the DOM with pan/scroll and provide a direct download anchor to the original uncompressed asset.
+
+4. **Interactive UI & 1-Click Mobile Sharing**:
+   - Provide fast autocomplete with fuzzy matching on stop name and stop code.
+   - Dual-action swap button with 180° CSS transition to invert origin/destination.
+   - Collapsible stop accordion showing every intermediate halte passed.
+   - Implement 1-click clipboard copy (`navigator.clipboard.writeText`) and native WhatsApp share link (`https://api.whatsapp.com/send?text=...`) with pre-formatted route instructions using `encodeURIComponent`.
+
+---
+
+### Step 23: Hybrid Monetization Architecture & Financial Affiliate Network Integration (AccessTrade / Involve Asia CPA/CPL Pipelines)
+Monetizing financial portals to reach ambitious revenue targets (e.g. IDR 20.000.000/month) cannot rely on Google AdSense alone:
+1. **Unit Economics & Reality Check (AdSense vs Hybrid Model)**:
+   - Indonesian financial niche display RPM averages Rp 15.000 – Rp 30.000 per 1.000 pageviews. Earning Rp 20M/mo via pure AdSense requires 800.000 – 1.000.000 pageviews/month (~25.000 – 35.000 daily visitors), requiring 9–15 months of intensive SEO.
+   - **The 3-Pillar Hybrid Model**:
+     - **Pillar A — Financial Affiliate (CPA/CPL)**: Commissions range from Rp 50.000 to Rp 250.000 per approved loan, credit card, or digital bank account (e.g. Tunaiku Bank Amar, Kredivo, CIMB Niaga, AXA Mandiri MPPT). Achieving just 4 conversions/day @ Rp 100k generates **Rp 12.000.000/month**.
+     - **Pillar B — Direct B2B Sponsored Posts & Directory Spotlights**: 5 sponsored reviews per month @ Rp 1.000.000 generates **Rp 5.000.000/month**.
+     - **Pillar C — Google AdSense / Display**: 100.000 – 150.000 pageviews/month @ RPM Rp 25.000 generates **Rp 3.500.000/month**.
+     - Total monthly revenue: **Rp 20.500.000/month** achievable with only **3.000 – 5.000 daily visitors**.
+
+2. **Regional Publisher Network Onboarding Protocol (AccessTrade Indonesia)**:
+   - **Registration**: Provide authentic site properties (`DailyFinance.id`, `https://dailyfinance.id`).
+   - **Campaign Types**: Always select **Cost per Action (CPA)** and **Cost per Lead (CPL)** alongside Cost per Sale (CPS). E-commerce retail commissions (e.g. Shopee 1% CPS) yield pennies per purchase; regulated financial leads yield high-ticket payouts.
+   - **Category Mapping**: Check *Financial Services*, *Automotive* (aligning with vehicle credit simulators), *Online Services*, and *Education*.
+
+3. **Publisher Directory Filtering & Search Trap Resolution**:
+   - **The "Tersedia" (Available) Status Filter Trap**:
+     In publisher dashboards (e.g. AccessTrade), filtering strictly by status `"Tersedia"` (Available) hides high-ticket financial campaigns (KTA, Credit Cards, Paylater, Multi-finance) that require publisher application/approval (*"Persetujuan Diperlukan"* or status *"Semua"*).
+   - **Narrow Keyword Query Pitfall**:
+     Typing narrow keywords like `"Bank"` in search filters restricts results strictly to entities containing the literal word "Bank", omitting major multifinance companies (BFI, Adira), fintech lenders (Tunaiku, Kredivo), and micro-insurers (AXA Mandiri).
+   - **Operational Rule**: Set status filter to **"Semua"** (All), leave category on *Financial Services*, and clear keyword search to review the full inventory, or search specific brand keywords directly without availability constraints.
+
+4. **Compliant Editorial Conversion Funnel Integration**:
+   - **High-Converting Editorial Structure**: Construct comprehensive reviews (e.g. AXA Mandiri MPPT, Tunaiku) with E-E-A-T credentials, quantitative benefit tables, claim simulation flows, and JSON-LD `FAQPage` schema.
+   - **Utility Tool Anchoring**: Place contextual recommendation cards directly below related utilities (e.g. debt relief templates anchor to bank refinancing; vehicle simulators anchor to BPKB multifinance).
+   - **Mandatory Link Attribution**: Tag every outbound affiliate destination URL with `rel="nofollow sponsored" target="_blank"`.
+
+---
+
 ## 3. Pitfalls & Anti-Patterns
 
+- **Over-Relying on Display AdSense for Financial Revenue Targets**: Attempting to hit substantial monthly revenue targets (e.g. IDR 20M/mo) in Indonesia through pure AdSense requires ~1M pageviews/mo due to low local RPM (Rp 15k–30k). Financial portals must deploy hybrid monetization (high-ticket CPA/CPL affiliates + direct B2B sponsored articles + display ads) to achieve profitability at modest traffic levels (~3k–5k daily visitors).
+- **Affiliate Dashboard "Tersedia" Status Filter Blindspot**: Filtering affiliate directories (e.g. AccessTrade) strictly by status "Tersedia" hides the highest-paying financial campaigns (KTA, credit cards, paylater) which require application review. Always search under status "Semua" or search specific financial brand names directly.
+- **Pushing Low-Yield Retail CPS Over High-Ticket Financial CPA/CPL**: Recommending general e-commerce affiliate programs (e.g. Shopee/marketplace 1% CPS) on financial portals yields pennies per conversion while fatiguing users. Focus exclusively on banking, credit, regulated lending, and micro-insurance CPA/CPL offers that pay Rp 50.000 – Rp 250.000 per conversion.
+- **Omitting Closed Transfer Bridges (Skywalks) in Transit Routing Graphs**: Modeling BRT transit networks purely through single-station name equality misses elevated or integrated stations connected by pedestrian skywalks (e.g. CSW–ASEAN, Velbak–Kebayoran Lama, Dukuh Atas–Galunggung). Failing to include transfer bridge edges causes routing engines to declare valid 1-transfer routes impossible.
+- **Embedding Uncompressed 8K Transit Network Maps Directly**: Inserting raw 10MB–15MB official transit maps into mobile web pages causes severe LCP penalties, high data consumption, and out-of-memory mobile browser crashes. Always optimize to <= 3200px WebP with modal zoom and provide a link to the original master file.
+- **Unescaped URL Components in WhatsApp Route Sharing**: Constructing WhatsApp share links (`https://api.whatsapp.com/send?text=...`) without `encodeURIComponent` on multi-line text triggers truncation or broken links on mobile browsers when transit step emojis (🚌, 🔄, 📍) and symbols are present.
 - **Local Repository Overwrite of User-Uploaded Favicon / Live Assets**: Pulling or checking live assets without synchronizing them back to the local workspace directory leaves the local mirror stale. Any subsequent automated deploy or rsync will inadvertently overwrite the user's new live asset with the old file. Always mirror user-uploaded production assets back to local source immediately upon verification.
 - **Mismatched Favicon Derivatives (`favicon-32.png` vs root `favicon.ico`)**: Updating only root `favicon.ico` while leaving `assets/img/favicon-32.png` or `assets/img/favicon.ico` with old graphics causes modern browsers that prioritize `rel="icon" sizes="32x32"` to continue rendering the obsolete icon. Always regenerate and synchronize PNG derivatives across all declared `<link rel="icon">` targets.
 - **Visible Blank Ad Slots During Pre-AdSense Site Review**: Leaving empty boxes with dashed borders or "SLOT IKLAN" placeholder text during AdSense application makes the site look unfinished to human reviewers, triggering immediate "Site under construction" or "Low-value content" rejections. Never leave visual holes; comment out slots or collapse them until approved.

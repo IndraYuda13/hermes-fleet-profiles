@@ -66,8 +66,10 @@ When enabling `delegation` for messaging platforms:
 - **Top-level Intercept:** Top-level delegations are automatically routed to background tasks with heartbeat and progress reporting; subagent orchestrators run synchronously to consume worker returns in-turn.
 
 ## User Authorization & Messaging Quirks
-- Gateway authorization checks both `.env` (`TELEGRAM_ALLOWED_USERS`) and the SQLite pairing store (`from gateway.pairing import PairingStore; ps = PairingStore(profile=...); ps._approve_user('telegram', user_id)`).
-- Telegram `/start` messages are treated as silent platform pings and ignored by Hermes Gateway. Users must send a non-command text prompt to start an active conversation.
+- **Allowlist Configuration:** When restricting access (`dm_policy: allowlist`), add user IDs to `platforms.telegram.allow_from` in `config.yaml` AND `TELEGRAM_ALLOWED_USERS` in `.env`. Unauthorized users are blocked with `[Telegram] Blocked unauthorized user: <id> (<name>) from DM`.
+- **Pairing Store Sync:** Authorization also synchronizes with SQLite pairing store (`from gateway.pairing import PairingStore; ps = PairingStore(profile=profile_dir); ps._approve_user('telegram', user_id)`).
+- **Graceful Gateway Reload:** If live listener adapters do not pick up newly allowed users immediately, reload via `systemctl --user reload hermes-gateway.service`. This sends `SIGUSR1` to the multiplexer process, draining in-flight turns gracefully before supervisor restart without dropping active connections abruptly.
+- **Silent /start Commands:** Telegram `/start` commands are treated as silent platform pings and ignored by Hermes Gateway. Users must send a normal text message to start an active turn.
 
 ## Multiplexed Profile Gateway Liveness Verification
 In multi-profile Hermes setups with gateway multiplexing enabled:
