@@ -256,3 +256,53 @@ Never declare a web UI visually passed on macro screenshots alone. For each view
   3. **Tolerant Schema Normalization:** Backend schemas and form submit handlers must normalize inputs by stripping hyphens and whitespace prior to regex validation (`cleaned = value.strip().replace(' ', '').replace('-', '')` for numeric fields). Never assume the client has stripped all formatting.
   4. **Live Validation Verification Protocol:** Automated browser verification for input forms must assert `input.checkValidity() === true` and `input.validationMessage === ""` across typing, pasting formatted strings (e.g. `0812-3456-7890`), and form submission.
 
+## 26. Symmetrical Nested Action & Search Pill Invariants (The "Dead-Space" Defect)
+- **The Dead-Space Action Button Anti-Pattern:** When nesting an `<input>` and a submit/action `<button>` inside a unified pill or card container (`display: flex`), failing to declare `flex: 1 1 auto; width: 100%; min-width: 0;` on the input causes browsers to render the input at default HTML user-agent width (~20 characters / ~150-180px). The button then clusters awkwardly near the center-left immediately following the input, leaving an unstyled blank dead space on the entire right half of the container.
+- **Symmetrical Alignment Invariants:**
+  1. **Auto-Stretching Input Track:** The input wrapper or `<input>` element must declare `flex: 1 1 auto; width: 100%; min-width: 0;` to dynamically consume all remaining horizontal space up to the button.
+  2. **Hard Right-Docking Anchor:** The nested button must declare `margin-left: auto; flex-shrink: 0; white-space: nowrap;` so it is permanently anchored against the right inner boundary of the container, immune to browser default width overrides or placeholder string lengths.
+  3. **Concentric Radii Symmetry:** When the outer container uses a pill radius (e.g. `border-radius: 50px` / `rounded-full`), the nested button must mirror this geometry (`border-radius: 50px`), ensuring the curved boundary of the button aligns concentrically within the curve of the outer wrapper.
+  4. **Equal Peripheral Inset Spacing:** Maintain uniform padding on the top, right, and bottom of the nested button (e.g. container `padding: 5px 6px 5px 18px` provides 18px before the leading icon and 6px uniform padding flanking the button).
+  5. **Responsive Collapse Protocol:** On mobile viewports ($\le 576\text{px}$), switch the container to `flex-direction: column`, remove `margin-left: auto`, expand the button to `width: 100%`, and separate the input with a light dividing rule or vertical gap to guarantee comfortable $\ge 44\text{px}$ touch ergonomics.
+
+## 27. Fintech-Grade Option Selection: Checkbox & Radio Cards vs Cramped Emoji Segmented Buttons
+- **The Segmented Emoji Anti-Pattern:** Jamming domain entity choices (e.g. vehicle types, loan categories, account types) into cramped segmented pill buttons with raw OS Unicode emojis (`🏍️ Motor`, `🚗 Mobil`) looks like toy prototypes or AI slop. Unicode emojis render inconsistently across OS platforms (Windows, Android, iOS), cannot scale or inherit theme color accents, and segmented pills lack the spatial affordance to communicate secondary financial context.
+- **Card-Based Checkbox & Radio Selection Architecture:**
+  1. **Square / Circular Indicator Glyph:** Provide an explicit rounded-square checkbox indicator (`width: 22px; height: 22px; border-radius: 6px;`) housing a sharp inline vector SVG checkmark (`✓`) with a smooth opacity/scale transition (`scale(0.6)` -> `scale(1)`) on active state.
+  2. **Monochrome SVG Vector Glyphs:** Replace OS platform emojis with purpose-drawn, theme-aware inline SVG icons. Icons must transition their color accent dynamically on active selection (e.g. neutral slate `#64748b` -> primary brand blue `#0284c7`).
+  3. **Hierarchical Typographic Metadata:** Pair bold primary titles (`Motor`, `Mobil`) with domain-specific descriptive sublabels (`Kredit Roda 2`, `Kredit Roda 4`). This adds professional density and prevents user hesitation.
+  4. **Multi-Column Mobile Geometry:** Lay out cards in a balanced CSS grid (`grid-template-columns: 1fr 1fr; gap: 12px; max-width: 520px;`). On narrow viewports ($\le 360\text{px}$), maintain `white-space: nowrap;` and clamp typography slightly (`font-size: 0.88rem; subtitle: 0.68rem; padding: 10px;`) to guarantee zero horizontal overflow without line wrapping.
+  5. **Accessible Interaction & Label Delegation:** Wrap each card in a `<label>` containing an off-screen accessible `<input type="checkbox">` or `<input type="radio">`. Apply `:focus-within` outline rings (`2px solid var(--action-color)`) for keyboard tabbing. In click handlers, prevent synthetic double-click firing (`e.preventDefault()`) when delegating card click to state updates.
+
+## 28. Stale CSS Cache Immunity & Resilient Custom Form Controls (Anti-Black-Triangle & Inline Fallback Invariant)
+- **The Stale CSS Cache Trap:** Hosting servers and edge CDNs frequently enforce long browser cache TTLs (e.g. 7 days). When deploying updated HTML featuring newly created custom interactive controls (fintech selection cards, custom checkbox/radio pills, segmented toggles), clients load the fresh HTML while reusing cached external stylesheets (`custom.css`) missing the new component rules.
+- **The "Black Triangle" SVG Defect:**
+  - *Mechanism:* When an SVG checkmark or icon path (e.g. `<path d="M3.5 8.5L6.5 11.5L12.5 4.5"/>`) relies purely on external CSS for sizing (`width: 12px; height: 12px`) and stroke styling (`fill: none; stroke: #fff; stroke-width: 2.6`), a missing or cached stylesheet leaves the SVG to browser defaults: unconstrained bounding box and default `fill: currentColor` (black). The open checkmark polyline fills completely into a giant, distorted black triangular blob/polygon.
+  - *Inline SVG Attribute Invariant:* Never deploy vector indicators dependent solely on external CSS. Always declare explicit inline vector presentation attributes directly on the SVG element:
+    `<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">`
+    This guarantees the vector never collapses, inflates, or renders black fills even in raw zero-CSS fallback conditions.
+- **Inline Concealment of Native Form Inputs:**
+  - *Mechanism:* Custom cards wrapping `<input type="checkbox">` or `<input type="radio">` that rely exclusively on external classes (`.custom-checkbox-input { position: absolute; opacity: 0; }`) leak native browser square checkboxes directly into the layout whenever the stylesheet is cached or delayed.
+  - *Rule:* Always append defensive inline hiding styles directly to the native input element in HTML:
+    `style="position:absolute;opacity:0;pointer-events:none;width:1px;height:1px;"`
+- **Embedded Critical Fallback CSS in `<head>`:**
+  For high-visibility interactive selection cards and pricing/calculator controls, embed essential structural CSS inside an inline `<style>` block in the page `<head>`. Include:
+  - Grid/flex layout (`display: grid !important; grid-template-columns: 1fr 1fr;`)
+  - Border, background, border-radius, and padding
+  - Active (`.is-checked`) and inactive (`:not(.is-checked)`) indicator styling
+  - Mobile gap adjustments ($\le 380\text{px}$)
+  This renders the component pixel-perfect immediately on the very first paint, regardless of network latency or stale external CSS caches.
+- **Deterministic Cache-Busting Versioning:**
+  Whenever modifying shared stylesheets or component scripts, bump version query parameters (`href="assets/css/custom.css?v=YYYYMMDD_XX"`, `src="assets/js/vehicle-calc.js?v=YYYYMMDD_XX"`) across all referencing HTML templates to force client and CDN cache eviction.
+
+## 29. Horizontal Media Card Geometry & Portrait Aspect Ratio Blowup (The Content-Driven Height & Anti-Void Invariant)
+- **The Defect Mechanism (Tall Screen / Giant Empty Void):**
+  When authoring horizontal media cards (e.g. Bootstrap `.row.g-0` or Tailwind `flex flex-col md:flex-row`), assigning `w-100 h-100 object-fit-cover` without locking container height allows incoming images with portrait aspect ratios (e.g. 2:3 or 3:4 stock photos, 700x1050px) to inflate column height to >500px based on their natural aspect ratio. Because flex rows default to `align-items: stretch`, the left image column stretches the entire row and right content column. When the headline and excerpt only consume ~150–200px, flex `justify-content: space-between` creates an enormous, jarring dead white void in the middle of the card ("kenapa foto nya layar nya panjang").
+- **Content-Driven Container Height Invariant:**
+  The card's vertical height must be dictated exclusively by the editorial copy and typography, never by an unconstrained incoming image.
+- **Absolute Inset Anchor on Desktop ($\ge 768\text{px}$):**
+  On horizontal/desktop viewports, anchor the thumbnail container with `position: absolute; inset: 0; width: 100%; height: 100%; overflow: hidden;` inside the media column. The image fills the container seamlessly using `object-fit: cover; object-position: center 35%;`, locking the card height to the natural content height (~280–320px) without dead space.
+- **Explicit Aspect Ratio Clamp on Mobile ($\le 767\text{px}$):**
+  On stacked mobile views where the card flows vertically, clamp the thumbnail container with `position: relative; height: 100%; min-height: 200px; max-height: 240px; aspect-ratio: 16/9;` so portrait imagery does not push article copy below the mobile fold.
+- **Defensive CDN Crop Parameters:**
+  Always append explicit landscape or sub-square dimensions to external image URLs (`&w=700&h=450&crop=faces,center` or `&ar=16:10`) as defense-in-depth against portrait uploads.

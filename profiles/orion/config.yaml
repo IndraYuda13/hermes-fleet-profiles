@@ -77,6 +77,7 @@ approvals:
 command_allowlist: []
 plugins:
   disabled:
+  - ui-ux-pro-max
   - self-wake
   enabled:
   - observability/langfuse
@@ -203,6 +204,7 @@ known_builtin_toolsets:
   - file
   - homeassistant
   - image_gen
+  - kanban
   - memory
   - session_search
   - skills
@@ -231,6 +233,36 @@ known_builtin_toolsets:
   - file
   - homeassistant
   - image_gen
+  - kanban
+  - memory
+  - session_search
+  - skills
+  - spotify
+  - stt
+  - terminal
+  - todo
+  - tts
+  - video
+  - video_gen
+  - vision
+  - web
+  - x_search
+  - yuanbao
+  whatsapp:
+  - browser
+  - clarify
+  - code_execution
+  - computer_use
+  - connections
+  - context_engine
+  - cronjob
+  - delegation
+  - discord
+  - discord_admin
+  - file
+  - homeassistant
+  - image_gen
+  - kanban
   - memory
   - session_search
   - skills
@@ -253,6 +285,9 @@ known_plugin_toolsets:
   - a2a
   - spotify
   telegram:
+  - a2a
+  - spotify
+  whatsapp:
   - a2a
   - spotify
 platform_toolsets:

@@ -97,6 +97,12 @@ When driving headless Chrome instances across multiple testing runs, orphaned ta
 - Close orphaned pages: iterate over obsolete tabs and call `http://127.0.0.1:9222/json/close/{id}` to free Chrome renderer processes.
 - Clear daemon locks: if IPC remains unresponsive, remove stale harness files (`/root/.config/browser-harness/runtime/bu-*.pid`) before retrying `browser_exec`.
 
+### 9. Navigate Virtualized Document-Tree SPAs (SharePoint/OneDrive) via URL Parameters
+In complex document-tree or file-browser SPAs (such as SharePoint, OneDrive `onedrive.aspx`, or Google Drive), items are rendered inside virtualized tables (`[role="row"]`, `[data-automationid="DetailsRow"]`). DOM mouse events (`click()`, `dblclick`, `dispatchEvent`) often fail to open child folders because handlers are bound to internal React synthetic event dispatchers or row selection managers rather than standard anchor navigation.
+- Avoid spending loops attempting synthetic click/dblclick events on folder row elements.
+- Inspect URL query parameters: SharePoint/OneDrive encodes the active folder path in the `id` param (e.g., `id=%2Fpersonal%2F<user>%2FDocuments%2F<Folder>&ga=1`).
+- Navigate directly via `goto_url(...)` by appending `%2F<SubfolderName>` to the encoded path in `id=`. The SPA router re-mounts the view and queries the new path immediately, bypassing fragile DOM event dispatching.
+
 ## Key Pitfalls & Rules
 
 - **Never use raw `.value = ...` in React/Solid forms**: Component state will not update, leaving submit buttons disabled or firing empty payloads.
@@ -104,3 +110,4 @@ When driving headless Chrome instances across multiple testing runs, orphaned ta
 - **Check server sync state before blaming API routes**: Local-first apps keep drafts in browser storage; downstream backend services will return 404 if the session has not been synced to the database.
 - **Do not share isolated sub-component screenshots without the access funnel**: When guiding users, missing the entry path or state prerequisites leads to user confusion on complex multi-route SPAs.
 - **Prune CDP zombie tabs before declaring browser tools broken**: Detached debug targets choke Chrome IPC sockets; clean up targets via `/json/close/{id}` instead of assuming tools or routes are failing.
+- **Do not simulate double-clicks on virtualized folder rows in SharePoint/OneDrive**: Synthetic mouse events in complex React file-trees usually select the row or trigger row action bars without opening the folder; update the URL parameter (e.g., `id=...%2FSubfolder`) and call `goto_url` directly.

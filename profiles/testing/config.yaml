@@ -1,0 +1,163 @@
+model:
+  provider: via9router
+  default: ds
+providers:
+  via9router:
+    api: http://127.0.0.1:20128/v1
+    transport: chat_completions
+    default_model: ds
+  directcg:
+    api: http://127.0.0.1:8560/v1
+    transport: chat_completions
+    default_model: gpt-5.6-sol
+toolsets:
+  - a2a
+  - browser
+  - clarify
+  - code_execution
+  - computer_use
+  - connections
+  - cronjob
+  - delegation
+  - file
+  - image_gen
+  - kanban
+  - memory
+  - session_search
+  - skills
+  - terminal
+  - todo
+  - video
+  - vision
+  - web
+terminal:
+  backend: local
+approvals:
+  mode: 'off'
+  denial_breaker_threshold: 2
+  mcp_reload_confirm: false
+  destructive_slash_confirm: false
+plugins:
+  enabled:
+    - platforms/a2a
+    - ponytail
+    - superpowers
+    - web-firecrawl
+    - web-searxng
+web:
+  backend: firecrawl
+  search_backend: firecrawl
+  extract_backend: firecrawl
+  firecrawl_api_url: https://firecrawl.indrayuda.my.id
+  firecrawl_url: https://firecrawl.indrayuda.my.id
+  use_gateway: false
+browser:
+  cdp_url: http://127.0.0.1:9222
+  use_real_profile: true
+  real_profile_autoclose: true
+a2a_agents:
+  atlas:
+    timeout: 900
+    url: http://127.0.0.1:9902
+  aurora:
+    timeout: 1200
+    url: http://127.0.0.1:9903
+  forge:
+    timeout: 1200
+    url: http://127.0.0.1:9904
+  frame:
+    timeout: 1200
+    url: http://127.0.0.1:9905
+  lens:
+    timeout: 1800
+    url: http://127.0.0.1:9906
+  nexus:
+    timeout: 600
+    url: http://127.0.0.1:9907
+  orion:
+    timeout: 1800
+    url: http://127.0.0.1:9901
+  prism:
+    timeout: 1800
+    url: http://127.0.0.1:9908
+  quant:
+    timeout: 900
+    url: http://127.0.0.1:9909
+  radar:
+    timeout: 900
+    url: http://127.0.0.1:9910
+  sentinel:
+    timeout: 1800
+    url: http://127.0.0.1:9911
+gateway:
+  multiplex_profiles: false
+onboarding:
+  seen:
+    openclaw_residue_cleanup: true
+_config_version: 49
+platform_toolsets:
+  cli:
+    - a2a
+    - browser
+    - clarify
+    - code_execution
+    - computer_use
+    - connections
+    - cronjob
+    - delegation
+    - file
+    - image_gen
+    - kanban
+    - memory
+    - session_search
+    - skills
+    - terminal
+    - todo
+    - video
+    - vision
+    - web
+  telegram:
+    - a2a
+    - browser
+    - clarify
+    - code_execution
+    - computer_use
+    - connections
+    - cronjob
+    - delegation
+    - file
+    - image_gen
+    - kanban
+    - memory
+    - session_search
+    - skills
+    - terminal
+    - todo
+    - video
+    - vision
+    - web
+platforms:
+  telegram:
+    enabled: true
+    dm_policy: allowlist
+    group_policy: disabled
+    allow_from:
+      - 696907598
+    allowed_chats:
+      - __dm_only__
+    guest_mode: false
+    require_mention: true
+    home_channel:
+      platform: telegram
+      chat_id: '696907598'
+      name: ㅤㅤ||𝙻𝙴𝙼𝙾𝙽||ㅤㅤ
+      user_id: '696907598'
+display:
+  tool_progress: all
+  tool_progress_grouping: accumulate
+  platforms:
+    telegram:
+      busy_ack_detail: true
+      long_running_notifications: true
+      show_reasoning: false
+      tool_preview_length: 3

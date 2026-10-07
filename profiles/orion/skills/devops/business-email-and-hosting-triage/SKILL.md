@@ -257,7 +257,8 @@ When onboarding company leadership (owners/directors) and marketing teams who fe
 When connecting an autonomous agent or remote CI/CD deployer to a client's cPanel environment via cPanel API 2 / UAPI tokens (`Authorization: cpanel <user>:<token>`):
 
 ### Authentication & Username Invariants
-- **Username Resolution:** The authorization header format is `Authorization: cpanel <username>:<token>`. The `<username>` MUST strictly match the cPanel account user (displayed under `General Information` -> `Current User`, e.g. `papiawmy`), NOT the client's email address, domain prefix, or the label given to the API token.
+- **Username Resolution:** The authorization header format is `Authorization: cpanel <username>:<token>`. The `<username>` MUST strictly match the cPanel account user (displayed under `General Information` -> `Current User`, e.g. `papiawmy` or `pinjolre`), NOT the client's email address, domain prefix, or the label given to the API token. Calling UAPI endpoints with a valid token but mismatched or missing username returns `HTTP 403: Forbidden (Access denied)`.
+- **Account Domain Discovery via `DomainLookup`:** Once authenticated, query `GET /execute/DomainLookup/get_user_domains` to immediately discover the account's primary domain, parked/addon domains, and exact document roots (e.g. `/home/<user>/public_html`) without guessing.
 
 ### Cloud VM vs Shared Hosting Firewall Invariant (CSF/cPHulk Drops) & Proxy Egress
 - **The Domain IP Trap:** Attempting to connect directly to the primary domain's resolved IP address (e.g. `http(s)://<domain_ip>:2083`) from cloud datacenters (Azure, AWS, DigitalOcean, GCP) frequently results in indefinite timeouts or connection drops (`ETIMEDOUT` / packet loss).
@@ -280,8 +281,22 @@ When automating file operations via REST API:
      - *Rule:* Always set client HTTP connection and read timeout to at least **120 seconds** in `cpanel_client.py` for `save_file_content`.
    - *Binary/Multipart Upload:* Use UAPI `POST /execute/Fileman/upload_files` with `multipart/form-data` containing form fields `dir` (e.g. `public_html/apps`) and `file-1` with filename and binary content.
 3. **Directory Listing:** Use UAPI `GET /execute/Fileman/list_files?dir=<dir>`.
-4. **File Deletion (Unlink):** Do NOT call non-existent UAPI `delete_file` or `delete_files`. Use cPanel API 2 `Fileman/fileop`:
+4. File Deletion (Unlink): Do NOT call non-existent UAPI `delete_file` or `delete_files`. Use cPanel API 2 `Fileman/fileop`:
    `/json-api/cpanel?cpanel_jsonapi_user=<user>&cpanel_jsonapi_apiversion=2&cpanel_jsonapi_module=Fileman&cpanel_jsonapi_func=fileop&op=unlink&sourcefiles=<path>`.
+5. DNS Zone Management via UAPI (`DNS::mass_edit_zone`):
+   - *The `ZoneEdit` Module Deprecation:* Do NOT invoke `ZoneEdit/fetchzone` or `ZoneEdit/fetchzone_records`. Modern cPanel/Jupiter environments fail with `Failed to load module “ZoneEdit”: Can't locate Cpanel/API/ZoneEdit.pm`. Use the `DNS` module instead.
+   - *Parsing Records & Discovering SOA Serial:*
+     Query `GET /execute/DNS/parse_zone?zone=<domain>`. Inspect records for `record_type == 'SOA'`.
+   - *The SOA Serial Requirement & Optimistic Lock Invariant:*
+     Calling `POST /execute/DNS/mass_edit_zone` without the zone's active `serial` fails with `errors: ["Provide the “serial” argument."]`. Extract the serial string directly from the SOA record payload (`r['data_b64'][2]` decoded via base64, e.g. `2026100502`).
+     *Optimistic Concurrency Lock Pitfall:* Do NOT calculate or pass an incremented target serial (e.g. `2026100601`). The `serial` argument acts strictly as an optimistic concurrency lock checking against stale reads; cPanel expects the *current, existing* serial and automatically increments it upon writing. Passing an incremented serial returns `status: 0` with `The given serial number does not match the DNS zone’s serial number. Refresh your view of the DNS zone, then resubmit.`
+   - *Adding / Editing Zone Records:*
+     Call `POST /execute/DNS/mass_edit_zone` with URL-encoded parameters:
+     - `zone`: `<domain>` (e.g. `pinjolresmi.my.id`)
+     - `serial`: `<active_serial>` (e.g. `2026100502`)
+     - `add`: JSON string containing `{"dname": "<host>", "ttl": 14400, "record_type": "<TYPE>", "data": ["<target>"]}`.
+       - *Note on FQDN target:* For CNAME records pointing to external hosts (such as Google verification `gv-...dv.googlehosted.com.`), ensure the trailing dot is included in `data`.
+     On success, returns `status: 1` and `data.new_serial`.
 
 ### Client-Side Web Armor & Anti-Inspect Deployment Pipeline
 When deploying public-facing web tools (e.g. `papiaw.my.id`) requiring strong client-side code protection against casual inspection:

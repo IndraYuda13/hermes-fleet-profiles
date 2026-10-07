@@ -37,6 +37,7 @@ moa:
 skills:
   write_approval: false
   disabled:
+    - ui-ux-pro-max
     - 9router-troubleshooting
     - account-login-router
     - airtable
@@ -247,7 +248,6 @@ skills:
     - touchdesigner-mcp
     - trading-research
     - troubleshooting-proxy-and-404-errors
-    - ui-ux-pro-max
     - using-git-worktrees
     - using-superpowers
     - verification-before-completion

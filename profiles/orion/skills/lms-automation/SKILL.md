@@ -40,6 +40,7 @@ wait_for_load()
 - **Quiz Attempt:** `https://lms.telkomuniversity.ac.id/mod/quiz/view.php?id=<CMID>`
 - **Next Question Button:** `#mod_quiz-next-nav` (never click generic submit)
 - **Direct Quiz Finish:** `document.querySelector('form[action*="processattempt.php"]').submit();`
+- **Half-solve handoff mode:** answer every page, stop ON `summary.php`, never submit (leave attempt "In progress" for the user).
 
 ## Procedure
 
@@ -125,6 +126,15 @@ On `summary.php`, bypass the confirmation popup modal by submitting the underlyi
 js('document.querySelector(\\'form[action*="processattempt.php"]\\')?.submit()')
 wait_for_load()
 ```
+
+### 5. Partial Solve & Handoff (answer all, DO NOT submit)
+When the user must do the final submission themselves (in-class password quiz, personal review, exam integrity):
+1. Enter with the provided quiz password, solve page by page, clicking `#mod_quiz-next-nav` after each page. The navigation POST is what persists that page's responses server-side.
+2. On the LAST page click the "Finish attempt..." control to reach `summary.php`. Despite the label, this only opens the review-before-submit page; Moodle does NOT auto-submit.
+3. STOP at summary. Never click "Submit all and finish"; never call the `processattempt.php` form. The attempt stays "In progress" for the user.
+4. Dump a question/answer digest to the workspace, navigate the automation tab back to the dashboard (do not leave it parked on the attempt), then hand off: the user resumes on their own device (Continue attempt), reviews, and submits.
+- **Trap:** stopping at the last question page WITHOUT the Next/Finish click leaves that page's answers unsaved server-side. Only page navigation persists responses (site autosave may be disabled).
+- **Trap:** after handoff keep the automation session idle on that attempt; two sessions posting to the same attempt can trip Moodle's `sequencecheck` validation.
 
 ## Pitfalls
 - **Modal Hangs:** Clicking the modal button "Submit all and finish" on `summary.php` often stalls due to Bootstrap transition lags. Always call `form.submit()` directly.

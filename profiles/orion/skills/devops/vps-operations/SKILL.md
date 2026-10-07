@@ -1,7 +1,7 @@
 ---
 name: vps-operations
 description: Use when managing VPS security, git deploys, or AI apps.
-version: 1.5.0
+version: 1.6.0
 author: Hermes Agent Curator
 license: MIT
 metadata:
@@ -131,6 +131,21 @@ Check existing keys: `cat /home/<username>/.ssh/authorized_keys`.
 4. Test configuration syntax before reloading: `sshd -t`. If exit code is 0: `systemctl reload ssh`.
 5. Verify effective settings: `sshd -T | grep -E "(passwordauthentication|kbdinteractiveauthentication)"` (both must show `no`).
 
+### Sudden Port 22 Lockout Triage (Fail2ban Auto-Ban Trap)
+When an administrator suddenly reports `Connection timed out` or `Connection reset` on port 22 across all client devices (laptop, mobile, terminal) right after testing credentials or before key enrollment completes:
+1. **Root Cause Analysis:** Failed authentication attempts or probing SSH before a public key is registered trigger Fail2ban's sshd jail. Because mobile hotspots and residential connections share an ISP subnet or public IP, a single ban drops all traffic from that location at the firewall level.
+2. **Immediate Unban:**
+   ```bash
+   fail2ban-client status sshd
+   fail2ban-client unban <administrator-ip>
+   ```
+3. **ISP Subnet Whitelisting Invariant:**
+   To prevent repeated lockouts during credential testing or iterative key setups, add the administrator's CIDR subnet to `ignoreip` in `/etc/fail2ban/jail.local`:
+   ```ini
+   ignoreip = 127.0.0.1/8 ::1 <admin-ip> 182.10.0.0/16 139.255.0.0/16 180.240.0.0/12
+   ```
+   Reload Fail2ban immediately: `systemctl reload fail2ban`.
+
 ### Enrolling New Client Devices Post-Password Cutover (`ssh-copy-id` Trap)
 Once password authentication is disabled (`PasswordAuthentication no`), standard `ssh-copy-id -i ~/.ssh/id_ed25519.pub user@host` fails immediately with `Permission denied (publickey)` because the remote host rejects the initial password prompt required by `ssh-copy-id`. Users and operators frequently confuse this failure with "the VPS port is closed / external access is blocked".
 
@@ -147,6 +162,10 @@ To safely enroll a new client machine (laptop, desktop, or mobile) into a passwo
      ```bash
      echo "<public_key_string>" >> /home/<username>/.ssh/authorized_keys
      ```
+   - **Archive/Key Bundle Upload Triage & OpSec Sanitization:** Users frequently upload entire zipped `.ssh/` directories (e.g. `.ssh.zip`) containing both private keys (`id_ed25519`) and public keys (`id_ed25519.pub`).
+     - *OpSec Sanitization:* Never print, echo, or store private keys in chat transcripts, logs, or persistent files. Extract in an isolated scratch path, inspect only the public key (`.pub`), and immediately purge the uploaded archive and private key (`rm -rf <scratch_dir> <uploaded_archive>`).
+     - *Key Identification & Fingerprint Validation:* Extract the comment and type from the `.pub` file (`ssh-keygen -l -f id_ed25519.pub`). Compare against existing entries in `/root/.ssh/authorized_keys` and `/home/<username>/.ssh/authorized_keys`.
+     - *Clean Append & Syntax Verification:* Append `# <comment>` followed by the public key string with a terminating newline. Run `ssh-keygen -l -f ~/.ssh/authorized_keys` to verify that OpenSSH parses every line cleanly without syntax corruption.
    - **Bridge via Existing Authorized Device:** If the operator has another device already authorized (e.g. smartphone running Termux or previous workstation), SSH from that device and append the new key string to `.ssh/authorized_keys`.
    - **Encrypted Manager Key Sync:** If using SSH clients with cloud key synchronization (e.g. Termius), logging into the client account automatically synchronizes existing private keys without host-side reconfiguration.
 4. **Dual Privilege-Tier Key Sync Invariant:**
@@ -154,6 +173,46 @@ To safely enroll a new client machine (laptop, desktop, or mobile) into a passwo
    - `/home/<username>/.ssh/authorized_keys`
    - `/root/.ssh/authorized_keys` (when root key login is permitted via `PermitRootLogin without-password` or `prohibit-password`).
    This prevents administrative lockouts during privilege-specific tasks or emergency recoveries.
+
+### Re-Enabling Password Authentication & Cloud-Init / Locked-Root Traps
+When temporarily or permanently re-enabling password authentication on cloud VPS instances (Azure, AWS, GCP, Ubuntu cloudimg):
+1. **First-Match-Wins Drop-In Precedence & PAM Interactive Auth:**
+   Cloud images typically place `PasswordAuthentication no` and `KbdInteractiveAuthentication no` inside `/etc/ssh/sshd_config.d/50-cloud-init.conf` or `60-cloudimg-settings.conf`. Because OpenSSH parses drop-ins in alphabetical order and respects first-match-wins, adding settings to `/etc/ssh/sshd_config` (below `Include`) or a high-numbered drop-in (e.g. `99-custom.conf`) has NO effect.
+   - Always place the override in a lower-numbered drop-in, such as `/etc/ssh/sshd_config.d/01-password-auth.conf`:
+     ```ini
+     PasswordAuthentication yes
+     KbdInteractiveAuthentication yes
+     ```
+   - *Why `KbdInteractiveAuthentication yes` is mandatory:* Many clients (Termius, PuTTY, newer OpenSSH) negotiate password authentication via PAM keyboard-interactive prompts. If this remains `no`, clients attempting keyboard-interactive auth will be rejected even if `PasswordAuthentication` is `yes`.
+2. **Locked Root Password Trap (`passwd -S root`) vs Non-Root User:**
+   On cloud images, the `root` account password is often locked by default (`L` status in `passwd -S root` or `*`/`!` in `/etc/shadow`), and `PermitRootLogin` defaults to `without-password` or `prohibit-password`. Setting `PasswordAuthentication yes` alone is insufficient to log in as root; sshd will reject password login.
+   - For direct root password access, both SSH config and shadow status must be updated:
+     ```bash
+     cat << 'EOF' > /etc/ssh/sshd_config.d/01-password-auth.conf
+     PasswordAuthentication yes
+     KbdInteractiveAuthentication yes
+     PermitRootLogin yes
+     EOF
+     passwd root  # Set an active password to unlock the account
+     systemctl restart ssh.service
+     ```
+   - For standard users whose passwords are already active (`P` status in `passwd -S <user>`): `01-password-auth.conf` takes effect immediately without resetting passwords. Verify the user has sudo elevation access: `groups <username>` (must include `sudo` or `wheel`).
+3. **Socket-Activation Restart & Verification Command:**
+   Ubuntu 22.04/24.04 uses systemd socket activation for ssh (`ssh.socket`). A simple `reload` may not apply socket changes cleanly. Always run `systemctl restart ssh.service` and verify active settings with `sshd -T`:
+   ```bash
+   systemctl restart ssh.service
+   sshd -T | grep -E "(passwordauthentication|kbdinteractiveauthentication|permitrootlogin)"
+   ```
+   All directives must reflect the desired state before testing remote connection.
+4. **Reverting Temporary Password Auth Back to Key-Only:**
+   Once key enrollment or testing is confirmed, cleanly remove the temporary drop-in override:
+   ```bash
+   rm -f /etc/ssh/sshd_config.d/01-password-auth.conf
+   sshd -t
+   sshd -T | grep -E -i "(passwordauthentication|kbdinteractiveauthentication)"
+   systemctl restart ssh.service
+   ```
+   Verify both directives report `no`. Existing active SSH sessions remain connected; new logins without an authorized key are rejected.
 
 ---
 
@@ -196,6 +255,9 @@ A VPS running live services is a runtime environment, not a development sandbox.
    - Verify health: `systemctl status <unit>.service` and `curl -s -I https://<domain>`.
 
 ### Common Deployment Traps
+- **Supervisor Process Child-Exit Leak (502 Bad Gateway with Active Unit):** When running a supervisor script (e.g. Node/Python script orchestrating web servers, mock providers, or tunnel daemons under systemd), never guard child process exit handlers with `if (code)` alone:
+  `child.on("exit", (code) => { if (code) { cleanup(); process.exit(code); } })`
+  If a child is terminated by a signal (e.g. SIGTERM, SIGKILL, OOM-killer) or exits cleanly (`code === 0`), `code` is null or 0 (falsy). The supervisor ignores the exit, keeping its own process running while the web server child is dead. Systemd sees the main supervisor PID alive, so it never restarts the unit (`Restart=on-failure`), leaving Nginx/Cloudflare returning 502 Bad Gateway indefinitely. Always propagate any child exit immediately: `child.on("exit", (code, signal) => { cleanup(); process.exit(code ?? (signal ? 1 : 0)); });`.
 - **Database Migrations on Pull:** Upstream commits often introduce new SQL migrations (e.g. `supabase/migrations/<timestamp>_<name>.sql` for schema changes or board resets). When local Postgres/Supabase services are active, check if new migration files exist in the pulled commits (`git diff HEAD origin/<branch> -- supabase/migrations/`). Execute the project's migration/preparation runner (e.g. `node scripts/test-db.mjs prepare` or `npm run db:migrate`) BEFORE compiling Next.js. Next.js static generation (`next build`) runs database queries at build time; missing tables or columns from unapplied migrations will cause static page generation to crash during build.
 - **Build Script Tracked-Artifact Pollution:** Compiling production builds often triggers pre-build or bundle generation scripts (e.g. `prepare-assets`, OMR worker generation, QA artifact bundlers) that mutate tracked test fixtures or manifests (e.g. `artifacts/qa/**/bundle.json`). Immediately inspect `git status` after building and revert unintentional modifications to tracked repository artifacts (`git checkout <file>`) to prevent dirty-tree blocking on future `git pull` or `git stash` operations.
 - **Next.js Standalone Build Asset Sync (`output: 'standalone'`):** When deploying a Next.js application configured for standalone output on a VPS systemd service, `npm run build` only places minimal runtime files into `.next/standalone/`. It does not automatically copy `.next/static/` or `public/` into `.next/standalone/`. If the systemd unit runs `node .next/standalone/server.js`, client CSS, fonts, and JS chunks will 404 unless `.next/static` is synced to `.next/standalone/.next/static` and `public` is copied to `.next/standalone/public`. Verify this copy step in the build script or deployment pipeline before reloading systemd.
@@ -219,7 +281,11 @@ For web applications running AI models or reverse proxies across multi-tier boun
 4. Inspect unit journal: `journalctl -u <service> -n 30 --no-pager`
 
 ### Fail-Closed AI Architectural Guardrails
-1. **Configuration-Gated AI Fallbacks:** Gate AI features on system-wide provider configuration readiness (`cfg.enabled && cfg.provider.profile`) rather than hardcoding user-ID blocks (`teacher.id === SAMPLE_TEACHER_ID`), allowing demo accounts to exercise interactive flows when explicitly enabled without code changes.
+1. **Silent AI Failure Triage ("Button Clicked but Nothing Happens"):** When an interactive AI generation flow appears unresponsive without surfacing UI errors:
+   - *Client Abort vs Model Generation Latency:* Check if the frontend instantiates an `AbortController` with a tight timeout (e.g. 5000ms). LLMs with reasoning/thinking phases or external gateway hops often require 6–12s. The client aborts silently before the response arrives. Ensure frontend timeouts (e.g. 15000ms) align with backend deadlines.
+   - *Static Approval & Privacy Manifests:* Verify whether the route gates requests on a static review object (e.g. `PRIVACY_REVIEW !== null` or strategy hash manifests). In demo/staging modes, unpopulated review manifests silently reject requests or drop into static fallbacks.
+   - *Premature History / Sync Verification:* Guarding AI routes by asserting that the session exists in permanent historical sync logs (`history.records.some(r => r.sessionId === id)`) rejects valid in-progress, newly initiated, or sample sessions that have not yet dispatched a sync upload. Validate authenticated ownership/scope rather than finished sync records.
+2. **Configuration-Gated AI Fallbacks:** Gate AI features on system-wide provider configuration readiness (`cfg.enabled && cfg.provider.profile`) rather than hardcoding user-ID blocks (`teacher.id === SAMPLE_TEACHER_ID`), allowing demo accounts to exercise interactive flows when explicitly enabled without code changes.
 2. **Transparent Static Fallback:** When `LLM_ENABLED=false` or upstream APIs fail, return pre-authored domain assets seamlessly (e.g. static strategy cards for teacher hints, template story frames for question generation). Never leak raw HTTP 500 errors to end users.
 3. **Pedagogical & Role-Separation Guardrail:** In educational or multi-role platforms, orient AI to assist facilitators/teachers (whispering scaffolding, misconception diagnosis, contextual story enrichment) rather than answering directly on behalf of end users/students, keeping student interfaces grounded and deterministic.
 4. **Content Whitelist & Hash Verification:** Incoming strategy or prompt codes must match an explicit approval manifest verified against SHA-256 hashes before dispatch. Unapproved codes fail closed to static fallbacks before any network call reaches the AI gateway.
