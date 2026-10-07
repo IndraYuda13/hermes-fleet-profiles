@@ -6,7 +6,17 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-HERMES_ROOT="${HERMES_HOME:-${HOME}/.hermes}"
+if [[ -n "${HERMES_ROOT:-}" ]]; then
+  :
+elif [[ -d "${HERMES_HOME:-}/profiles" ]]; then
+  HERMES_ROOT="${HERMES_HOME}"
+elif [[ -d "${HOME}/.hermes/profiles" ]]; then
+  HERMES_ROOT="${HOME}/.hermes"
+elif [[ -d "/root/.hermes/profiles" ]]; then
+  HERMES_ROOT="/root/.hermes"
+else
+  HERMES_ROOT="${HERMES_HOME:-${HOME}/.hermes}"
+fi
 APPLY=false
 
 case "${1:-}" in
@@ -22,7 +32,14 @@ for command_name in git python3 rsync; do
   }
 done
 
-PROFILES=(atlas aurora forge frame groupbot lens nexus orion prism quant radar sentinel)
+PYTHON_BIN="python3"
+if ! python3 -c "import yaml" >/dev/null 2>&1; then
+  if /usr/bin/python3 -c "import yaml" >/dev/null 2>&1; then
+    PYTHON_BIN="/usr/bin/python3"
+  fi
+fi
+
+PROFILES=(atlas aurora forge frame groupbot lens nexus orion prism quant radar sentinel testing)
 SKILL_RUNTIME_EXCLUDES=(
   --exclude='.archive/'
   --exclude='.hub/'
@@ -76,10 +93,10 @@ for profile_name in "${PROFILES[@]}"; do
   sync_skills "${source_dir}/skills" "${destination_dir}/skills"
 done
 
-python3 "${STAGE_REPO}/scripts/sanitize_config.py" "${STAGE_REPO}"/profiles/*/config.yaml
-python3 "${STAGE_REPO}/scripts/sanitize_skill_examples.py" "${STAGE_REPO}/global/skills" "${STAGE_REPO}/profiles"
-python3 "${STAGE_REPO}/scripts/apply_role_policy.py" --repo-root "${STAGE_REPO}"
-python3 "${STAGE_REPO}/scripts/validate_fleet.py" --repo-root "${STAGE_REPO}"
+"${PYTHON_BIN}" "${STAGE_REPO}/scripts/sanitize_config.py" "${STAGE_REPO}"/profiles/*/config.yaml
+"${PYTHON_BIN}" "${STAGE_REPO}/scripts/sanitize_skill_examples.py" "${STAGE_REPO}/global/skills" "${STAGE_REPO}/profiles"
+"${PYTHON_BIN}" "${STAGE_REPO}/scripts/apply_role_policy.py" --repo-root "${STAGE_REPO}"
+"${PYTHON_BIN}" "${STAGE_REPO}/scripts/validate_fleet.py" --repo-root "${STAGE_REPO}"
 
 echo "Proposed declarative changes:"
 rsync -ainc --no-times --delete --exclude='.git/' "${STAGE_REPO}/global/" "${REPO_DIR}/global/"
@@ -102,5 +119,5 @@ cp -a "${REPO_DIR}/global" "${REPO_DIR}/profiles" "${backup_dir}/"
 rsync -a --delete "${STAGE_REPO}/global/" "${REPO_DIR}/global/"
 rsync -a --delete "${STAGE_REPO}/profiles/" "${REPO_DIR}/profiles/"
 
-python3 "${REPO_DIR}/scripts/validate_fleet.py" --repo-root "${REPO_DIR}"
+"${PYTHON_BIN}" "${REPO_DIR}/scripts/validate_fleet.py" --repo-root "${REPO_DIR}"
 echo "Sync applied. Recovery copy: ${backup_dir}"
