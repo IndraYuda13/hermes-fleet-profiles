@@ -1,7 +1,7 @@
 ---
 name: fleet-backup-and-recovery
 description: Use when syncing, backing up, or recovering fleet profiles.
-version: 1.5.0
+version: 1.6.0
 author: Hermes Fleet Architecture
 license: MIT
 metadata:
@@ -13,7 +13,7 @@ metadata:
 
 # Fleet Sync, Backup & Disaster Recovery
 
-Standard operating procedure for synchronizing, validating, and performing dual-layer disaster recovery backups across the multi-agent Hermes fleet and host production assets.
+Standard operating procedure for synchronizing, validating, and performing dual-layer disaster recovery backups across the multi-agent Hermes fleet.
 
 ## Dual-Layer Backup Architecture
 
@@ -28,7 +28,8 @@ Public or audited Git repositories sanitize secrets (`REDACTED` or `${...}`). Th
    - Preserves live `.env`, `auth.json`, unredacted `config.yaml` (as `config.yaml.raw`), active `cron/jobs.json`, and `memories/` for root and every active profile.
    - Captures root-level service tokens and raw configs: `root.env`, `root.auth.json`, `root.google_token.json`, `root.gsc_service_account.json`, and `root.config.yaml.raw`.
    - Preserves operational plans under `$HERMES_ROOT/plans/` to retain in-flight multi-step architecture and implementation plans.
-   - Correlate timestamps identically with the declarative snapshot to enable deterministic pairing during bare-metal recovery without re-authenticating Telegram bots or rotating LLM API keys.
+   - Preserves encrypted credential vault (`$HERMES_ROOT/vault/`), WhatsApp bridge session stores, and internal orchestration SQLite databases (`kanban.db`, `projects.db`, `verification_evidence.db`).
+   - Correlate timestamps identically with the declarative snapshot to enable deterministic pairing during bare-metal recovery without re-authenticating Telegram bots, re-scanning WhatsApp QR codes, or rotating LLM API keys.
 
 ## Sync & Verification Procedure
 
@@ -64,13 +65,15 @@ When auditing whether the fleet is currently backed up or has drifted:
    - When verifying whether live changes occurred recently, do not rely solely on repo git status:
      - Run `find "$HERMES_ROOT/profiles/" -type f -mmin -180` to detect newly authored skills, hot memory updates, reference files (`references/*.md`), or prompt edits made during live interactive turns across all profiles.
      - Check modification timestamps in `$HERMES_ROOT/plans/` and host binary directories (e.g. `ls -lat /usr/local/bin/ | head -n 10`) for newly deployed CLI tools and supporting orchestrators.
-3. **Comprehensive Host & Multi-Project Boundary Audit:**
-   - When auditing backup readiness broadly ("apakah ada lagi yang bisa di backup?"), extend checks beyond `$HERMES_ROOT/profiles/` into active host projects and stateful daemons:
-     - **Unpushed Commits & Dirty Worktrees:** Check Git repos under `/root/projects/` via `git status -sb` or `git log origin/main..HEAD` (e.g. `cg-gateway` ahead of remote, uncommitted systemd units).
-     - **Untracked Diagnostic/Audit Scripts:** Detect untracked research, OCR, or audit scripts and reports (`auto-short-generator`).
-     - **Remote-less Local Projects:** Identify projects lacking remote Git repos or offload coverage (`indra-shop`).
-     - **Production Web Mirrors & Content Engines:** Audit production content mirrors, builders, and operational notes (`dailyfinance_web/OPS_NOTES.md`).
-     - **Stateful Daemon Sessions & SQLite DBs:** Verify Telethon session files and dynamic state JSONs (`/root/cust/reseller1..5/`).
+3. **Internal Fleet Asset Boundary Invariant (Strict Fleet Isolation):**
+   - When auditing backup readiness broadly ("apakah ada lagi yang bisa di backup?"), maintain STRICT isolation to the Hermes fleet itself. Do NOT expand into external host projects, unrelated git repos, or host daemons unless explicitly requested.
+   - Comprehensive fleet backup covers all internal Hermes state:
+     - **All 13 Profile Trees:** Prompts (`SOUL.md`), credentials (`.env`, `auth.json`), unredacted configs (`config.yaml.raw`), scheduled jobs (`cron/`), and memories (`memories/`).
+     - **Encrypted Vault:** `$HERMES_ROOT/vault/` (`vault.json.enc` & `vault.key`).
+     - **Platform Communication Sessions:** WhatsApp bridge and profile credentials (`$HERMES_ROOT/platforms/whatsapp/session/`, profile WhatsApp sessions).
+     - **Runtime SQLite DBs & Ledgers:** `kanban.db`, `projects.db`, `verification_evidence.db`, and `bot_relay/`.
+     - **Fleet System & Plugins:** `$HERMES_ROOT/fleet_v2_system/` (Lens QA engine & benchmarks) and `$HERMES_ROOT/plugins/`.
+     - **Root Identity & Config:** Root `SOUL.md`, `USER.md`, `profile.yaml`, `channel_directory.json`, `root_memories`, `root_cron`.
 4. **Declarative Git Layer Verification:**
    - Check the latest commit on remote Git repo (`git log -1` on `hermes-fleet-profiles`).
    - Verify working tree clean status (`git status`).
@@ -99,6 +102,7 @@ When creating the Disaster Recovery Secrets Layer (`secrets-live-<timestamp>`):
   - `config.yaml` copied as `config.yaml.raw` (raw unredacted config)
   - `cron/` (scheduler database and active jobs)
   - `memories/` (`USER.md` and `MEMORY.md` persistent state)
+- **Internal Fleet State & Vault Scope:** Ensure secrets layer captures the encrypted vault (`$HERMES_ROOT/vault/`), WhatsApp session stores (`$HERMES_ROOT/platforms/whatsapp/session/` and per-profile sessions), internal database files (`kanban.db`, `projects.db`, `verification_evidence.db`), plugins, and root-level tokens.
 - **Root Token & Operational State Scope:** Ensure root secrets include `root.env`, `root.auth.json`, `root.google_token.json`, `root.gsc_service_account.json`, `root.config.yaml.raw`, and uncommitted operational plans under `$HERMES_ROOT/plans/`.
 
 ## Archive Timeout & Storage Guard

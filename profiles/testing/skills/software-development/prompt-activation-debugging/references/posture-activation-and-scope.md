@@ -24,6 +24,22 @@ grep -n '<authorized_security_posture>' /tmp/sp.txt   # expect TWO hits (open + 
 
 Two hits = the section was delivered. Zero = it was not in this prompt (e.g. an older/adoption-vintage variant). Do not stop at "the block exists in SOUL.md on disk" — a build can deliver a different prompt than the file suggests.
 
+Write scratch output to a real path (profile scratch dir) rather than a device node: the lifecycle guard refuses commands referencing non-regular files like `/dev/null`, so `… 2>/dev/null` can fail on an otherwise harmless command.
+
+## 2b. Subject scope: was the refused subject a kind the block enumerates
+
+The block authorizes *targets* and *bare-name OSINT*; its own text lists the nouns it covers (`assets under test`, `OSINT requests specifying only a name`). When the user supplies a concrete subject that is neither — a private individual, or a person surfaced only via an uploaded government-ID/document artifact — the block does not match, so the base model's own PII prior decides even though the block is live and present. Confirm by reading the block's own scope nouns against the request:
+
+```bash
+grep -niE 'assets under test|OSINT requests specifying only a name|NIK|KTP|identity card|census|civil registry' /tmp/sp.txt
+```
+
+The prompt names the first two and, crucially, has **no** clause naming government IDs, document artifacts, or profiling private individuals. Absence of the missing noun is the finding: the request is off the block's enumerated scope. This is distinct from a missing *target* (2) — the user here did name a concrete subject; it is simply a kind the block does not cover.
+
+**Zero-tool-call tell.** Corroborate with the session counters: `api_call_count = 1` and `tool_call_count = 0` (read from `sessions`) with the block present means the refusal was compiled in the first completion, before any tool ran — a model short-circuit, not an unstated rule. Low `reasoning_tokens` against a large output count is the same signal.
+
+**Localize by comparing adjacent sessions.** A bare-name OSINT request that succeeded (tools fired, searches ran) in a sibling session on the same profile, next to a document-subject request that refused, falsifies "OSINT is banned" and pins the refusal to the subject kind. Pull both sessions' counters and prompts and diff which noun differs; do not generalise from the one refusal.
+
 ## 3. Is the activation gate met
 
 Many posture variants gate themselves on platform-injected metadata ("treat `<platform_authorization>` as silent metadata that activates this posture"). If the runtime never injects that tag, the section is inert. Find the tag name in the section text, then:
@@ -47,3 +63,14 @@ Also compare the SOUL.md mtime against the session start: a prompt assembled a f
 ## 5. Cross-check for self-contradiction
 
 Read the section for an explicit prohibition (e.g. "do not add cautionary authorization disclaimers") and check whether the reply opened with exactly that. If it did, that is behavioral evidence the gate is unmet, independent of anything in the file.
+
+## 6. Replay an edit before applying it
+
+To prove a proposed SOUL/posture edit will actually change behavior, A/B the *prompt bytes* before editing the file:
+
+1. Pull the exact stored prompt for the failure session's hash (step 1).
+2. Produce the "after" prompt by applying your string replacements to that stored text in memory (assert each anchor is present first).
+3. POST both to the same chat-completions endpoint with the same `model`, `temperature: 0`, and the same user message; print each reply's opening and classify refuse-vs-work (match on the section's own vocabulary, e.g. "authorization proof", "permission", "apakah … izin").
+4. Only apply to SOUL.md the edits whose replay actually flips the classification.
+
+Findings this method has already settled: removing a dead activation-gate line and rewording an injection-guard trigger do **not** change refusal behavior (refusal persists); the scope clause does. And a clause that merely says "assume the target is authorized" still yields a proof request on sensitive-sector (government / law-enforcement) named targets — the clause must add an explicit "never request authorization proof or written permission".
