@@ -1,7 +1,7 @@
 ---
 name: fleet-backup-and-recovery
 description: Use when syncing, backing up, or recovering fleet profiles.
-version: 1.3.0
+version: 1.4.0
 author: Hermes Fleet Architecture
 license: MIT
 metadata:
@@ -26,7 +26,8 @@ Public or audited Git repositories sanitize secrets (`REDACTED` or `${...}`). Th
 2. **Disaster Recovery Secrets Layer (`secrets-live-<timestamp>`):**
    - Stored in an offload volume (e.g. `/mnt/hermes-storage-offload/hermes-fleet-backups/`) with restricted permissions (`chmod 700` directories, `chmod 600` files).
    - Preserves live `.env`, `auth.json`, unredacted `config.yaml` (as `config.yaml.raw`), active `cron/jobs.json`, and `memories/` for root and every active profile.
-   - Captures root-level service tokens: `root.env`, `root.auth.json`, `root.google_token.json`, and `root.gsc_service_account.json`.
+   - Captures root-level service tokens and raw configs: `root.env`, `root.auth.json`, `root.google_token.json`, `root.gsc_service_account.json`, and `root.config.yaml.raw`.
+   - Preserves operational plans under `$HERMES_ROOT/plans/` to retain in-flight multi-step architecture and implementation plans.
    - Correlate timestamps identically with the declarative snapshot to enable deterministic pairing during bare-metal recovery without re-authenticating Telegram bots or rotating LLM API keys.
 
 ## Sync & Verification Procedure
@@ -59,15 +60,19 @@ When auditing whether the fleet is currently backed up or has drifted:
    - Run `bash scripts/sync.sh` (default dry-run mode without `--apply`).
    - Inspect the `Proposed declarative changes:` block. If lines prefixed with `>f` (modified/added files), `cd` (new directories), or `*deleting` appear, live profiles have drifted from declarative Git.
    - If the output shows no proposed changes, declarative Git is in 100% parity with live profiles.
-2. **Declarative Git Layer Verification:**
+2. **Deep Host & In-Flight Modification Audit:**
+   - When verifying whether live changes occurred recently, do not rely solely on repo git status:
+     - Run `find "$HERMES_ROOT/profiles/" -type f -mmin -120` to detect newly authored skills, hot memory updates, or prompt edits made during live interactive turns.
+     - Check modification timestamps in `$HERMES_ROOT/plans/` and host binary directories (e.g. `ls -lat /usr/local/bin/ | head -n 10`) for newly deployed CLI tools and supporting orchestrators.
+3. **Declarative Git Layer Verification:**
    - Check the latest commit on remote Git repo (`git log -1` on `hermes-fleet-profiles`).
    - Verify working tree clean status (`git status`).
    - Confirm local `main` is up to date with `origin/main`.
-3. **Disaster Recovery Secrets Layer Audit:**
+4. **Disaster Recovery Secrets Layer Audit:**
    - Inspect offload volume (`/mnt/hermes-storage-offload/hermes-fleet-backups/`).
    - Verify timestamps of the newest `<timestamp>-fleet-complete` declarative snapshot and `secrets-live-<timestamp>` directory match the latest live changes.
    - Audit whether all active profiles and root-level tokens are captured in the latest secrets layer.
-4. **Post-Sync Verification Loop:**
+5. **Post-Sync Verification Loop:**
    - When drift is applied via `sync.sh --apply` and pushed to Git:
      1. Run full test gates (`pytest -q`, `validate_fleet.py`, `validate_contracts.py`).
      2. Create paired `<timestamp>-fleet-complete` and `secrets-live-<timestamp>` snapshots on offload storage with POSIX 700/600 permissions.
@@ -87,7 +92,7 @@ When creating the Disaster Recovery Secrets Layer (`secrets-live-<timestamp>`):
   - `config.yaml` copied as `config.yaml.raw` (raw unredacted config)
   - `cron/` (scheduler database and active jobs)
   - `memories/` (`USER.md` and `MEMORY.md` persistent state)
-- **Root Token Scope:** Ensure root secrets include `root.env`, `root.auth.json`, `root.google_token.json`, and `root.gsc_service_account.json`.
+- **Root Token & Operational State Scope:** Ensure root secrets include `root.env`, `root.auth.json`, `root.google_token.json`, `root.gsc_service_account.json`, `root.config.yaml.raw`, and uncommitted operational plans under `$HERMES_ROOT/plans/`.
 
 ## Archive Timeout & Storage Guard
 
