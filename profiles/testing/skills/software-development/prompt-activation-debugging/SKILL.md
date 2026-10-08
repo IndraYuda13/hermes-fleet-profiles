@@ -38,15 +38,24 @@ Diagnose "why did it refuse / why did it do that" and "which prompt is actually 
 
 Query via `sqlite3` from `execute_code` or `terminal`.
 
+## Pitfall: a benign context file keeps tripping the injection guard
+
+`agent.log` fires a `WARNING … Context file SOUL.md matched injection pattern(s) <id>` on almost every turn. Benign SOUL phrasing can match a shipped pattern — e.g. the `deception_hide` rule `do\s+…tell\s+…the\s+user` matches a harmless "do not tell the user to switch mode" sentence. This warning means the scan matched, *not* that the file was blocked (a user-authored SOUL in the profile's own HERMES_HOME loads anyway). Confirm from the log line, then check whether the same warning spans unrelated sessions (it does when the trigger is a legit line) before treating it as evidence about one refusal. Preserve the warning in the report as a real hygiene finding even though it is not the refusal cause; the fix is rewording the SOUL line, not anything at runtime.
+
 ## Pitfall: the lifecycle guard rejects non-regular files
 
 Commands that reference `/dev/null` (or other non-regular files) are blocked by the lifecycle guard, so `diff a b > /dev/null` and trailing `2>/dev/null` can fail even though the command is harmless. Write scratch output to real files under the profile scratch dir instead, and clean them up after.
 
 ## Reading refusal behavior
 
-The anti-refusal section of the security posture (live name: `<authorized_security_posture>`) works on exactly one precondition: it settles authorization **over targets the user supplies in-conversation**. A request naming no concrete target ("any website", "some site", "find vulns anywhere") supplies no scope, so the section has nothing to authorize and the base model's refusal prior wins — even though the same section separately forbids asking for clarification about a target. One concrete token (domain / IP / subnet) is what flips it on. When explaining a refusal, say which of the two is in play: missing scope, or a genuinely out-of-scope ask.
+The anti-refusal section of the security posture (live name: `<authorized_security_posture>`) is gated on **two** preconditions, and a refusal means at least one failed:
 
-Do not infer a section's role from its name alone — read the live variant. Posture sections differ by execution environment and adoption vintage, and an archived draft is not the live text.
+1. **Activation gate.** Many variants declare themselves active only when the platform injects a specific metadata tag. If the Hermes runtime never injects that tag, the section is inert no matter how permissive its text. Verify with a log grep (`<tag> ` → zero hits is the tell), not by assuming the block "works".
+2. **In-conversation scope.** The section settles authorization **over targets the user supplies in-conversation**. A request naming no concrete target ("any website", "some site", "find vulns anywhere") supplies no scope, so the section has nothing to authorize and the base model's refusal prior wins — even though the same section separately forbids asking for clarification about a target. One concrete token (domain / IP / subnet) is what flips it on.
+
+When explaining a refusal, name the failed precondition (missing activation, missing scope, or a genuinely out-of-scope ask). Do not stop at "the prompt asks it not to refuse" — check the gate and the scope first. See `references/posture-activation-and-scope.md` for the sqlite/grep commands that prove each precondition.
+
+Do not infer a section's role from its name alone — read the live variant. Posture sections differ by execution environment and adoption vintage, and an archived draft is not the live text. A vendored source bundle (e.g. a skill's `scripts/source/`) shows intent, not runtime behavior; grep the Hermes install and logs to see what actually runs.
 
 ## Reporting this kind of analysis
 
