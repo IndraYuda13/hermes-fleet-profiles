@@ -190,6 +190,7 @@ SQLi remains one of the most durable and impactful vulnerability classes. Modern
 - When a WAF resets connections on `digit AND ...`, `UNION ALL`, `OR 'x'='x'`, `extractvalue/updatexml`, and `... FROM information_schema`, retest the SAME logic with `AND CASE WHEN (<cond>) THEN sleep(n) ELSE 0 END-- -`. `CASE WHEN` + `sleep` frequently slips past signature rules that only key on `AND <digit>`, `IF(`, `SELECT`, or `FROM`.
 - If subqueries/`FROM`/`information_schema` are blocked, you can still read CURRENT-ROW data: reference the in-scope table's own columns directly (e.g. `LENGTH(NamaPolda)>=1`, `NamaPolda='ACEH'`, `ASCII(SUBSTRING(col,1,1))>n`) — no subquery or extra `FROM` needed.
 - Length oracle must use `>=`: find largest n where `LENGTH(x)>=n` is true. Using `>n` off-by-one truncates the last character of every extracted string.
+- WAF blocking `FROM`/`information_schema`/subqueries but not version comments: wrap the fragment in a MySQL executable comment `/*!50000 ... */` (e.g. `(select/*!50000 count(*)*/from information_schema.tables)>0`). The WAF fails to match its signature while MySQL still executes it — this re-enables cross-table/schema reads.
 - Validate the oracle against known literals (`select 'root'`, `select 'ABC123'`) before trusting extracted values; unstable/false-positive oracles fabricate strings (e.g. plausible-but-wrong DB users).
 - POST-only params: a GET that keeps the param value but ignores it (identical body for different values) usually means the DB query only runs on POST.
 
