@@ -66,7 +66,7 @@ When auditing whether the fleet is currently backed up or has drifted:
      - Run `find "$HERMES_ROOT/profiles/" -type f -mmin -180` to detect newly authored skills, hot memory updates, reference files (`references/*.md`), or prompt edits made during live interactive turns across all profiles.
      - Check modification timestamps in `$HERMES_ROOT/plans/` and host binary directories (e.g. `ls -lat /usr/local/bin/ | head -n 10`) for newly deployed CLI tools and supporting orchestrators.
 3. **Internal Fleet Asset Boundary Invariant (Strict Fleet Isolation):**
-   - When auditing backup readiness broadly ("apakah ada lagi yang bisa di backup?"), maintain STRICT isolation to the Hermes fleet itself. Do NOT expand into external host projects, unrelated git repos, or host daemons unless explicitly requested.
+   - When auditing backup readiness broadly ("apakah ada lagi yang bisa di backup?"), maintain STRICT isolation to the Hermes fleet itself. Do NOT expand into external host projects, unrelated git repos, or host daemons unless explicitly requested. See `references/fleet-backup-scope.md` for the comprehensive boundary specification and file manifest.
    - Comprehensive fleet backup covers all internal Hermes state:
      - **All 13 Profile Trees:** Prompts (`SOUL.md`), credentials (`.env`, `auth.json`), unredacted configs (`config.yaml.raw`), scheduled jobs (`cron/`), and memories (`memories/`).
      - **Encrypted Vault:** `$HERMES_ROOT/vault/` (`vault.json.enc` & `vault.key`).
