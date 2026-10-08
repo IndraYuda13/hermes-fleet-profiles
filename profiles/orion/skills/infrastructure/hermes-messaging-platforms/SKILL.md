@@ -71,6 +71,14 @@ When enabling `delegation` for messaging platforms:
 - **Graceful Gateway Reload:** If live listener adapters do not pick up newly allowed users immediately, reload via `systemctl --user reload hermes-gateway.service`. This sends `SIGUSR1` to the multiplexer process, draining in-flight turns gracefully before supervisor restart without dropping active connections abruptly.
 - **Silent /start Commands:** Telegram `/start` commands are treated as silent platform pings and ignored by Hermes Gateway. Users must send a normal text message to start an active turn.
 
+## Post-Reload Health Verification & Startup Lag Pitfall
+When recovering or verifying gateway liveness after a restart or reload:
+- **Interactive OAuth MCP Startup Stall:** If interactive OAuth MCP servers (e.g. Canva MCP) are configured in `config.yaml`, the gateway blocks startup waiting for external browser authorization until timing out (~60s CancelledError). Prune interactive OAuth MCPs from headless server configurations to prevent gateway polling startup lag.
+- **Verification Oracles:** Verify recovery using concrete runtime indicators rather than guessing:
+  1. `systemctl --user status hermes-gateway.service` — confirm status is `active (running)` with fresh uptime.
+  2. Gateway log check (`~/.hermes/profiles/<profile>/logs/gateway.log`): confirm `[Telegram] Gateway running in polling mode` and WhatsApp bridge connection on port 3001.
+  3. LLM provider check: confirm primary/local inference proxy endpoint is accepting completions.
+
 ## Multiplexed Profile Gateway Liveness Verification
 In multi-profile Hermes setups with gateway multiplexing enabled:
 - Satellite profiles (such as `testing`, `atlas`, `aurora`, `forge`, etc.) do not spawn independent gateway processes or write local `gateway.pid` files in their respective profile directories.

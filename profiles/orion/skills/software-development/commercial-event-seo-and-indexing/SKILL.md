@@ -1,12 +1,12 @@
 ---
 name: commercial-event-seo-and-indexing
 description: Use when publishing event promo guides & rapid indexing.
-version: 1.1.0
+version: 1.2.0
 author: Orion Fleet Lead
 license: MIT
 metadata:
   hermes:
-    tags: [event-seo, travel-fair, music-festival, google-indexing-api, high-ctr, triple-schema, rapid-indexing]
+    tags: [event-seo, travel-fair, music-festival, google-indexing-api, high-ctr, triple-schema, rapid-indexing, visual-qa, taxonomy-alignment]
     category: software-development
 ---
 
@@ -38,7 +38,12 @@ Use this skill when:
    - Use direct media extractors (such as `yt-dlp --dump-json <url>` or Open Graph metadata parsers) to extract uncompressed CDN image links (`scontent...`).
    - Download the raw asset, verify dimensions, and convert to optimized WebP (`cwebp` or Pillow with quality 85+).
    - For vertical or detailed lineup posters, embed inside dark ambient containers (`#0b0f19` / `#111927`) with `object-position: top center` so festival typography remains crisp and unclipped.
-3. **Deconstruct Tiered Pricing & Multi-Day Lineups**:
+3. **Contextual Event & Destination Hero Asset Caching**:
+   - Never use generic portal fallback images (`og-image.png`, generic compliance badges) as the featured hero image for a specific event or travel fair guide.
+   - For airline and travel fair promotions, download high-resolution landscape photography of the core destination (e.g. Tokyo, Singapore, Seoul) or official venue layout.
+   - Store images locally under `assets/img/` in optimized WebP format (1200x630 or 1200x800, quality 80-85, under 300KB) to ensure sub-100ms load times and eliminate external CDN hotlink failures.
+   - **Visual Landmark Verification**: Inspect the image asset (via vision tools or pixel check) to identify the true geographical subject before writing photo captions. Differentiate distinct landmarks (e.g. Kabukicho/Shinjuku skyline vs Tokyo Tower) to maintain rigorous editorial E-E-A-T credibility.
+4. **Deconstruct Tiered Pricing & Multi-Day Lineups**:
    - **For Commercial/Travel Fairs**:
      - Baseline Route / Ticket Pricing: Lowest round-trip (PP) fares across destinations and cabin classes.
      - Tiered Cashback: Per-ticket fixed discounts and progressive spend-threshold tiers.
@@ -56,14 +61,18 @@ Use this skill when:
      - Commercial: `[Event Name] [Month Year]: Promo Tiket [Destination] [Price] & [Perk]`
      - Festival: `[Event Name] [Year]: Full Lineup Resmi, Jadwal 3 Hari & Cara Beli Tiket`
    - Structure meta description under 155 characters highlighting specific quantitative savings or highlights (lineup highlights, cashback totals, flight starting prices, and physical event dates).
-2. **Visual Hierarchy & Event Snapshot Sticky Sidebar**:
+2. **Taxonomy Consistency & Navbar Active State**:
+   - Ensure 100% lexical uniformity across all taxonomy indicators: breadcrumb trail (`Beranda / [Category] / [Article]`), category badge pills, and main navbar links must use the exact same category label (e.g. `Travel & Lifestyle`, not inverted `Lifestyle & Travel`).
+   - Set the active class / underline state on the matching navbar category link so users immediately understand their site location.
+   - Strip stray boilerplate comments (e.g. `<!-- Breadcrumb Category Badges Main Title -->` or leaked comment text) left over from template cloning.
+3. **Visual Hierarchy & Event Snapshot Sticky Sidebar**:
    - **Contrasting Hero Alert Box**: Position an alert container at the top of the article body stating event dates, physical venues, and a contrasting golden-yellow anchor CTA (`🎫 Beli Tiket Resmi Sekarang →`).
    - **Sticky Desktop Summary Sidebar**: Provide a persistent right-rail card summarizing dates, operating hours, baseline ticket prices, and official ticket links so key figures stay visible while readers scroll.
    - **Dual-Venue / Multi-Stage Cards**: For travel fairs across multiple malls or festivals across multiple curated stages, organize entities into side-by-side columns to prevent audience confusion.
-3. **Structured Responsive Comparison Tables**:
+4. **Structured Responsive Comparison Tables**:
    - Never write complex multi-route pricing or tiered bank cashback rules in continuous prose paragraphs.
    - Wrap every `<table>` inside `<div class="table-responsive">` with striped rows (`table table-hover table-striped`) so mobile users can horizontally scroll wide tables without breaking viewport bounds (`scrollWidth <= clientWidth + 1`).
-4. **Feeds & Archive Spotlight Card Geometry**:
+5. **Feeds & Archive Spotlight Card Geometry**:
    - In blog archives and homepage featured sections, lock spotlight card image containers with `position: absolute; inset: 0;` on desktop so card height follows editorial copy (~316px).
    - Constrain stock/promotional city imagery with explicit landscape CDN parameters (`&w=700&h=450&crop=faces,center`) to prevent portrait assets from stretching cards and creating dead whitespace voids.
 
@@ -143,6 +152,10 @@ Standard organic sitemap crawling can take several days to weeks. For events las
 
 ## 3. Pitfalls & Anti-Patterns
 
+- **Defaulting to Generic Fallback Imagery on Event Guides**: Leaving generic site fallback graphics (`og-image.png`, site logo, compliance badge) as the featured hero image destroys visual relevance for high-intent queries. Always pair event and travel fair guides with local WebP destination or venue assets.
+- **Hallucinated Landmark Captions Without Visual Inspection**: Writing photo captions that name specific landmarks (e.g. Tokyo Tower) without inspecting the actual visual asset (which may show Kabukicho/Shinjuku) erodes E-E-A-T editorial credibility. Inspect visual pixels via vision tooling before writing captions.
+- **Category Taxonomy Mismatch & Inactive Navigation**: Inconsistent category labels between breadcrumbs/badges (e.g. "Lifestyle & Travel") and navbar links ("Travel & Lifestyle"), or failing to highlight the active navbar item, disorients users and weakens internal topical silo signals.
+- **Leaking Template Boilerplate Text**: Copying article structures from existing templates without stripping unrendered comment headers or label fragments (e.g. `Breadcrumb Category Badges Main Title...`) creates unpolished artifacts that diminish perceived professionalism.
 - **Relying Solely on Organic Sitemap Crawls for Time-Sensitive Events**: Standard search engine sitemap discovery is too slow for 3–5 day events. Without an immediate Google Indexing API push (`publish`), the promotion window will expire before the page achieves SERP ranking.
 - **Scraping Social Media Sources via Heavy Interactive Browser Navigations**: Loading Instagram or X URLs inside headless browser sessions frequently encounters login dialogs, CAPTCHAs, or blocking modals. Use `yt-dlp --dump-json` or embed metadata parsers to extract raw CDN image links directly without authentication overhead.
 - **Unconstrained Lineup Poster Aspect Ratios**: Music festival lineup posters contain dense typography from top to bottom. Using standard center-cropping (`object-fit: cover`) cuts off headliners at the top and bottom. Place vertical posters in dark-framed containers with `object-position: top center` or enable lightbox modals.

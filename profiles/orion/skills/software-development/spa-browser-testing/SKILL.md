@@ -103,11 +103,50 @@ In complex document-tree or file-browser SPAs (such as SharePoint, OneDrive `one
 - Inspect URL query parameters: SharePoint/OneDrive encodes the active folder path in the `id` param (e.g., `id=%2Fpersonal%2F<user>%2FDocuments%2F<Folder>&ga=1`).
 - Navigate directly via `goto_url(...)` by appending `%2F<SubfolderName>` to the encoded path in `id=`. The SPA router re-mounts the view and queries the new path immediately, bypassing fragile DOM event dispatching.
 
+### 10. Trap Unhandled Client-Side Exceptions & React Minified Crashes
+Production SPA builds (e.g. Next.js, Vite) catch unhandled React render errors and replace the UI with a generic error screen (*"Application error: a client-side exception has occurred"* or a blank white screen) while returning HTTP 200. Standard DOM element checks can miss the root crash reason unless browser telemetry listeners are bound before navigation.
+
+Always inject an uncaught error trap before loading the page:
+```python
+cdp('Page.addScriptToEvaluateOnNewDocument', source=\"\"\"
+window.__caughtErrors = [];
+window.addEventListener('error', (e) => {
+  window.__caughtErrors.push({ message: e.message, stack: e.error ? e.error.stack : 'no stack' });
+});
+window.addEventListener('unhandledrejection', (e) => {
+  window.__caughtErrors.push({ reason: String(e.reason) });
+});
+\"\"\")
+goto_url('https://...')
+wait_for_load()
+errors = js("window.__caughtErrors")
+if errors:
+    print(f"Client-side exceptions: {errors}")
+```
+
+### 11. Loopback Service Visual Auditing via Local Headless Chromium
+Cloud-managed browser tools and external proxy harnesses enforce SSRF guards that block private, internal, and loopback URLs (`127.0.0.1`, `localhost`, RFC1918 subnets) with errors such as `Blocked: URL targets a private or internal address`.
+
+When auditing or capturing screenshots of locally running microservices or demo ports (`127.0.0.1:3100`):
+- Run a targeted Node.js script using local Playwright/Puppeteer with the host's installed browser binary (`executablePath: "/usr/bin/google-chrome"`, `args: ["--no-sandbox", "--disable-setuid-sandbox"]`).
+- Save rendered artifacts into the profile's scratch directory (`$TMPDIR` or `/root/.hermes/profiles/<profile>/cache/scratch/`).
+- Use vision analysis tools on the saved image to verify rendered layout, text alignment, and active state styles before reporting completion.
+
+### 12. Scope Playwright Locators to Visible Containers in Multi-Panel SPAs
+In SPAs that render tabs, collapsible accordions, or modal drawer dialogs, input fields with identical labels frequently coexist in the DOM across both active and hidden/collapsed sections.
+- Calling unconstrained locator methods like `page.getByLabel("Nama kelas", { exact: true })` fails with a Playwright strict mode violation when multiple matching inputs exist.
+- Always scope the search to the specific active form or visible container (e.g. `container.getByLabel(...)` or `page.getByLabel(...).locator(':visible').first()`).
+
 ## Key Pitfalls & Rules
 
 - **Never use raw `.value = ...` in React/Solid forms**: Component state will not update, leaving submit buttons disabled or firing empty payloads.
 - **Never rely on `wait_for_load()` for asynchronous SPA mutations**: Full-page navigation does not fire on REST/GraphQL calls; use network interception logs or explicit element polling.
 - **Check server sync state before blaming API routes**: Local-first apps keep drafts in browser storage; downstream backend services will return 404 if the session has not been synced to the database.
-- **Do not share isolated sub-component screenshots without the access funnel**: When guiding users, missing the entry path or state prerequisites leads to user confusion on complex multi-route SPAs.
+- **Do not share isolated sub-component screenshots without the access funnel**: When guiding users, missing the entry path or state prerequisites leads to user confusion on complex multi-route SPAs. Pair every screenshot with its exact user trigger action ('Alur: Dari X -> Klik Y -> Muncul Z') so the user can immediately replicate the path.
+- **Scope Playwright locators to visible containers in multi-panel SPAs**: SPAs often retain hidden tabs or collapsible drawer forms in the DOM. Using bare `page.getByLabel()` or `page.getByRole()` triggers strict mode violation timeouts when multiple matching inputs exist across collapsed sections; scope via `container.getByLabel()` or `.locator(':visible').first()`.
 - **Prune CDP zombie tabs before declaring browser tools broken**: Detached debug targets choke Chrome IPC sockets; clean up targets via `/json/close/{id}` instead of assuming tools or routes are failing.
 - **Do not simulate double-clicks on virtualized folder rows in SharePoint/OneDrive**: Synthetic mouse events in complex React file-trees usually select the row or trigger row action bars without opening the folder; update the URL parameter (e.g., `id=...%2FSubfolder`) and call `goto_url` directly.
+- **Trap client-side window errors when auditing production SPAs**: Next.js and React return HTTP 200 even when a component throws Minified Error #300/#310 (Rules of Hooks violation) or unhandled runtime exceptions; inject `Page.addScriptToEvaluateOnNewDocument` error listeners to surface exact error messages and call stacks.
+- **Cloud browser SSRF guards block 127.0.0.1**: External or cloud browser runners reject private network addresses; use local Node with `/usr/bin/google-chrome` and `--no-sandbox` to capture loopback pages directly.
+
+

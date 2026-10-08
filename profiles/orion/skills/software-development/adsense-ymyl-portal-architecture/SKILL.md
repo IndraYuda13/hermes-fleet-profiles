@@ -1,12 +1,15 @@
 ---
 name: adsense-ymyl-portal-architecture
 description: Use when building AdSense-ready YMYL or financial portals.
-version: 1.20.0
+version: 1.25.0
+references:
+  - references/open-graph-brand-asset-rendering.md
+  - references/editorial-footer-and-contact-standards.md
 author: Orion Fleet Lead
 license: MIT
 metadata:
   hermes:
-    tags: [adsense, ymyl, e-e-a-t, fintech, pinjol, financial-education, cpanel-deploy, vehicle-credit-calculator, dealer-rate-detector, technical-seo, affiliate-banner-placement, sticky-sidebar, sponsor-banner, hilltopads, leaderboard-728x90, news-paraphrase, editorial-copyright-compliance, photo-attribution-schema, root-favicon, heading-hierarchy, gsc-sitemap-put, pre-adsense-sanitization, zero-visual-hole, google-share-extraction, tech-diaspora-profiling, hero-asset-synchronization, photo-caption-attribution, favicon-verification, bidirectional-asset-sync, transit-route-engine, transjakarta-brt-solver, high-res-map-optimization, skywalk-transfer-graph, commuter-mobility-utility, affiliate-monetization, accesstrade-pipeline, hybrid-financial-monetization, cpa-cpl-integration]
+    tags: [adsense, ymyl, e-e-a-t, fintech, pinjol, financial-education, cpanel-deploy, vehicle-credit-calculator, dealer-rate-detector, technical-seo, affiliate-banner-placement, sticky-sidebar, sponsor-banner, hilltopads, leaderboard-728x90, news-paraphrase, editorial-copyright-compliance, photo-attribution-schema, root-favicon, heading-hierarchy, gsc-sitemap-put, pre-adsense-sanitization, zero-visual-hole, google-share-extraction, tech-diaspora-profiling, hero-asset-synchronization, photo-caption-attribution, favicon-verification, bidirectional-asset-sync, transit-route-engine, transjakarta-brt-solver, high-res-map-optimization, skywalk-transfer-graph, commuter-mobility-utility, affiliate-monetization, accesstrade-pipeline, hybrid-financial-monetization, cpa-cpl-integration, accesstrade-api, gurkha-api, pillar-review-strategy, native-contextual-callouts, affiliate-redirect-attribution, bento-grid-editorial, magazine-template-evaluation, homepage-utility-preservation, react-spa-vs-static-audit, open-graph-brand-identity, playwright-og-rendering, dual-asset-sync]
     category: software-development
 ---
 
@@ -44,6 +47,9 @@ Use this skill when:
 23. Engineering public transit, commuter routing, and city mobility calculators (e.g. Transjakarta BRT 14-corridor network, LRT/MRT feeder integration) with in-memory graph search engines (direct, shared platform, and skywalk/bridge transfer routing), high-resolution map modal optimization, and 1-click mobile route sharing.
 24. Monetizing financial portals via hybrid revenue architectures (Affiliate CPA/CPL + Direct Sponsors + AdSense) to reach revenue targets (e.g. IDR 20M/mo) with realistic traffic budgets (3k–5k daily visits) vs unattainable pure-AdSense pageview volumes.
 25. Onboarding and navigating regional affiliate networks (e.g. AccessTrade Indonesia, Involve Asia) for banking, micro-insurance, and fintech campaigns, avoiding dashboard search filter blindspots and compliant tracking link placement.
+26. Executing high-conversion financial affiliate campaigns using dedicated in-depth Pillar Review pages and Native Contextual Callouts instead of intrusive sitewide banners.
+27. Automating affiliate campaign retrieval, tracking URL extraction (QuickLink/SubID), and conversion reporting via the AccessTrade Gurkha Publisher API.
+28. Evaluating and adapting third-party news/magazine web templates (e.g. React magazine templates, Bloggar) for financial portals without degrading homepage E-E-A-T utility or Core Web Vitals.
 
 ---
 
@@ -723,7 +729,107 @@ Monetizing financial portals to reach ambitious revenue targets (e.g. IDR 20.000
 
 ---
 
+### Step 24: Financial Affiliate Campaign Execution: Pillar Review + Native Contextual Callouts vs. Sitewide Banner Anti-Pattern
+When deploying a new high-ticket financial affiliate campaign (e.g. AXA Mandiri MPPT micro-insurance, banking KTA, credit cards):
+
+1. **The Sitewide Banner Anti-Pattern**:
+   - Indiscriminately plastering graphical affiliate banners across every page of an authoritative financial portal triggers user banner blindness, lowers page readability, degrades YMYL domain authority in the eyes of search raters, and yields dismal CTR (<0.2%).
+2. **Dedicated In-Depth Pillar Review Page**:
+   - Author a standalone, high-intent pillar review page (e.g. `/review-asuransi-axa-mandiri-proteksi-penyakit-tropis.html`).
+   - Ground the content in authentic consumer value propositions:
+     - Itemize covered conditions (e.g. 7 tropical diseases: DBD, Tifus, Malaria, Chikungunya, Campak, Difteri, Kolera).
+     - Provide clear premium vs benefit tables (e.g. premi mulai Rp 100.000/bln vs santunan tunai harian s/d Rp 1.000.000/hari).
+     - Demystify crucial mechanics: **Double Claim capability alongside BPJS Kesehatan** (BPJS covers hospital bills while the private cash plan pays cash directly to the policyholder's bank account for lost family income), and **No Claim Bonus** (30% premium refund after 3 claim-free years).
+   - Structure JSON-LD Schema: `Article`, `Product`, `Review` (4.8/5.0), `FAQPage` (4–6 collapsible Q&As), and `BreadcrumbList`.
+   - Embed high-contrast CTA buttons: `🚀 Daftar Polis Online Resmi AXA Mandiri →` with `rel="sponsored nofollow" target="_blank"`.
+3. **Native Contextual Callout Placement Across Existing High-Traffic Pages**:
+   - Rather than banner ads, place **Native Recommendation Callout Boxes** inside existing high-ranking guides where the financial problem naturally emerges:
+     - **Debt-Relief & Galbay Guides (`panduan-galbay-pinjol-ojk.html`)**: Frame emergency medical insurance as the first line of defense against sudden medical expenses that trap families in high-interest debt cycles.
+     - **Fintech Review Directory (`review-pinjol-legal-ojk.html`)**: Present micro-insurance cash plans as a preventive risk buffer before taking emergency loans.
+     - **Blog Index Grid (`blog.html`)**: Insert the new review card at the top of relevant categories.
+4. **Affiliate Link Redirection & Attribution Flow**:
+   - Shortlink destination: `https://atid.me/<shortcode>` (e.g. `https://atid.me/00i1h5002s2q`).
+   - Resolution chain: The browser requests the `atid.me` tracking server, which logs the publisher click, sets cross-domain attribution cookies (`_atnct`), and issues a meta-refresh / 302 redirect with merchant parameters (`utm_source=Accesstrade&atnct1=...&atnct2=...`) landing directly on the official merchant registration portal (`https://axa-mandiri.co.id/...`).
+   - Conversions (CPS/CPA/CPL) are tracked back through the pixel and credited to the publisher dashboard.
+
+---
+
+### Step 25: AccessTrade Gurkha Publisher API Automation (Campaigns, Creatives, Reports, & Promo Feeds)
+For automated affiliate catalog maintenance, programmatic link generation, and Telegram conversion notification bots:
+
+1. **Regional API Endpoints**:
+   - Indonesia, Malaysia, Singapore: `https://gurkha.accesstrade.global/`
+   - Thailand: `https://gurkha.accesstrade.in.th/`
+   - Vietnam: `https://developers.accesstrade.vn/`
+
+2. **Two-Stage Authentication Pipeline**:
+   - **Stage A — User Provisioning API (`GET /publishers/auth/{username}`)**:
+     - Request Header: `Authorization: <hash>` where:
+       $$\text{hash} = \text{SHA256}(\text{USERNAME} + \text{":"} + \text{MD5}(\text{PASSWORD}))$$
+     - Response:
+       ```json
+       {
+         "userUid": "yourUserUid",
+         "secretKey": "yourSecretKey",
+         "accountId": 2
+       }
+       ```
+     - *Important Invariant:* The `secretKey` changes automatically if the publisher changes their web dashboard password.
+   - **Stage B — JWT Bearer Generation**:
+     - Construct a JWT signed with `secretKey` using algorithm `HS256`.
+     - JWT Header: `{"alg": "HS256"}`
+     - JWT Payload: `{"sub": "<userUid>", "iat": <epoch_seconds>}`
+     - Mandatory HTTP Headers for all subsequent Gurkha API calls:
+       - `Authorization: Bearer <jwt_token>`
+       - `X-Accesstrade-User-Type: publisher`
+
+3. **Core API Capabilities**:
+   - **Affiliated Campaigns**: `GET /v1/publishers/me/sites/{siteId}/campaigns/affiliated?limit=50&page=1`
+     Retrieves active campaigns, category IDs, reward models (`CPC`, `CPA_FIXED`, `CPA_SALES`, `CPS`), and commission amounts.
+   - **Instant QuickLink Extraction**: `GET /v1/publishers/me/sites/{siteId}/campaigns/{campaignId}/creatives/quicklink`
+     Returns the active affiliate link (`affiliateLink`) without requiring manual dashboard copy-pasting.
+   - **Deep Link Creation (Custom Creatives with SubIDs)**:
+     `POST /v1/publishers/me/sites/{siteId}/campaigns/{campaignId}/creatives/custom`
+     Payload:
+     ```json
+     {
+       "landingUrl": "https://merchant.com/target-page",
+       "name": "DailyFinance Promo Campaign",
+       "subIds": [{"label": "uid", "value": "{uid}", "name": "uid"}]
+     }
+     ```
+   - **Real-Time Conversion Reports**:
+     `GET /v1/publishers/me/reports/conversion?fromDate=2026-10-01T00%3A00%3A00&toDate=2026-10-07T23%3A59%3A59&siteId={siteId}`
+     - *Rate limit:* Maximum 1 request per 5 minutes.
+     - *Date range:* Maximum 7 days per request (dates must be URL-encoded).
+     - Returns: `conversionReportItems` with `conversionId`, `clickTime`, `conversionTime`, `status` (`APPROVED`, `PENDING`, `REJECTED`), `reward`, and device metadata.
+   - **Promos & Vouchers Feed**: `GET /v1/publishers/me/promos?siteId={siteId}&size=20&startIndex=0`
+     Extracts active coupon codes, expiration dates, discount banners, and tracking links for automated promotional widgets.
+
+---
+
+### Step 26: Evaluating News/Magazine Web Templates (Homepage Utility vs. Blog Archive Bento Grid)
+When evaluating third-party news/magazine templates (e.g. Bloggar, ThemeForest editorial React themes) for financial and YMYL portals:
+
+1. **Homepage Architecture Invariant (Utility-First vs Magazine Blog)**:
+   - The homepage (`index.html`) must remain an authoritative financial workstation anchored by high-utility tools (e.g., license checker, loan calculators, transit route finders).
+   - Converting `index.html` to a lifestyle/magazine grid (hero sliders, fashion/travel cards, breaking news tickers) obscures core interactive tools, triggering Google AdSense "Low-value content" or "Unoriginal content" rejection because the site appears to be a generic blog aggregator rather than a specialized authority.
+2. **Selective Adaptation for Article Archives (`blog.html`)**:
+   - Modern magazine patterns (such as Bloggar's Hero Bento Grid: 1 prominent headline card + 2 stacked side features) are highly effective when isolated to the article archive page (`blog.html`).
+   - Incorporate clean category badges (color-coded by financial vertical: Fintech, Regulations, Personal Finance), clear author attribution, and reading time metadata to elevate editorial authority.
+3. **Performance & Framework Boundary (Static HTML vs Client-Side React SPA)**:
+   - Commercial React templates (e.g. Create React App bundles) carry heavy JS overhead (500KB+ JS, 400KB+ CSS), slower First Contentful Paint (FCP), and hydration delays.
+   - Never rewrite an established static financial portal into a client-side React SPA for visual styling. Implement the desired layout patterns (CSS grid/flexbox bento layout) using native static HTML and clean Bootstrap/CSS, preserving sub-second load times (<0.1s FCP) and frictionless search crawler indexing.
+
+---
+
 ## 3. Pitfalls & Anti-Patterns
+
+- **Replacing Financial Workstation Homepages with Generic News Magazine Layouts**: Swapping an interactive financial portal homepage (with regulatory checkers, calculators, and search utilities) for a generic news/magazine blog layout (like Bloggar or lifestyle newspaper themes) buries high-utility tools, dilutes E-E-A-T trust signals for Google AdSense reviewers, and makes the site appear like an unoriginal content aggregator. Reserve magazine Bento grids strictly for the article archive page (`blog.html`) while keeping the homepage utility-first.
+- **Rewriting Fast Static Financial Portals into Heavy React SPAs for Template Styling**: Converting lightweight static HTML/Bootstrap portals (<100KB, 0.1s FCP) into client-side React SPAs (with hundreds of KB of JS bundles and hydration lag) degrades Core Web Vitals, increases hosting complexity, and risks incomplete search engine rendering on AdSense bot crawls. Implement magazine layout patterns (bento grids, category badges) natively with static HTML and clean CSS instead.
+- **Blasting Sitewide Banners for Financial Affiliate Offers**: Placing commercial affiliate ad banners indiscriminately across every page degrades YMYL domain authority, triggers banner blindness, and yields poor CTR (<0.2%). Always author dedicated high-intent pillar review pages with rich Schema markup and place native contextual callout boxes inside topically related articles.
+- **AccessTrade API Two-Stage SHA256-MD5 Hash Authentication Trap**: AccessTrade Gurkha API does not support static API tokens. Initial provisioning requires `Authorization: SHA256(USERNAME + ':' + MD5(PASSWORD))` to obtain `secretKey` and `userUid`, which must then be signed into HS256 JWT bearer tokens accompanied by header `X-Accesstrade-User-Type: publisher`.
+- **AccessTrade Report API Rate Limit Exceedance**: Requesting `/v1/publishers/me/reports/conversion` more frequently than once every 5 minutes or querying a date range greater than 7 days triggers HTTP 429/400 errors. Polling daemons or Telegram reporting bots must enforce a minimum 5-minute interval and chunk date ranges into 7-day windows.
 
 - **Over-Relying on Display AdSense for Financial Revenue Targets**: Attempting to hit substantial monthly revenue targets (e.g. IDR 20M/mo) in Indonesia through pure AdSense requires ~1M pageviews/mo due to low local RPM (Rp 15k–30k). Financial portals must deploy hybrid monetization (high-ticket CPA/CPL affiliates + direct B2B sponsored articles + display ads) to achieve profitability at modest traffic levels (~3k–5k daily visitors).
 - **Affiliate Dashboard "Tersedia" Status Filter Blindspot**: Filtering affiliate directories (e.g. AccessTrade) strictly by status "Tersedia" hides the highest-paying financial campaigns (KTA, credit cards, paylater) which require application review. Always search under status "Semua" or search specific financial brand names directly.

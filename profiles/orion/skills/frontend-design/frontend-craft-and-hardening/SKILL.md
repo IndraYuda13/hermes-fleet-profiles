@@ -30,7 +30,7 @@ Comprehensive engineering rules, subpixel layout invariants, interactive tactile
 ## 4. Mobile GPU & Privacy Hardening Invariants
 - **Mobile GPU Blur Composite Glitch:** NEVER use huge blurred DOM elements (`filter: blur(80px)` on 600x600px divs) for atmospheric lighting. On mobile Adreno/Mali GPUs, CSS blur composites into opaque solid rectangular blocks during scroll. Use pure CSS `radial-gradient` backgrounds on `body` instead.
 - **Hidden Admin Route Isolation:** Secret/admin routes must feature ZERO public buttons, navigation links, or footer mentions. Access must be exclusively via direct operator URL entry.
-- **Zero Tech-Stack Leakage:** Never print internal ports (`PORT 8395`), database engines (`SQLITE WAL`), or backend frameworks in consumer-facing public footers.
+- **Zero Tech-Stack & AI Engine Leakage:** Never print internal ports (`PORT 8395`), database engines (`SQLITE WAL`), backend frameworks, API proxy gateways (`9router`), or underlying AI model identifiers (`Gemini TTS`, `GPT-4o`, `DeepSeek-V3`) in consumer-facing public footers, audio player widgets, loading toasts, or reader screens. All user-facing indicators must strictly use domain-appropriate editorial terminology (e.g. "Narasi Audio", "Suara Bab", "Sedang Menyiapkan Cerita") without technical jargon.
 - **Production-Denial & Fixture Harness Leakage Invariant (Metadata, Linked Assets & Verifier Rigor):**
   - *Root Layout Metadata Neutrality:* Never declare test, mock, or fixture harness metadata (`title`, `description`, open-graph tags) in the global root layout (`src/app/layout.tsx`). In Next.js App Router and SSR frameworks, the default `notFound()` error boundary renders inside the root layout and inherits root metadata, causing production 404 denial responses to leak internal fixture names and markers even when route access is denied. Keep root layout metadata strictly neutral and production-safe; isolate development fixture metadata into route-group layouts (`src/app/(fixtures)/layout.tsx`) or local page metadata.
   - *Linked CSS & Shared Asset Isolation:* Never import fixture-, mock-, or admin-specific component styles in global stylesheets (`src/app/globals.css`). Bundlers compile global CSS into shared chunks linked by `_not-found.html`, allowing unauthenticated clients probing 404 endpoints to inspect linked stylesheets and discover internal selectors (`fixture-page`, `identity-boundary`, `payment-record`, `admin-boundary`). Isolate fixture styling into dedicated stylesheets imported exclusively behind development/test guards or route-group shells.
@@ -186,10 +186,25 @@ Never declare a web UI visually passed on macro screenshots alone. For each view
   2. Never use isolated arrow icons for secondary navigation; provide an explicit accessible text label (`Buka detail` with supplementary chevron) and maintain full ergonomic touch bounds ($\ge 44 \times 44\text{px}$).
   3. Enforce `scrollWidth <= clientWidth` on all button elements across the 320px-390px sweep.
 
-## 16. Root Static Asset & Favicon Telemetry Invariant (Zero Console 404)
+## 16. Root Static Asset & Favicon Telemetry Invariant (Zero Console 404 & Modern Format Cache Invariants)
 - **The Browser Auto-Favicon Probe Trap:** Browsers automatically issue an HTTP GET `/favicon.ico` on initial navigation to any route. If the application root lacks a valid favicon or metadata icon file, the server returns HTTP 404, logging an unhandled console error: `Failed to load resource: the server responded with a status of 404 (Not Found)`.
 - **Zero-Console-Error Compliance:** Even when application JavaScript executes cleanly, a missing favicon 404 immediately breaks strict zero-console-error invariants (Gate 0 / Hard Check 7).
-- **Rule:** Every web project must supply a valid static `favicon.ico` or framework app icon (`src/app/favicon.ico` or `public/favicon.ico`) before submitting builds to visual QA, ensuring clean HTTP 200 telemetry on clean browser profiles.
+- **The Modern Browser Format Precedence Pitfall (SVG/PNG > ICO):** Modern browsers (Chromium, WebKit, Gecko) prioritize `<link rel="icon" type="image/svg+xml">` and `type="image/png"` over legacy `favicon.ico`. When updating site branding, replacing only `favicon.ico` leaves the browser continuing to display the legacy logo because referenced SVG/PNG files in `<head>` take precedence.
+- **The Ultra-Sticky Favicon Cache Trap:** Browser engines cache favicons aggressively in persistent local databases without honoring standard HTTP cache lifetimes. Any brand icon update MUST append deterministic version query parameters (`?v=YYYYMMDD`) to all icon links in HTML templates.
+- **Complete Favicon Suite Standard:** Every production deployment must supply a coordinated multi-format asset package:
+  1. `assets/img/favicon.svg` (sharp vector master for Retina/HiDPI tabs)
+  2. `assets/img/favicon-512.png` (512x512 for web manifests, PWA, and search crawler rich snippets)
+  3. `assets/img/apple-touch-icon.png` (180x180 for iOS/Safari home screen bookmarks)
+  4. `assets/img/favicon-32.png` (32x32 standard browser tab icon)
+  5. `favicon.ico` (multi-res 16/32/48 ICO at site root for legacy clients and direct `/favicon.ico` probes)
+- **Standard Head Link Block:**
+  ```html
+  <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg?v=YYYYMMDD"/>
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/img/favicon-32.png?v=YYYYMMDD"/>
+  <link rel="icon" type="image/x-icon" href="favicon.ico?v=YYYYMMDD"/>
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/img/apple-touch-icon.png?v=YYYYMMDD"/>
+  ```
+- **Rule:** Every web project must supply a valid static `favicon.ico` or framework app icon (`src/app/favicon.ico` or `public/favicon.ico`) and synchronized SVG/PNG variants before submitting builds to visual QA, ensuring clean HTTP 200 telemetry and immediate cache eviction on updates.
 
 ## 17. Mobile Discovery Ticket Geometry vs Generic Mini-Cards (The 184–208px Invariant)
 - **The Mini-Card Anti-Pattern:** On mobile viewports ($\le 480\text{px}$), laying out two-up discovery items as standalone rectangular cards with perimeter borders, loose internal margins, and buttons pasted on the bottom causes them to balloon to 220–240px+ in height. They read as generic SaaS widget cards rather than structured service tickets.
@@ -306,3 +321,106 @@ Never declare a web UI visually passed on macro screenshots alone. For each view
   On stacked mobile views where the card flows vertically, clamp the thumbnail container with `position: relative; height: 100%; min-height: 200px; max-height: 240px; aspect-ratio: 16/9;` so portrait imagery does not push article copy below the mobile fold.
 - **Defensive CDN Crop Parameters:**
   Always append explicit landscape or sub-square dimensions to external image URLs (`&w=700&h=450&crop=faces,center` or `&ar=16:10`) as defense-in-depth against portrait uploads.
+
+## 30. Clean Editorial Blog Cards & Unobstructed Imagery (Anti-Floating-Badge Invariant)
+- **The Floating Badge / Sticker Trap:**
+  Placing category badges, tags, or editorial pills floating over thumbnail images using absolute positioning (`position: absolute; top: 0; start: 0; m-3;` or `top: 12px; left: 12px;`) creates multiple visual and UX failure modes:
+  1. On mobile screens, floating badges collide with or obscure critical focal areas of the photo (faces, subjects, logos).
+  2. Badges pinned to opposite top corners wrap or crash into each other on narrow viewports ($\le 360\text{px}$).
+  3. Text contrast becomes unpredictable against shifting photo luminance, looking like messy promotional stickers rather than polished editorial journalism.
+  4. It breaks standard mobile card visual hierarchy and looks inconsistent with clean modern blog layouts.
+- **The Clean Editorial Card Invariants:**
+  1. **100% Unobstructed Thumbnail Image:** The thumbnail container must contain ONLY the clean image (`object-fit: cover; border-radius: top;`). Zero floating overlays, badges, or stickers.
+  2. **Unified Taxonomy & Metadata Line Above Headline:**
+     Position category pills, editorial badges, and publication metadata together inside the card body, immediately above the headline:
+     ```html
+     <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+       <span class="badge bg-primary text-white fw-bold">🛡️ Proteksi Mikro OJK</span>
+       <span class="badge bg-warning text-dark fw-bold">Pilihan Redaksi</span>
+       <small class="text-muted">📅 07 Okt 2026 &bull; ⏱️ 8 Menit Baca</small>
+     </div>
+     ```
+  3. **Strict Ergonomic Visual Flow:** Clean Image &rarr; Taxonomy Badges & Metadata &rarr; Headline (`<h3>`/`<h2>`) &rarr; Excerpt/Summary &rarr; Footer / CTA Button.
+  4. **Universal Card Consistency:** Apply this structure uniformly across hero featured cards, article grids, and related posts to guarantee visual harmony across the entire publication.
+
+## 31. Header Brand Lockup Spacing & Editorial Divider Invariant (Anti-Touching Logo & Tagline Defect)
+- **The Touching Logo & Tagline Trap:**
+  When grouping a primary site logo (e.g. `DailyFinance.id`) and a secondary descriptive tagline (e.g. `PORTAL BERITA FINANSIAL & LITERASI PUBLIK`) in a horizontal flex container (`display: flex; align-items: center;`), omitting explicit gap and divider styling causes the brand text and the secondary descriptor to crash together without breathing room. This destroys brand recognition, creates a cluttered appearance, and makes the descriptor read like an accidental trailing text fragment rather than a deliberate editorial publication lockup.
+- **Editorial Brand Lockup Invariants:**
+  1. **Generous Breathing Room & Symmetrical Gap:** Declare an explicit horizontal gap ($\ge 20\text{px}$) between the logo mark/text and the secondary tagline.
+  2. **Hairline Subtle Divider:** Insert an elegant vertical dividing rule (`1px` or `1.5px solid rgba(255, 255, 255, 0.2)` in dark mode, or `rgba(0, 0, 0, 0.15)` in light mode) with balanced padding (`padding-left: 18-20px`). This mirrors international publishing standards (e.g. Bloomberg, CNBC, Reuters, HotMagazine) and cleanly partitions primary brand identity from editorial mission copy.
+  3. **Optical Vertical Centering & Line-Height Harmonization:** Tagline text arranged in multiple lines (e.g. 2–3 lines) must have tight, controlled `line-height` (~`1.3–1.35`) and `display: flex; align-items: center;` so its overall optical bounding box height is balanced against the logo's cap-height.
+  4. **Mobile Responsive Auto-Concealment:** On compact mobile screens ($\le 767\text{px}$), hide the horizontal desktop tagline (`d-none d-md-block` or equivalent media query) to preserve critical header width for navigation hamburgers, search triggers, or user status icons.
+  5. **Paired Component Contrast Discipline:** When inspecting header lockups with dark backgrounds, check neighboring widgets (such as banner sponsorship cards, legal small text) — ensure secondary small print maintains sufficient WCAG contrast (e.g. `#94a3b8` / `#cbd5e1` rather than muted near-black text) against `#18191b` surfaces.
+
+## 32. Long-Form Chaptered Reading & Interactive Decision Architecture (Anti-Monolithic-Stream Invariant)
+- **The Monolithic Stream Anti-Pattern:**
+  Rendering an entire multi-chapter narrative (20, 50, 100 chapters) sequentially in a single vertical scroll container causes severe DOM bloating, degrades mobile rendering performance, creates massive scroll fatigue, and confuses readers about their current narrative location.
+- **Modular Chapter Pagination & Density Controls:**
+  1. **Default Paged View (1 Chapter per View):** Render only the active chapter by default (`currentChapter` 1-indexed). Provide an ergonomic density selector (`1 Bab`, `3 Bab`, `5 Bab`, or `Semua Bab`) persisted in client storage (`localStorage`) so readers can choose between focused book reading and continuous streaming.
+  2. **Bidirectional Chapter Drawer & Search Omnibox:** Include a dedicated "Daftar Bab" drawer (`role="dialog" aria-modal="true"`) equipped with a quick search filter (matching chapter sequence number or title/recap keywords) and 1-tap jump navigation.
+  3. **Strict Terminal Decision Point Anchoring:** In branching interactive narratives, choice options belong exclusively to the **active terminal chapter** (the latest segment). When a reader navigates back to inspect earlier chapters, do NOT duplicate or display active choices there. Instead, display historical choices made, fork/rewrite actions, and an explicit floating anchor: *"Lompat ke Bab Terbaru untuk Memilih Kelanjutan"*.
+  4. **Auto-Advancement on Generation:** When background AI generation produces a new chapter, the view state must automatically transition to the newly minted chapter so the reader immediately sees the narrative continuation without manual scrolling.
+
+## 33. Background Generation Polling & State Invalidation Invariants (Disappearing Choices & Duplicate Indicator Traps)
+- **The Duplicate Progress Card Trap:**
+  Rendering generation status / progress cards simultaneously in both the top-level page shell and the child chapter/decision container displays duplicate identical banners (*"Sedang Merangkai Bab Berikutnya..."*).
+  *Rule:* Enforce a Single Source of Truth for async job feedback. Render the progress card strictly inside the decision/interaction anchor zone, or isolate it to a single top-level floating banner.
+- **The Stale Branch / Disappearing Choice Trap:**
+  When a background generation job completes and appends a new segment, if the choice options query/state relies on a stale segment ID or an un-invalidated branch reference, decision buttons disappear until the user forces a full browser reload.
+  *Rule:* Live Decision Point Invalidation. When a new segment is fetched via polling or push, immediately re-evaluate active choice options against the new terminal segment ID (`segments[segments.length - 1].id`) and release any choice submission locks.
+
+## 34. React Rules of Hooks & Production Client-Side Exception Invariants (Minified Error #310 Prevention)
+- **The Early-Return Hook Execution Trap:**
+  Declaring React hooks (`useMemo`, `useState`, `useEffect`, `useCallback`) *below* early-return guards (e.g. `if (loading) return <LoadingScreen />;` or `if (error) return <ErrorView />;`) violates the fundamental Rules of Hooks. During the initial loading render, only hooks above the guard execute. Once data arrives and state transitions to ready, React executes the newly reachable hooks below the guard, throwing fatal unhandled runtime exceptions (`Minified React error #310: Rendered more hooks than during the previous render`, or `#300: Rendered fewer hooks...`) that crash the application with a blank screen or Next.js *"Application error: a client-side exception has occurred"*.
+- **Unconditional Hook Hoisting Standard:**
+  Every React hook MUST be declared at the top of the component body, unconditionally, before ANY conditional return or branch.
+  - Never place `useMemo`, `useState`, or `useEffect` below `if (loading) return ...`, `if (error) return ...`, or `if (!data) return ...`.
+  - Guard nullable state *inside* the hook's computation closure rather than guarding the hook call itself:
+    ```tsx
+    // BAD (crashes once loading flips to false):
+    if (loading) return <LoadingScreen />;
+    const visibleSegments = useMemo(() => compute(segments), [segments]);
+
+    // GOOD (unconditionally declared at top):
+    const visibleSegments = useMemo(() => {
+      if (!segments || segments.length === 0) return [];
+      return compute(segments);
+    }, [segments]);
+    if (loading) return <LoadingScreen />;
+    ```
+- **Automated Test vs Live Render Coverage Blindspot:**
+  Headless unit and integration tests (e.g. Vitest, Jest) often test isolated functions or mock data without simulating the full asynchronous state transition lifecycle (initial empty/loading render &rarr; completed render), passing completely while production crashes. Always couple unit tests with live browser error trapping (`window.addEventListener('error')`) across real state transitions.
+
+## 35. Responsive Navigation Text Alignment & Icon Flex Invariants (The Mobile `text-center` Leak & Column Fit)
+- **The Mobile `text-center` Inheritance Trap:**
+  When adapting responsive navigation items from mobile bottom docks (`flex-col items-center justify-center text-center`) to desktop sidebars (`md:flex-row md:justify-start`), developers frequently add `md:justify-start` and `md:gap-3` while forgetting `md:text-left`.
+  - *Mechanism:* Shorter single-word labels ("Home", "Kelas") appear left-aligned because `md:justify-start` positions the inline text block immediately beside the icon. However, longer multi-word labels or wrapped text (e.g. "Belajar berkelompok", "Soal & Presentasi") reveal the un-overridden `text-center`, rendering lines centered within their text container and visually misaligned against neighboring items ("rata tengah sendiri").
+  - *Rule:* Any responsive nav item resetting from mobile centered layout must explicitly pair `md:justify-start` with `md:text-left`.
+- **Leading Icon Shrink Defect (`shrink-0` Invariant):**
+  - *Mechanism:* If label text is long or flexes inside an `md:flex-row` container, the leading icon wrapper without `shrink-0` compresses horizontally, distorting icon proportions or shifting position.
+  - *Rule:* Always declare `shrink-0` on icon wrappers (`<span className="nav-icon shrink-0">`) inside flex buttons.
+- **Sidebar Grid Column Capacity Invariant:**
+  Sidebar grid definitions (e.g. `grid-cols-[232px_1fr]`) must allocate sufficient width for the longest localized label, icon, gap, and internal padding. A 19+ character label in 14px semibold with 22px icon, gap-3, and px-3 requires at least 248px to prevent unwanted vertical word wrapping. Audit sidebar column widths against longest expected menu strings.
+
+## 36. Layout vs Page Header Nesting Discipline (Anti-Duplicate Header Invariant)
+- **The Nested Header Anti-Pattern:**
+  When a global application shell (`src/app/layout.tsx` or route group layout) already renders the top site navigation header (`<Navbar />`), route pages (such as catalog, library, or exploration routes like `/jelajah`) must never embed an additional duplicate `<header>` or `<Navbar />` inside their local page template.
+- **Visual & Interaction Failure Modes:**
+  1. Stacking dual sticky or fixed headers consumes double vertical viewport height (~120–140px), pushing hero content and reading copy far below the fold.
+  2. Mobile screens suffer from duplicate navigation buttons, conflicting search omniboxes, and clashing theme/avatar toggles.
+  3. Z-index collisions between dual headers cause flickering drop-shadows and broken drawer menus.
+- **Single Header Invariant & DOM Assertion:**
+  Automated browser test suites must assert across all public and protected routes:
+  `document.querySelectorAll('header').length === 1`
+  If a sub-route requires a contextual toolbar (e.g. chapter reading controls, search filters, breadcrumbs), embed it semantically as an isolated `<nav aria-label="Toolbar">` or sub-bar container, never a second top-level `<header>`.
+
+## 37. Asynchronous Long-Running Media & Edge Timeout Discipline (The 100s Cloudflare 524 Trap)
+- **The Synchronous Edge Timeout Defect:**
+  Executing long-running generation tasks (such as AI audio narration for 3,000–8,000 character chapters requiring 120–240s) inside a single synchronous HTTP request inevitably breaches edge CDN connection limits (Cloudflare Tunnel enforces an unyielding 100-second timeout, returning `HTTP 524 A timeout occurred`). The client perceives a fatal failure even when the server eventually completes generation in the background.
+- **Asynchronous Job & Polling Architecture:**
+  1. **Immediate Job Dispatch:** Heavy generation endpoints (`POST /api/audio/[segmentId]`) must immediately enqueue a task or background worker and return `HTTP 202 Accepted` with a `jobId` within <200ms.
+  2. **Non-Blocking Status Polling:** Client UI polls status (`GET /api/audio/status/[jobId]` or lightweight SSE) with exponential backoff or 2-3s intervals.
+  3. **Honest Progress Feedback:** Provide continuous progress feedback ("Menyusun narasi audio...", "Mengonversi rekaman...") to prevent user abandonment and double-clicks.
+
+

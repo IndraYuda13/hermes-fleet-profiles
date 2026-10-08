@@ -33,12 +33,15 @@ When delivering complex multi-tier systems (database, authentication, background
 1. **Sequence Upstream First:** Implement core data schemas, authentication routines, and asynchronous worker loops before building frontend routes.
 2. **Verify Upstream Contracts:** Run full test suites against the backend services before dispatching frontend implementation.
 3. **Bind Live Services:** Direct the frontend worker to import and bind to the verified server services and schemas rather than stubbed mock objects, preventing API contract drift.
+4. **Continuous Multi-Phase Advancement:** When directed to execute until completion, do not stall at intermediate phase boundaries. Immediately advance to the subsequent phase once independent verification certifies the active phase (`VERIFIED`). Pre-author downstream mission contracts and task specifications so tasks dispatch without latency.
 
 ### 2. Implementer Review Handoff & Revision Locking
 When an implementer finishes work and requests review:
 1. **Inspect Git Tree:** Verify that working directory changes are clean and committed to the intended target branch.
 2. **Lock Revision SHA:** Do not allow implementers to review or certify their own cards. Close the implementation card cleanly (`hermes kanban complete --force --summary "<summary>" <task_id>`) to freeze the commit SHA.
 3. **Dispatch Independent Verifiers:** Spawn distinct reviewer cards for independent audit (e.g. security audit, functional regression, visual audit) with parent links to the completed implementation card.
+4. **Exact-Revision Binding:** Review task bodies must explicitly specify the frozen commit SHA and declare read-only inspection mode to guarantee separation of duties.
+5. **Post-Review Verification Tracking:** When a verifier commits an independent verification report artifact (`docs/*_VERIFICATION_REPORT.md`), verify working tree cleanliness via git status and ensure the report commit SHA is recorded before dispatching downstream tasks.
 
 ### 3. Worker Timeout Diagnosis & Retry Management
 Heavy builds, framework scaffolding, and multi-suite integration tests frequently exceed standard per-task execution budgets (e.g. 1800s):
@@ -48,6 +51,11 @@ Heavy builds, framework scaffolding, and multi-suite integration tests frequentl
 4. **Preserve In-Flight Artifacts:** If untracked components, build outputs, or partial test passes exist, avoid touching workspace files. Allow the spawned retry run to finish its build and tests cleanly.
 5. **Enforce Idempotent Continuity:** When workers resume on an existing workspace, they must detect pre-existing files, avoid redundant scaffolding steps, and proceed directly to testing and completion.
 6. **Recover Exhausted Timeouts with Working Tree Audit:** When a task exhausts retries and stays timed out, audit the workspace immediately with `git status` and test logs before rescheduling. If the worker completed code generation, compilation, and tests before the deadline, lock the commit and complete the card with `--force` rather than discarding working artifacts or recreating duplicate tasks.
+
+### 4. Event-Driven Wake Subscriptions vs Busy-Waiting
+For long-running autonomous worker pipelines:
+1. **Subscribe to Task Completion Notifications:** Use `hermes kanban notify-subscribe --platform telegram --chat-id "<chat_id>" --chat-type dm --notifier-profile <profile> --delivery-mode notify+wake <task_id>` when launching long tasks.
+2. **Release Turn Immediately:** Trigger dispatch (`hermes kanban dispatch`) and end the turn immediately. Do not execute synthetic polling or busy-wait loops; the runtime automatically wakes the session upon task completion or failure.
 
 ## Pitfalls & Defensive Rules
 

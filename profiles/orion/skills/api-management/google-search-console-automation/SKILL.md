@@ -1,7 +1,7 @@
 ---
 name: google-search-console-automation
 description: Use when automating Google Search Console API operations.
-version: 1.5.0
+version: 1.6.0
 author: Orion Fleet Lead
 license: MIT
 metadata:
@@ -185,6 +185,59 @@ def inspect_url_status(creds_path, site_url, target_url):
         return res.get("inspectionResult", {}).get("indexStatusResult", {})
 ```
 
+#### Executable Concurrent Full-Site Inspection Script
+When auditing indexing across dozens of URLs (e.g. from `sitemap.xml`), never inspect sequentially (each request takes 2–4s, causing script timeouts). Use `ThreadPoolExecutor` with per-request timeouts:
+
+```python
+import concurrent.futures, json, urllib.request, xml.etree.ElementTree as ET
+
+def audit_all_sitemap_urls(creds_path, site_url, sitemap_path, max_workers=5):
+    token = get_gsc_access_token(creds_path)
+    inspect_url = "https://searchconsole.googleapis.com/v1/urlInspection/index:inspect"
+    
+    tree = ET.parse(sitemap_path)
+    urls = [elem.text for elem in tree.iter("{http://www.sitemaps.org/schemas/sitemap/0.9}loc")]
+
+    def check_url(target_u, timeout=12):
+        body = json.dumps({"inspectionUrl": target_u, "siteUrl": site_url}).encode("utf-8")
+        req = urllib.request.Request(
+            inspect_url, data=body,
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                idx = data.get("inspectionResult", {}).get("indexStatusResult", {})
+                return {
+                    "url": target_u,
+                    "verdict": idx.get("verdict"),
+                    "coverage": idx.get("coverageState", "Unknown"),
+                    "crawled": idx.get("lastCrawlTime")
+                }
+        except Exception as e:
+            return {"url": target_u, "error": str(e)}
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        results = list(executor.map(check_url, urls))
+
+    indexed = [r for r in results if r.get("verdict") == "PASS" or ("indexed" in r.get("coverage", "").lower() and "not" not in r.get("coverage", "").lower())]
+    discovered = [r for r in results if "Discovered" in r.get("coverage", "")]
+    unknown = [r for r in results if "unknown" in r.get("coverage", "").lower()]
+    retries = [r["url"] for r in results if "error" in r]
+
+    for u in retries:
+        retry_res = check_url(u, timeout=25)
+        if "error" not in retry_res:
+            if retry_res.get("verdict") == "PASS":
+                indexed.append(retry_res)
+            elif "Discovered" in retry_res.get("coverage", ""):
+                discovered.append(retry_res)
+            else:
+                unknown.append(retry_res)
+
+    return {"indexed": indexed, "discovered": discovered, "unknown": unknown}
+```
+
 ### B. Web Search Indexing API Protocol (Bulk Priority Crawling)
 The Web Search Indexing API (`https://indexing.googleapis.com/v3/urlNotifications:publish`) allows programmatic notification to Googlebot to recrawl or index URLs with priority latency (hours instead of days/weeks):
 * **Endpoint**: `POST https://indexing.googleapis.com/v3/urlNotifications:publish`
@@ -302,6 +355,7 @@ def verify_publication_pipeline(target_url, sitemap_url, gsc_client):
 
 ## 6. Pitfalls & Anti-Patterns
 
+- **Sequential URL Inspection Timeout on Site Audits**: Inspecting 20+ URLs sequentially via the GSC URL Inspection API will exceed standard script and tool execution timeouts (each inspection takes 2–4 seconds over HTTPS). Always execute inspections concurrently using `ThreadPoolExecutor(max_workers=5)` with per-request timeouts (10–12s), and isolate failed reads for single-URL retries with a generous timeout (25–30s).
 - **Conflating Public Web Accessibility with Search Engine Indexing**: Telling stakeholders a newly launched feature or page "is not yet visible to people" when it is merely awaiting Googlebot's asynchronous crawl queue. The page is immediately accessible to any human visitor while Googlebot processes indexing asynchronously.
 - **Assigning 'Full' Instead of 'Owner' Permissions for Indexing API**: While 'Full' permission in Search Console allows reading analytics and submitting sitemaps, the Web Search Indexing API (`urlNotifications:publish`) strictly enforces verified ownership and fails with HTTP 403 `Permission denied. Failed to verify the URL ownership.` The service account must be designated as 'Owner' (Pemilik) in GSC Users and permissions.
 - **Premature DNS Verification Clicking**: Triggering domain verification in GSC before verifying that Google Public DNS (`8.8.8.8`) has purged negative caches and resolved the new `google-site-verification` TXT record. Always run `dig @8.8.8.8 <domain> TXT +short | grep google-site-verification` first.

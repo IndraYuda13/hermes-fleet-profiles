@@ -1,7 +1,7 @@
 ---
 name: fleet-backup-and-recovery
 description: Use when syncing, backing up, or recovering fleet profiles.
-version: 1.0.0
+version: 1.1.0
 author: Hermes Fleet Architecture
 license: MIT
 metadata:
@@ -22,9 +22,11 @@ Public or audited Git repositories sanitize secrets (`REDACTED` or `${...}`). Th
 1. **Declarative Git Layer (`hermes-fleet-profiles`):**
    - Versioned prompts (`SOUL.md`), sanitized configs (`config.yaml`), `profile.yaml`, and custom skills across all active profiles.
    - Pushed to remote Git repo after passing all fleet policy gates and test suites.
+   - Paired with an uncompressed declarative snapshot (`<timestamp>-fleet-complete`) on the offload volume for zero-git bare-metal rollbacks.
 2. **Disaster Recovery Secrets Layer (`secrets-live-<timestamp>`):**
    - Stored in an offload volume (e.g. `/mnt/hermes-storage-offload/hermes-fleet-backups/`) with restricted permissions (`chmod 700` directories, `chmod 600` files).
-   - Preserves live `.env`, `auth.json`, unredacted `config.yaml`, active `cron/jobs.json`, and `memories/` for root and every active profile.
+   - Preserves live `.env`, `auth.json`, unredacted `config.yaml` (as `config.yaml.raw`), active `cron/jobs.json`, and `memories/` for root and every active profile.
+   - Captures root-level service tokens (e.g. `gsc_service_account.json`, `google_token.json`).
    - Enables immediate restoration on a new host without re-authenticating Telegram bots or rotating LLM API keys.
 
 ## Sync & Verification Procedure
@@ -43,6 +45,36 @@ When running the declarative fleet sync script (`sync.sh`):
    - Execute `python3 validate_contracts.py` (A2A timeout and schema checks).
    - Run the full pytest suite (`pytest -q`).
    - Push to Git remote only when 100% of tests and policy checks pass.
+
+## Backup Verification & Drift Audit Procedure
+
+When auditing whether the fleet is currently backed up or has drifted:
+
+1. **Declarative Git Layer Verification:**
+   - Check the latest commit on remote Git repo (`git log -1` on `hermes-fleet-profiles`).
+   - Verify working tree clean status (`git status`).
+   - Audit drift against live `$HERMES_ROOT/profiles/` (new/modified skills, SOUL.md, config.yaml, or newly activated profiles) to identify uncommitted changes.
+2. **Disaster Recovery Secrets Layer Audit:**
+   - Inspect offload volume (`/mnt/hermes-storage-offload/hermes-fleet-backups/`).
+   - Verify timestamps of the newest `<timestamp>-fleet-complete` declarative snapshot and `secrets-live-<timestamp>` directory against live updates.
+   - Audit whether all active profiles and root-level tokens are captured in the latest secrets layer.
+3. **Pre-Backup Test Suite Gate:**
+   - Run `pytest -q` in repo root before executing any sync or backup. All policy and contract tests must pass 100% cleanly.
+
+## Secrets Offload & Permission Invariants
+
+When creating the Disaster Recovery Secrets Layer (`secrets-live-<timestamp>`):
+- **Atomic Permission Lockdown:** Immediately enforce POSIX permissions on the target directory:
+  ```bash
+  find "${SECRETS_DEST}" -type d -exec chmod 700 {} +
+  find "${SECRETS_DEST}" -type f -exec chmod 600 {} +
+  ```
+- **Profile Scope Checklist:** Ensure every active profile exports:
+  - `.env` (environment variables and API credentials)
+  - `auth.json` (platform tokens)
+  - `config.yaml` copied as `config.yaml.raw` (raw unredacted config)
+  - `cron/` (scheduler database and active jobs)
+  - `memories/` (`USER.md` and `MEMORY.md` persistent state)
 
 ## Archive Timeout & Storage Guard
 

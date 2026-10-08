@@ -476,3 +476,59 @@ When evaluating open-source video editors (e.g. OpenCut, CapCut clones, WebCodec
 
 See `references/bstation-and-mobile-player.md` for extended reference notes on Bstation franchise search patterns and mobile player implementation, and `references/streaming-monetization-and-compliance.md` for in-depth compliance and monetization guidelines.
 
+## 26. Text-to-Speech (TTS) Narration Pipelines & HTTP 206 Byte-Range Audio Streaming
+When implementing generative AI text-to-speech (e.g. Google Gemini 3.8 Flash TTS / `generate-speech`, ElevenLabs, OpenAI Audio) inside web applications:
+
+### 1. On-Demand vs Auto-Generation Quota Economics
+- **The Eager Generation Trap:** Auto-generating TTS audio on every chapter/content creation drains API quotas rapidly and generates voice files for content readers may never listen to.
+- **On-Demand Rule:** Render an interactive audio request CTA (`Dengarkan Audio AI`) and generate speech only when the user explicitly triggers playback.
+- **Content-Hash Binding & Invalidation:**
+  - Bind audio records to a cryptographic content hash: `SHA-256(text + "::" + voiceName)`.
+  - When content is edited or rewritten (branching/forking), compare the current content hash with the stored audio record. If mismatched, flag the audio as stale (`Teks Diperbarui`) in the UI without deleting the previous audio version or breaking existing references.
+  - When duplicating, forking, or referencing identical text across story branches, reuse existing audio records matching the content hash (`0 API cost`).
+
+### 2. Headless Audio Transcoding (`WAV 24kHz -> MP3 VBR`)
+- High-quality TTS APIs (such as Google Gemini TTS) often return raw uncompressed WAV PCM (24,000 Hz, 16-bit mono), producing files ~14 MB for a single 5-minute chapter.
+- Storing or serving raw WAV chokes client network bandwidth on mobile and rapidly exhausts server disk.
+- **Pipe Transcoding via FFmpeg CLI:**
+  Transcode in-memory or via temporary pipe buffers using `libmp3lame` VBR:
+  ```bash
+  ffmpeg -f wav -i pipe:0 -c:a libmp3lame -q:a 4 -f mp3 pipe:1
+  ```
+  - Reduces file size by >80% (~2.5 MB) while preserving full 24kHz speech intelligibility and inflection.
+  - Exclude the generated audio cache directory (e.g. `storage/audio/`) from version control in `.gitignore`.
+
+### 3. HTTP 206 Byte-Range Streaming in Node / Next.js App Router
+- Standard HTTP 200 chunked or monolithic file responses prevent HTML5 `<audio>` and `<video>` elements from seeking, scrubbing, or resuming playback smoothly on iOS Safari and mobile Chrome.
+- When an audio player seeks, the browser sends an HTTP `Range: bytes=START-END` request.
+- **Stream Handler Invariant:**
+  - Parse `req.headers.get("range")`.
+  - Calculate `chunkSize = end - start + 1`.
+  - Return HTTP `206 Partial Content` with headers:
+    ```typescript
+    {
+      "Content-Range": `bytes ${start}-${end}/${fileSize}`,
+      "Accept-Ranges": "bytes",
+      "Content-Length": String(chunkSize),
+      "Content-Type": "audio/mpeg",
+      "Cache-Control": "public, max-age=31536000, immutable",
+    }
+    ```
+  - Use `fs.createReadStream(filePath, { start, end })` converted to a Web `ReadableStream` to serve byte ranges without loading the whole audio file into RAM.
+
+### 4. Multi-API Key Round-Robin & 429 Failover Pool
+- When integrating model APIs under strict per-key rate limits (such as Gemini Studio keys), maintain a pool of API keys.
+- On HTTP 429 (Resource Exhausted) or quota errors, automatically advance the pool index and immediately retry with the next key before returning a failure to the user.
+
+### 5. Multi-Model AI Gateway TTS Routing & The Model-Prefix Parser Trap
+- **OpenAI Audio Speech Protocol**: Routing TTS via multi-model gateways (e.g. 9Router `/v1/audio/speech`) uses standard payload: `{"model": "<provider>/<tts_model_id>/<voice_id>", "input": "<text>"}` (e.g. `gemini/gemini-3.1-flash-tts-preview/Zephyr` or `gemini/gemini-3.1-flash-tts-preview/Aoede`).
+- **The Router Model-Prefix Parser Trap**:
+  - Multi-model gateways route TTS by matching an explicit model ID prefix against their registered model catalog (`model-catalog.json`).
+  - *Failure Mode*: If an unlisted or newly released upstream model (e.g. `gemini-3.8-flash-tts/Zephyr`) is requested, the gateway's parser fails to match the model ID prefix, falls back to a default model (e.g. `gemini-3.1-flash-tts-preview`), and treats the entire remaining path (`gemini-3.8-flash-tts/Zephyr`) as the speaker voice name. Upstream Google API rejects the request with: `No matching speaker voice found for name: gemini-3.8-flash-tts/Zephyr`.
+  - *Rule*: Query the gateway's model catalog before configuring TTS routes to verify recognized TTS model slugs.
+- **Long-Form Text Synthesis Latency & HTTP Client Timeouts**:
+  - Generative TTS models generate speech sequentially. Synthesizing full chapter text (~4,000–4,500 characters, ~4.5 minutes of continuous audio) routinely requires 120–150 seconds.
+  - Standard HTTP client timeouts (30s–60s) trigger premature client aborts (`AbortSignal.timeout`). Configure client fetch timeouts to at least `180000ms`–`240000ms` (3–4 minutes) when generating full chapters, or split long text into paragraph chunks.
+
+
+
