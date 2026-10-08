@@ -253,6 +253,10 @@ The Web Search Indexing API (`https://indexing.googleapis.com/v3/urlNotification
   - Provide the project owner with the direct 1-click console URL:
     `https://console.developers.google.com/apis/api/indexing.googleapis.com/overview?project=<project_id>`
 * **Pacing**: Space bulk publishing calls by 300–500ms to avoid burst rate-limiting.
+* **Domain Topology & Blast Radius in Bulk Indexing Campaigns**:
+  - *Subdomain Testing Phase*: Bootstrapping multi-page or tiered campaigns across subdomains of a single root domain (e.g. `sub1.domain.com`, `sub2.domain.com`) minimizes registration overhead and aggregates initial domain equity.
+  - *Certificate Transparency (CT) Reconnaissance Footprint*: Issuing SSL certificates for subdomains publicly logs all FQDNs to public Certificate Transparency logs (searchable via `crt.sh`, Censys, SecurityTrails). Competitors, crawlers, and automated scanners can enumerate every active subdomain under a parent apex domain in seconds.
+  - *Dedicated Domain Isolation*: Once traffic flows and operational viability are proven, decouple high-intent endpoints into dedicated standalone root domains. Subdomain clustering creates a single point of failure: an algorithmic penalty, spam flag, or registrar de-indexing against the apex domain de-indexes all subdomains simultaneously. Separate root domains isolate the blast radius.
 
 ### C. The 3-Stage Publishing Lifecycle & Pre-Crawl Readiness Audit
 Before inspecting or submitting URLs for indexing, run a **Pre-Crawl Readiness Audit** across all site routes to avoid wasted crawl budget and indexing rejections:

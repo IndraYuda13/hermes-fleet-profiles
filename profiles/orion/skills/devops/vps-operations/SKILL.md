@@ -1,17 +1,17 @@
 ---
 name: vps-operations
 description: Use when managing VPS security, git deploys, or AI apps.
-version: 1.6.0
+version: 1.7.0
 author: Hermes Agent Curator
 license: MIT
 metadata:
   hermes:
-    tags: [vps, ssh, fail2ban, git, deployment, reverse-proxy, security, fail-closed, devops, storage, maintenance]
+    tags: [vps, ssh, fail2ban, git, deployment, reverse-proxy, security, fail-closed, devops, storage, maintenance, telemetry, speedtest, benchmarking]
 ---
 
 # VPS Operations & Host Hardening Standard
 
-Consolidated operational runbook for Linux VPS administration: automated attack triage, Fail2ban hardening, SSH key cutover, Git deployment hygiene, reverse-proxy ingress, fail-closed application architectures, and host storage/process hygiene.
+Consolidated operational runbook for Linux VPS administration: automated attack triage, Fail2ban hardening, SSH key cutover, Git deployment hygiene, reverse-proxy ingress, fail-closed application architectures, host storage/process hygiene, and telemetry/network benchmarking.
 
 ## When to Use
 - Diagnosing authentication brute-force attacks, high `rsyslogd` CPU spikes, or configuring Fail2ban on public cloud servers.
@@ -19,6 +19,7 @@ Consolidated operational runbook for Linux VPS administration: automated attack 
 - Deploying, pulling, and rebuilding Git repositories on live production VPS serving environments.
 - Troubleshooting multi-tier ingress routing (Cloudflare Tunnel -> Nginx -> application daemons) and fail-closed AI application backends.
 - Performing emergency disk rescue, purging hidden browser/package caches, and reaping container-orphaned zombie process storms.
+- Collecting synchronized host telemetry (CPU/RAM/Disk) or executing network speed benchmarks without CLI argument pitfalls.
 
 ## 1. Cloud Exposure & Automated Attack Triage
 
@@ -362,3 +363,43 @@ When `ps aux` reveals hundreds or thousands of zombie processes (e.g. `[git] <de
      docker restart <container_name>
      ```
    Restarting the container destroys its isolated PID namespace and reaps all thousands of orphaned defunct processes instantly, restoring a clean host process table (`ps aux | grep -i defunct | grep -v grep | wc -l` drops to `0`).
+
+---
+
+## 8. Host Telemetry & Network Benchmarking
+
+### Standard System Resource Spec Format
+When formatting live host telemetry for reporting or monitoring dashboards:
+```text
+- CPU: <cores> Core | Load: <1m>, <5m>, <15m>
+- RAM: <used> MB / <total> MB (<pct>%) | Free: <free> MB
+- Disk: <used> GB / <total> GB (<pct>%) | Free: <free> GB
+```
+
+One-line Python probe ensuring synchronized values matching `free -m` and `df -m`:
+```python
+python3 -c "
+import os, subprocess
+
+cores = os.cpu_count()
+l1, l5, l15 = os.getloadavg()
+mem = subprocess.check_output(['free', '-m']).decode().splitlines()[1].split()
+ram_tot, ram_used = int(mem[1]), int(mem[2])
+ram_free, ram_pct = ram_tot - ram_used, (ram_used / ram_tot) * 100
+
+df = subprocess.check_output(['df', '-m', '/']).decode().splitlines()[1].split()
+d_tot, d_used, d_avail = int(df[1]) / 1024, int(df[2]) / 1024, int(df[3]) / 1024
+d_pct = (int(df[2]) / int(df[1])) * 100
+
+print(f'- CPU: {cores} Core | Load: {l1:.2f}, {l5:.2f}, {l15:.2f}')
+print(f'- RAM: {ram_used} MB / {ram_tot} MB ({ram_pct:.1f}%) | Free: {ram_free} MB')
+print(f'- Disk: {d_used:.1f} GB / {d_tot:.1f} GB ({d_pct:.1f}%) | Free: {d_avail:.1f} GB')
+"
+```
+*Note on separate mount points:* If secondary persistent storage exists (e.g. `/mnt`), report it as a distinct entry (`- Disk (/mnt): ...`) rather than conflating mount boundaries.
+
+### Network Speed & Bandwidth Testing
+1. **Ookla CLI vs Python `speedtest-cli` Flag Incompatibility Trap:**
+   On Debian/Ubuntu hosts, `/usr/bin/speedtest` is frequently a symlink or wrapper for the Python `speedtest-cli` package rather than the official compiled Ookla binary.
+   - Do NOT pass official Ookla flags (`--accept-license --accept-gdpr`) without verifying the binary first; `speedtest-cli` throws `unrecognized arguments: --accept-license --accept-gdpr`.
+   - Run `speedtest --share` (or `speedtest-cli --share`): this tests latency, download, and upload, and generates a shareable result link image without interactive prompts or license flags.

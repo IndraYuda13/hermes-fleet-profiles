@@ -1,7 +1,7 @@
 ---
 name: fleet-backup-and-recovery
 description: Use when syncing, backing up, or recovering fleet profiles.
-version: 1.2.0
+version: 1.3.0
 author: Hermes Fleet Architecture
 license: MIT
 metadata:
@@ -55,16 +55,23 @@ When running the declarative fleet sync script (`sync.sh`):
 
 When auditing whether the fleet is currently backed up or has drifted:
 
-1. **Declarative Git Layer Verification:**
+1. **Fast Dry-Run Drift Detection:**
+   - Run `bash scripts/sync.sh` (default dry-run mode without `--apply`).
+   - Inspect the `Proposed declarative changes:` block. If lines prefixed with `>f` (modified/added files), `cd` (new directories), or `*deleting` appear, live profiles have drifted from declarative Git.
+   - If the output shows no proposed changes, declarative Git is in 100% parity with live profiles.
+2. **Declarative Git Layer Verification:**
    - Check the latest commit on remote Git repo (`git log -1` on `hermes-fleet-profiles`).
    - Verify working tree clean status (`git status`).
-   - Audit drift against live `$HERMES_ROOT/profiles/` (new/modified skills, SOUL.md, config.yaml, or newly activated profiles) to identify uncommitted changes.
-2. **Disaster Recovery Secrets Layer Audit:**
+   - Confirm local `main` is up to date with `origin/main`.
+3. **Disaster Recovery Secrets Layer Audit:**
    - Inspect offload volume (`/mnt/hermes-storage-offload/hermes-fleet-backups/`).
-   - Verify timestamps of the newest `<timestamp>-fleet-complete` declarative snapshot and `secrets-live-<timestamp>` directory against live updates.
+   - Verify timestamps of the newest `<timestamp>-fleet-complete` declarative snapshot and `secrets-live-<timestamp>` directory match the latest live changes.
    - Audit whether all active profiles and root-level tokens are captured in the latest secrets layer.
-3. **Pre-Backup Test Suite Gate:**
-   - Run `pytest -q` in repo root before executing any sync or backup. All policy and contract tests must pass 100% cleanly.
+4. **Post-Sync Verification Loop:**
+   - When drift is applied via `sync.sh --apply` and pushed to Git:
+     1. Run full test gates (`pytest -q`, `validate_fleet.py`, `validate_contracts.py`).
+     2. Create paired `<timestamp>-fleet-complete` and `secrets-live-<timestamp>` snapshots on offload storage with POSIX 700/600 permissions.
+     3. Re-run `bash scripts/sync.sh` dry-run to verify zero pending changes remain.
 
 ## Secrets Offload & Permission Invariants
 
