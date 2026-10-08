@@ -1,12 +1,12 @@
 ---
 name: editorial-news-publishing-v2
 description: Use when publishing news stories or editorial articles.
-version: 1.4.0
+version: 1.5.0
 author: Orion Fleet Lead
 license: MIT
 metadata:
   hermes:
-    tags: [editorial, news-publishing, journalism, news-paraphrase, photo-attribution, geo, ai-overview, schema-newsarticle, google-indexing-api, auto-publisher, grid-parity, mobile-antara-feed, dual-image-editorial, canonical-footer-sync, sitewide-boilerplate-lock]
+    tags: [editorial, news-publishing, journalism, news-paraphrase, photo-attribution, geo, ai-overview, schema-newsarticle, google-indexing-api, auto-publisher, grid-parity, mobile-antara-feed, dual-image-editorial, unit-economics-modeling, canonical-footer-sync, sitewide-boilerplate-lock]
     category: software-development
 ---
 
@@ -24,8 +24,9 @@ Use this skill when:
 3. Formatting featured news imagery and photo captions according to professional journalistic standards.
 4. Implementing Generative Engine Optimization (GEO) direct-answer boxes (BLUF) and HTML comparison tables for Google AI Overviews.
 5. Embedding contextual, high-converting native utility callouts (calculators, verification tools) without degrading editorial integrity.
-6. Deploying news stories via the automated publishing pipeline to ensure instant, synchronized presence across the homepage (`index.html`), archive (`blog.html`), sitemap, cPanel hosting, and Google Indexing API.
-7. Implementing or maintaining mobile-first news layouts (e.g. ANTARA News style headline + vertical list feed) while preserving multi-column desktop parity.
+6. Authoring business, e-commerce, or retail guide articles requiring concrete financial modeling (unit economics: HPP, platform commission fees, promo discounts, and net margin).
+7. Deploying news stories via the automated publishing pipeline to ensure instant, synchronized presence across the homepage (`index.html`), archive (`blog.html`), sitemap, cPanel hosting, and Google Indexing API.
+8. Implementing or maintaining mobile-first news layouts (e.g. ANTARA News style headline + vertical list feed) while preserving multi-column desktop parity.
 
 ---
 
@@ -51,8 +52,9 @@ Use this skill when:
 ### Step 2: Featured Image Optimization & Caption Attribution (Dual-Image Strategy)
 1. **Asset Optimization & Dual-Image Strategy**:
    - When an article requires both an opening featured image and an in-body figure:
-     - **Opening Featured Image**: Crop to standard 16:9 landscape aspect ratio (800x450), tightly framed on the key subject for above-the-fold hero impact. Convert to WebP (quality 80–85, under 40 KB) to ensure sub-100ms Largest Contentful Paint (LCP).
-     - **In-Body Contextual Image**: Use an uncropped or documentary 3:2 aspect ratio (800x533) that reveals full contextual details (e.g., contract papers on desk, pens, badges, background signage). Convert to WebP (under 40 KB).
+     - **Opening Featured Image**: Crop to standard 16:9 landscape aspect ratio (800x450 or 800x533), tightly framed on the key subject for above-the-fold hero impact. Convert to WebP (quality 80–85, under 65 KB) to ensure sub-100ms Largest Contentful Paint (LCP).
+     - **In-Body Contextual Image**: Use an uncropped or documentary 3:2 aspect ratio (800x533) that reveals full contextual details (e.g., mobile screens showing live broadcast UI, contract papers on desk, pens, badges, background signage). Convert to WebP (under 50 KB).
+     - **Multi-Asset Deployment Invariant**: When an article includes secondary figures in the body, the deployment pipeline must sync ALL referenced WebP assets to production hosting (`public_html/assets/img/`), not merely the primary featured image.
 2. **Photo Caption Attribution Standard**:
    - The `<span class="image-caption">` element positioned beneath the featured image must strictly function as a concise source attribution or press agency credit (e.g., `ANTARA FOTO`, `ANTARA`, `Reuters`, `Foto: Stuart MacFarlane / Arsenal FC via The Times`), not a narrative paragraph summarizing the article.
    - When the user explicitly requests an attribution token (e.g., "di bawah foto tulisan ANTARA" or "jangan lupa buatkan foto ini dari sumber mana"), place that exact credit string inside `<span class="image-caption">[CREDIT]</span>` verbatim (e.g., `Foto: Instagram @[user] / Dok. [Brand] via [Source]` or `Foto: Stuart MacFarlane / Arsenal FC via The Times`), centered directly under the image, without prepending redundant narrative text.
@@ -78,8 +80,14 @@ Use this skill when:
        </ul>
      </div>
      ```
-3. **Structured HTML Comparison Tables**:
-   - Present numerical comparisons (current period vs. prior period vs. global benchmark) in clean, semantic HTML tables wrapped in `<div class="table-responsive">` to prevent mobile horizontal blowouts.
+3. **Structured HTML Comparison & Unit Economics Tables**:
+   - Present numerical comparisons and financial simulations in clean, semantic HTML tables wrapped in `<div class="table-responsive">` to prevent mobile horizontal blowouts.
+   - **E-Commerce & Retail Business Modeling Standard**:
+     For retail, social-commerce, and UMKM articles, break down unit economics into four distinct, audited sections:
+     1. **HPP Riil (Modal Bersih)**: Bahan baku/grosir + kemasan/packaging (*ziplock/tag*) + upah tenaga kerja packing & lakban.
+     2. **Penetapan Harga & Diskon**: Harga coret katalog (*anchor price*) + potongan flash sale/event + voucher toko = Harga bersih dibayar pembeli.
+     3. **Beban Platform & Pemasaran**: Komisi kategori platform (misal 5%), biaya layanan gratis ongkir ekstra (3.5%), *payment fee* (1%), dan alokasi iklan *ads buffer* per unit.
+     4. **Laba Bersih Tunai (Net Profit Margin)**: Pencairan saldo bersih masuk dikurangi HPP dan iklan = Laba bersih tunai per unit & persentase margin sehat (minimal 20–30% untuk menyerap retur). Include a scaled simulation (e.g. 1 sesi live 250 unit = omzet, modal, potongan platform, ads, dan laba bersih tunai).
 
 ---
 
@@ -116,7 +124,7 @@ Whenever requested to create or publish a blog post, execute the **automated 7-i
 4. **Auto-Inject into Blog Archive (`blog.html`)**: Prepend the article card to `#articles-grid` with category metadata filter tags.
 5. **Auto-Update `sitemap.xml`**: Insert `<url>` entry with today's `<lastmod>` and priority `0.8`.
 6. **Auto-Update Indexing Monitor**: Register the URL in the automated indexing script (`gsc_indexing.py`).
-7. **Auto-Deploy to Production Hosting**: Concurrently upload the WebP image, new article HTML, `index.html`, `blog.html`, and `sitemap.xml` to cPanel `public_html/`.
+7. **Auto-Deploy to Production Hosting**: Concurrently upload all WebP images (featured and in-body), new article HTML, `index.html`, `blog.html`, and `sitemap.xml` to cPanel `public_html/`.
 8. **Auto-Push to Google Indexing API**: Submit `URL_UPDATED` for the new article URL, `blog.html`, and `index.html`.
 9. **Responsive Quality Gate**: Verify that `index.html` maintains zero horizontal scroll/overflow and zero orphan grid slots across desktop (1280px), tablet (768px), and mobile viewports (360px, 390px) following the injection.
 
@@ -125,6 +133,8 @@ Whenever requested to create or publish a blog post, execute the **automated 7-i
 ## 3. Pitfalls & Anti-Patterns
 
 - **Third-Party Heavy Widget Bloat (e.g. TradingView, External Tickers)**: Embedding heavy third-party market widgets (such as TradingView Ticker Tape) triggers 50+ background network requests, pulls >400 KB of chained script chunks, and blocks the CPU main thread running sparkline animations. Crucially, hiding the container with `display: none` on mobile does NOT stop the mobile browser from downloading all JS bundles. On mobile news layouts, top widgets push breaking news and lead headlines below the fold, breaking the ANTARA News pattern. If market data or tickers are required, build a native, lightweight pure CSS/HTML ticker (~2 KB) without third-party dependencies.
+- **Ignoring Secondary Figure Deployment in Pipelines**: Automated publishers that only deploy the primary featured image leave secondary documentary figures (e.g., in-body `<figure>` WebP files) missing on production cPanel servers. Always synchronize all referenced image assets in the publish script.
+- **Abstract/Vague Financial Advice in E-Commerce Content**: Publishing articles about online selling that only provide generic tips ("berikan diskon menarik", "pilih produk yang laku") without audited mathematical breakdowns (HPP, admin fees, ads, margin) produces thin content that fails Google AI Overview citation thresholds. Always anchor business guides in an audited unit economics table.
 - **Generator-Template Drift on Sitewide Boilerplate Changes**: Updating static HTML pages for sitewide elements (e.g., footer copyright line, navigation menus) without updating the article generator/builder template (`builder_hotmagazine.py` via `get_canonical_footer()`) causes future runs of the automated publisher to reintroduce deprecated boilerplate on newly created articles. Always update generator templates in lockstep with static files.
 - **Sequential cPanel Deploy Timeouts on Sitewide Sweeps**: Uploading 35+ HTML files sequentially via UAPI/proxy takes ~2–3 seconds per file (~80–120s total) and will exceed default 60s execution timeouts. When performing sitewide deploys, always allocate >= 240s timeout or deploy in prioritized batches.
 
