@@ -54,6 +54,8 @@ The DR secrets layer (`secrets-live-<timestamp>`) must be stored on offload stor
 | `$HERMES_ROOT/kanban.db` | `root.kanban.db` | Orchestration board database |
 | `$HERMES_ROOT/projects.db` | `root.projects.db` | Fleet project database |
 | `$HERMES_ROOT/verification_evidence.db`| `root.verification_evidence.db` | QA verification evidence ledger |
+| `$HERMES_ROOT/monetag_tokens.json` | `root.monetag_tokens.json` | Monetag platform OAuth token |
+| `$HERMES_ROOT/monetag_active_oauth.json` | `root.monetag_active_oauth.json` | Monetag active session state |
 | `$HERMES_ROOT/vault/` | `vault/` | Encrypted credential vault (`vault.key`, `vault.json.enc`) |
 | `$HERMES_ROOT/platforms/whatsapp/session/` | `root_whatsapp_session/` | Root WhatsApp bridge session |
 | `$HERMES_ROOT/memories/` | `root_memories/` | Root persistent memories |
@@ -66,6 +68,7 @@ The DR secrets layer (`secrets-live-<timestamp>`) must be stored on offload stor
 | `$HERMES_ROOT/profiles/<p>/cron/` | `<p>/cron/` | Per-profile cron schedules |
 | `$HERMES_ROOT/profiles/<p>/memories/` | `<p>/memories/` | Per-profile persistent memories |
 | `$HERMES_ROOT/profiles/<p>/whatsapp/` | `<p>/whatsapp/` | Per-profile WhatsApp credentials |
+| `$HERMES_ROOT/profiles/<p>/platforms/whatsapp/` | `<p>/platforms_whatsapp/` | Per-profile WhatsApp multi-device bridge |
 
 ## 4. Verification and Parity Cycle
 
@@ -73,6 +76,5 @@ The DR secrets layer (`secrets-live-<timestamp>`) must be stored on offload stor
 2. **Apply Drift:** Run `bash scripts/sync.sh --apply` to stage changes into `hermes-fleet-profiles`.
 3. **Validate:** Execute `python3 scripts/sanitize_config.py`, `python3 scripts/validate_fleet.py`, `python3 scripts/validate_contracts.py`, and `pytest -q`.
 4. **Push Git:** Commit and push to `origin/main`.
-5. **Snapshot Offload:** Generate paired declarative snapshot (`<timestamp>-fleet-complete`) and secrets layer (`secrets-live-<timestamp>`) on offload storage.
-6. **Enforce Permissions:** Apply `chmod 700` to directories and `chmod 600` to files in the secrets snapshot.
-7. **Parity Confirmation:** Re-run `bash scripts/sync.sh` dry-run; verify 0 proposed changes.
+5. **Automated Snapshot Offload:** Run `python3 /root/.hermes/profiles/orion/skills/devops/fleet-backup-and-recovery/scripts/backup_fleet_dual_layer.py` to generate paired declarative snapshot (`<timestamp>-fleet-complete`) and secrets layer (`secrets-live-<timestamp>`) on offload storage with strict POSIX 700/600 permissions.
+6. **Parity Confirmation:** Re-run `bash scripts/sync.sh` dry-run; verify 0 proposed changes.

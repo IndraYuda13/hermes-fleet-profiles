@@ -349,3 +349,8 @@ mcp_servers:
     url: https://n8n.indrayuda.my.id/mcp-server/http
     auth: oauth
     enabled: true
+  rea:
+    command: rea
+    args:
+    - mcp
+    enabled: true

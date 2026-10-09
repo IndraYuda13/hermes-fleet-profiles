@@ -1,7 +1,7 @@
 ---
 name: fleet-backup-and-recovery
 description: Use when syncing, backing up, or recovering fleet profiles.
-version: 1.6.0
+version: 1.7.0
 author: Hermes Fleet Architecture
 license: MIT
 metadata:
@@ -91,6 +91,7 @@ When auditing whether the fleet is currently backed up or has drifted:
 ## Secrets Offload & Permission Invariants
 
 When creating the Disaster Recovery Secrets Layer (`secrets-live-<timestamp>`):
+- **Automated Dual-Layer Execution:** Run the deterministic backup script `python3 /root/.hermes/profiles/orion/skills/devops/fleet-backup-and-recovery/scripts/backup_fleet_dual_layer.py` to create the paired `<timestamp>-fleet-complete` declarative snapshot and `secrets-live-<timestamp>` secrets layer with atomic 700/600 permissions.
 - **Atomic Permission Lockdown:** Immediately enforce POSIX permissions on the target directory:
   ```bash
   find "${SECRETS_DEST}" -type d -exec chmod 700 {} +
