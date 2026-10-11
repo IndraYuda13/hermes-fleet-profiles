@@ -658,6 +658,28 @@ When modernizing a portal homepage to match tier-1 editorial agencies (such as A
 
 ---
 
+### Step 19: Desktop Split-Workbench Layout (Sticky Control Sidebar + Fluid Output Stream)
+On wide desktop viewports (`lg` breakpoint, $\ge 992\text{px}$), stacking search controls and long output streams in a single vertical column creates wide-monitor fatigue and repetitive scrolling.
+1. **Sticky Control Rail (`col-lg-5` or `col-lg-4`):**
+   - Encapsulate inputs, selectors, and filters in a dedicated card.
+   - Enforce `position: sticky; top: 90px; z-index: 10; max-height: calc(100vh - 120px); overflow-y: auto;` so controls never clip on compact laptop displays.
+2. **Scrollable Output Stream (`col-lg-7` or `col-lg-8`):**
+   - Render detailed results, itineraries, or matching records in the fluid right column. Users scroll through results while search parameters stay pinned.
+3. **Mobile Transition ($\le 991\text{px}$):**
+   - Switch container to standard vertical flow (`flex-column`). Revert sidebar to `position: static;` so it does not occlude results.
+
+---
+
+### Step 20: High-Capacity Directory Progressive Rendering & Filter Batching
+Synchronously injecting hundreds of rich card components (200+ cards with badges, buttons, and icons) drops frame rates and spikes First Contentful Paint (FCP).
+1. **Bounded Initial Batch:** Render an initial batch (e.g. 24 cards) on load and on category filter changes to prevent DOM bloat.
+2. **Progressive "Load More" Expansion:** Append subsequent batches via a quiet action button ("Tampilkan Lainnya (+N)") without re-rendering existing DOM nodes or shifting scroll position.
+3. **Live Filter Count Badges:** Precompute category distributions and display count chips on filter buttons (`Semua (242)`, `BRT (30)`). Solid accent on active filter, subtle outline on inactive.
+4. **Multi-Field Instant Search:** Listen to `input` events, normalize queries (`trim().toLowerCase()`), match across identifier, title, tags, and category, and reset pagination limit on new queries.
+
+
+---
+
 ## 3. Pitfalls & Anti-Patterns
 
 - **In-flow mobile hamburger collapse bleed**: Using inline bootstrap collapse (`.collapse`) for complex desktop navigation unrolls nested submenus into the normal document flow on mobile screens, pushing editorial content down by 500px+ and causing container blowout. Always use an isolated off-canvas drawer (`position: fixed; transform: translateX(100%);`) with backdrop overlay and background scroll lock.

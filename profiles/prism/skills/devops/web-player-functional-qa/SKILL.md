@@ -142,7 +142,7 @@ const hasFocusVisible = await page.evaluate(() => {
 
 ## 6. Mock Data & Text Leakage Scanning (Anti-Slop Hardening)
 
-Never apply crude CSS syntax bans (such as banning `linear-gradient` or `backdrop-filter` in source code) during deterministic functional QA. Visual motifs are evaluated perceptually by LENS under taste scoring; PRISM validates data integrity and semantic contracts.
+Never apply crude CSS syntax bans (such as banning `linear-gradient` or `backdrop-filter` in source code) during deterministic functional QA. Visual motifs are judged perceptually by the visual-QA plane's taste scoring; functional QA validates data integrity and semantic contracts.
 
 ### Rendered DOM Leaf Node Scanning
 Scan only visible leaf node `innerText` to prevent false positives on `<script>` tags, inline styles, or defensive JavaScript logic:
@@ -192,38 +192,14 @@ Never use raw substring matches like `text.includes("undefined")` or `text.inclu
 - Store objects (`Alpine.store(...)`) do not inherit component lifecycle methods such as `this.$nextTick`.
 - Inside store methods, trigger DOM re-scans or icon updates with `setTimeout(() => { ... }, 50)` rather than calling `this.$nextTick()`.
 
-## 8. Fleet Parallel Verification & Handoff Contract (Stage 9)
-In multi-agent pipeline verifications where PRISM operates in parallel with LENS:
+## 8. Fleet Parallel Verification (Functional + Perceptual QA)
 
-### Dual-Plane Separation of Responsibilities
-- **PRISM (Deterministic Execution Plane)**: State machine transitions, form validation boundaries, route navigation contracts, ARIA/DOM tree accessibility mechanics (focus trapping, tabindex order), mock data leakage regex, and automated regression suites.
-- **LENS (Perceptual Rendered Plane)**: Rendered visual quality, taste rubric, macro-diversity, layout metrology, rendered pixel contrast, perceptual anti-slop, and motion feel.
+When deterministic functional QA runs in parallel with a perceptual/visual QA agent:
 
-### Mandatory Inputs Required from FRAME
-1. `BUILD_MANIFEST.json`: Exact `build_sha`, deterministic preview launch command, typecheck status, and lint status.
-2. `INTERACTION_CONTRACT.json`: Stable test selectors (`data-testid` or accessibility roles) and state machine transition tables. Never run tests against brittle Tailwind utility classes.
-3. `ROUTE_AND_FIXTURE_MANIFEST.json`: Explicit route map, 404 handling, and realistic fixture datasets (no empty placeholders).
-
-### Outputs Produced for ORION Release Gate
-1. `PRISM_VERIFICATION_REPORT.json`: Machine-readable results bound to exact `build_sha` covering all test domains.
-2. `PRISM_COVERAGE_MAP.json`: Reconciliation proving 0 unexercised state transitions against `INTERACTION_CONTRACT.json`.
-3. `REPRODUCIBILITY_RUNBOOK.md`: Single-line commands and environment seeds allowing identical test reproduction.
-4. `DEFECT_LEDGER.json`: Structured defect entries with severity (`BLOCKER`, `HIGH`, `MEDIUM`), failing assertion, target selector, and stack trace (emitted on failure).
-
-### Dual-Gate Independent Veto Invariant
-- `RELEASE_GATE = PRISM_PASS && LENS_PASS`. Never calculate an average score across functional and visual gates.
-- Defect routing goes to ORION as a structured report for unified dispatch to FRAME or AURORA, never direct conflicting directives between verifiers.
-
-### Concurrency & State Mutation Isolation
-- Functional QA is state-mutating (form submissions, error triggering, dialog toggles, local/sessionStorage writes); perceptual QA requires a quiescent DOM baseline.
-- When running in parallel, PRISM and LENS must never share a browser context, incognito session, or mutable storage partition. Always launch independent browser instances or isolated contexts with dedicated ephemeral storage.
-
-### Feature-Conditional Checks & Journey Gating (Anti-Goodhart Rule)
-- For conditional rules (e.g. "focus trap only if modal/dialog present", "form validation only if forms present"), never pass by omission alone.
-- PRISM must cross-reference required components against the journey specifications in `INTERACTION_CONTRACT.json`. If a journey mandates a modal, dialog, or form, but the DOM element is missing, emit `CONTRACT_VIOLATION_FAIL` rather than silently skipping the conditional check.
-
-### Accessibility Division of Labor (Axe-Core vs LENS)
-- Automated DOM contrast engines (axe-core) fail or flag false-positive `needs review` warnings on gradient, backdrop-filter, canvas, or semi-transparent composite layers.
-- PRISM owns structural, keyboard, and programmatic accessibility: ARIA roles, accessible name computation, focus management/trapping, tabindex ordering, and input labeling.
-- Perceptual color contrast over layered or composite backgrounds is formally delegated to LENS rendered metrology. Scope axe-core contrast checks strictly to solid, single-layer backgrounds to avoid deadlocks.
+- **Independent veto, never averaging:** `RELEASE_GATE = FUNC_PASS && VISUAL_PASS`. Never average scores across the two gates. Route defects to the release-gate dispatcher as a structured report; never issue direct directives between verifiers.
+- **State-mutation isolation:** functional QA mutates state (forms, dialogs, storage writes); perceptual QA needs a quiescent DOM. Never share a browser context, incognito session, or storage partition — launch isolated contexts with dedicated ephemeral storage.
+- **Anti-Goodhart gating:** a conditional rule (focus trap only if a modal is present, form validation only if forms exist) never passes by omission. Cross-reference mandated components against the journey contract; a required-but-missing element is `CONTRACT_VIOLATION_FAIL`, not a skipped check.
+- **Selector discipline:** test against stable selectors (`data-testid` or accessibility roles) from the interaction contract, never brittle styling classes.
+- **Accessibility division of labor:** automated DOM contrast engines false-positive on gradients, composites, and canvas — scope axe-core contrast to solid single-layer backgrounds and delegate layered perceptual contrast to rendered metrology. Structural/keyboard accessibility (ARIA roles, name computation, focus trapping, tab order) always stays with functional QA.
+- Fleet role manifests, artifact schemas (verification report, coverage map, defect ledger, runbook), and the full handoff contract: `references/fleet-qa-handoff-contract.md`.
 

@@ -1,7 +1,12 @@
 ---
 name: frontend-design
-description: Contract-first frontend implementation intelligence for FRAME; preserves AURORA-authored design intent and prevents implementation-time template normalization.
+description: "FRAME UI implementation, fleet visual QA & state contracts."
+version: 1.1.0
 license: MIT
+metadata:
+  hermes:
+    tags: [frontend, design-contract, visual-qa, state-contract, anti-template]
+    related_skills: [anti-ai-slop-web-design, anti-slop-ecommerce-architecture, impeccable]
 ---
 
 # Frontend Design Intelligence — FRAME
@@ -27,3 +32,6 @@ Distinctiveness should come from deliberate typography, composition, content tre
 - **Small patch in an established system:** consume the established system plus the concise delta spec.
 - FRAME may flag technical/accessibility constraints and propose the smallest coherent adjustment; it does not silently change the design thesis.
 - LENS judges the actual rendering; a design spec is not visual QA evidence.
+
+## Verification & fleet QA
+For fleet orchestration roles (ORION/AURORA/FRAME/LENS), the LENS 5-gate fail-fast QA pipeline, `data-ui-*` runtime schema contracts, synthetic mutation calibration, failure codes, and the macro-compositional diversity gate, load `references/orchestration-lens-visual-qa.md`.

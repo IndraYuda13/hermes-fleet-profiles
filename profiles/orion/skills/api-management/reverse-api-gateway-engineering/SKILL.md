@@ -620,3 +620,33 @@ When bridging web chat backends that possess native internal capabilities (Pytho
    - *Pitfall*: Inside containerized apps (e.g. Docker n8n), `localhost` or `127.0.0.1` points to the container itself, not the host VPS where the reverse gateway runs.
    - *Rule*: Bind the gateway or compatibility bridge to `0.0.0.0` (e.g. port 20129) and route container requests through the Docker network gateway IP (e.g. `http://172.19.0.1:20129/v1`).
    - *Architecture*: Run a lightweight compatibility bridge between containerized clients and host routers to handle `/responses` 404 fallback, `stream: false` enforcement, and Docker bridge ingress without modifying host router internals.
+
+---
+
+## 15. Reasoning Model Gateway Integration & Token Budgeting (DeepSeek-R1 / Thinking Models)
+
+When routing reasoning models (DeepSeek-R1, DeepSeek-V3 with reasoning paths, o1, or local quantized variants) through local reverse proxies or OpenAI-compatible gateways:
+
+1. **Token Budget Allocation (Reasoning Tokens + Output Tokens)**:
+   - Reasoning models emit hidden or explicit `reasoning_content` before generating the target response or structured JSON. Both the reasoning chain and the output payload bill against `max_tokens` (or `max_completion_tokens`).
+   - Capping `max_tokens` at standard defaults (2048 or 4096) causes reasoning to consume the budget, truncating the final JSON payload mid-stream (`finish_reason: "length"`, `Unterminated string in JSON`).
+   - *Rule*: Set `max_tokens` to at least `8192` (or $\ge 12288$ for extensive generations) when calling reasoning models for structured JSON output.
+
+2. **Client-Side HTTP Timeouts**:
+   - Deep reasoning models perform sequential chain-of-thought processing before emitting the first content tokens. Generating 500–800 words alongside a deep reasoning trace takes 40–70 seconds.
+   - Standard 30s or 60s client timeouts trigger `AbortSignal.timeout` before the gateway completes.
+   - *Rule*: Configure HTTP client timeouts to at least `120000ms` (2 minutes), or decouple execution into an asynchronous background worker queue with polling.
+
+3. **Explicit Framing (`stream: false` vs Streaming)**:
+   - Proxies (such as 9Router) negotiate SSE streaming by default when `stream` is omitted.
+   - Non-streaming consumers parsing the raw body receive chunk frames or trailing `data: [DONE]`, crashing JSON parsers.
+   - *Rule*: Always explicitly pass `stream: false` in completion payloads when expecting a standard JSON completion object from a gateway adapter.
+
+4. **Structured JSON Extraction & Fallback Parsing Pipeline**:
+   - Upstream backends may wrap structured output in markdown blocks (```json ... ```) or append terminal markers.
+   - Implement a layered sanitization pipeline: (1) strip trailing `data: [DONE]`, (2) strip markdown fences, (3) locate outer `{` and `}` if extraneous commentary wraps the object.
+
+5. **Latency Control & Suppressing Reasoning Overhead for Interactive Workflows (`enable_thinking: false`)**:
+   - Deep reasoning models generate 2,000–8,000 tokens of internal chain-of-thought by default. For interactive user-facing generation (narrative choices, autocomplete, dynamic forms), this inflates latency from 10–20s to 250–350+ seconds.
+   - *Rule*: For latency-sensitive structured generation where deep reasoning is unnecessary, pass gateway parameters to suppress reasoning: `chat_template_kwargs: {"enable_thinking": false}` or `thinking: {"type": "disabled"}`. Keep reasoning enabled for architecture audits, verification, and code generation.
+

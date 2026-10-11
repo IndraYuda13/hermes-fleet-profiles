@@ -86,6 +86,7 @@ Structured data provides machine-readable context directly to LLM crawlers and s
 ## 3. Metadata Consistency & Common Pitfalls
 
 - **Canonical URL Match**: The `<link rel="canonical" href="..." />` MUST match the live domain and subdomain exactly. Pointing canonicals to staging domains or temporary subdomains (e.g. `card.example.com` instead of `blog.example.com`) prevents search engines from indexing the page.
+- **Robots Snippet & Image Preview Directives**: Include `<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">`. Google AI Overviews and rich featured snippets depend strictly on standard snippet eligibility; setting restrictive `max-snippet` or omitting `max-image-preview:large` forces Google to downgrade previews to small thumbnails and prevents LLM extractors from pulling full answer passages.
 - **OpenGraph Synchronization**: Ensure `og:url`, `og:title`, `og:description`, and `og:image` match the canonical metadata.
 - **Breadcrumb Link Integrity**: Ensure breadcrumb hyperlinks in the HTML body do not contain stale/staging URLs.
 

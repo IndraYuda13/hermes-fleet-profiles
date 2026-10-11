@@ -57,6 +57,20 @@ For long-running autonomous worker pipelines:
 1. **Subscribe to Task Completion Notifications:** Use `hermes kanban notify-subscribe --platform telegram --chat-id "<chat_id>" --chat-type dm --notifier-profile <profile> --delivery-mode notify+wake <task_id>` when launching long tasks.
 2. **Release Turn Immediately:** Trigger dispatch (`hermes kanban dispatch`) and end the turn immediately. Do not execute synthetic polling or busy-wait loops; the runtime automatically wakes the session upon task completion or failure.
 
+### 5. Parallel Independent Verifiers & Asymmetric Completion Gate
+When dispatching parallel verifiers (e.g., functional verification by PRISM, security audit by SENTINEL, visual QA by LENS) against an implementer's frozen commit SHA:
+1. **Asymmetric Completion & Turn Yield:** Parallel verifiers complete at different times. When the first verifier reports `VERIFIED`, inspect its report, verify sibling status (`kanban show <sibling_id>`), and NEVER unlock the next phase or claim completion while any sibling verifier remains in flight. State partial status and yield the turn cleanly.
+2. **Database Contention Guard:** When verifiers execute parallel suites against a live database instance (PostgreSQL), run tests on distinct database names or isolated schemas/transaction rollbacks to prevent false-positive concurrency failures.
+3. **Scratch Directory Vitest Scope Guard:** Verifiers creating probe tests in scratch directories (`/root/.hermes/profiles/<role>/cache/scratch/`) hit runner failures if `vitest` config restricts includes to `tests/**/*.test.ts`. Execute probes via `node ./node_modules/.bin/tsx <script>` or pass `--config <scratch_config>`.
+
+### 6. Split Verdict Triage (VERIFIED vs REVISE)
+When one verifier issues `VERIFIED` and a sibling issues `REVISE`:
+1. **Preserve Validated Evidence:** Retain passing verifier results; do not discard them.
+2. **Isolate Concrete Defect Ledger:** Extract the exact list of blocking defects and acceptance criteria from the revising verifier.
+3. **Dispatch Targeted Remediation:** Assign a remediation task back to the original implementer referencing ONLY the failing items and the original commit SHA.
+4. **Lock Remediated SHA & Targeted Re-Verification:** Once the implementer commits the fix, capture the new commit SHA and dispatch a re-verification card specifically to the verifier that flagged the issue. If shared contracts changed, re-run all verifiers. Advance to downstream stages only upon unanimous approval.
+
+
 ## Pitfalls & Defensive Rules
 
 - **Do not cancel tasks during active dispatcher retries.** Terminating a task that timed out while its spawned retry is compiling creates orphaned processes and lost progress.

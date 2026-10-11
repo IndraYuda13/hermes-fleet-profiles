@@ -28,6 +28,15 @@ ladder, cheapest first.
 5. Real browser     — browser tool as the last, most expensive resort
 ```
 
+## Whole-host blocks are a different animal
+
+If every direct tool times out to a host (DNS resolves, TCP 80/443 filtered on
+all A records), the target is filtering datacenter IP ranges — not blocking one
+page. The ladder above recovers copies of single pages; for testing the host
+itself, re-route HTTP through the cloud browser backend's separate egress. The
+procedure and pitfalls (fetch harness, timing oracle, report scoping) live in
+the `web-surface-triage` skill's `references/datacenter-blocked-targets.md`.
+
 Run it in one shot with the bundled script:
 
 ```bash

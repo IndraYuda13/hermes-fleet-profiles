@@ -149,6 +149,32 @@ Weak or default credentials remain one of the most prevalent and high-impact vul
 - Implement jitter and proxy rotation to evade rate limiting
 - Parse CSRF tokens dynamically between requests
 
+### Offline hash cracking (leaked unsalted MD5)
+
+When SQLi (or a backup) dumps a password column as raw binary, read it as `HEX(col)` and crack
+it locally — a raw 16-byte value is usually an unsalted MD5 (`hashcat -m 0`). Ladder, stop at the
+first stage that hits:
+
+1. **Derivation + online first (cheap).** In Python, test whether the hash equals `md5(username)`,
+   `md5(NRP/ID)`, a `pc`-suffix-stripped variant, or a trivial transform. In parallel try an online
+   reverse lookup (nitrxgen, hashtoolkit) to catch common passwords instantly.
+2. **`hashcat -a 0 -m 0 -O hashes.txt rockyou.txt`**, then add `-r best64.rule`, then
+   `-r rockyou-30000.rule`.
+3. **Heavy rules last:** `d3ad0ne.rule`, `dive.rule`, `T0XlC.rule`, `InsidePro-PasswordsPro.rule`.
+4. **Numeric/pattern masks** for pins/birthdays/NRP: `-a 3 ?d?d?d?d?d?d?d?d`.
+
+Rules of thumb:
+- Reverse-lookup sites frequently return 403 / rate-limit from a datacenter IP. A 403 is the
+  service blocking you, NOT proof the password is strong — always run the local hashcat pass too.
+- **Duplicate hashes are signal.** If several accounts map to one hash, check whether those
+  accounts are the SAME person (a base account and a `...pc` workstation account). Identical hashes
+  across one person's own accounts means a per-user key, not a shared public password — do not
+  misread it as a "default password" finding.
+- 0 hits after dictionary + rules + masks on an unsalted MD5 almost always means machine-generated
+  passwords. Say "offline crack infeasible — needs live credentials or source access" rather than
+  grinding more rules, and **STOP hashcat once strategies repeat** (kill the process — on a shared
+  host never leave it burning CPU indefinitely).
+
 ### Wordlists
 
 No password wordlists ship in the sandbox by default — download what you need into `/home/pentester/tools/wordlists` at runtime:

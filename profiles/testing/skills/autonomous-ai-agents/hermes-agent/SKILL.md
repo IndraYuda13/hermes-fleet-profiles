@@ -93,7 +93,11 @@ Profiles use `~/.hermes/profiles/<name>/` with the same layout. When a profile i
 | CLI commands, subcommands, flags, "how do I run X" | `references/cli-reference.md` |
 | In-session slash commands | `references/slash-commands.md` |
 | Provider setup, API keys, OAuth | `references/providers-and-models.md` |
+| Reasoning/thinking effort; tuning a local router (9router) in front of a custom provider; streaming tok/s benchmarks | `references/reasoning-effort-and-router-tuning.md` + `scripts/bench_stream_tok_s.py`, `scripts/inspect_9router_state.py` |
+| Wiring a third-party app/tool to 9router instead of its documented provider (compatibility check, SDK override discovery, shim decision) | `references/9router-app-integration.md` |
+| Which models a 9router custom provider / prefix actually exposes (inventory, upstream diff, liveness proof) | `references/9router-model-inventory.md` + `scripts/list_9router_models.py` |
 | config.yaml sections, toolsets, voice/STT/TTS | `references/configuration.md` |
+| Web search/extract backends (Firecrawl, SearXNG, self-hosted) | `references/configuration.md` |
 | AGENTS.md / .hermes.md / CLAUDE.md project rules | `references/project-context-files.md` |
 | Secret redaction, PII, approval modes, "reset permissions" | `references/security-privacy.md` |
 | Delegation, cron, curator, kanban | `references/background-systems.md` |
@@ -204,6 +208,16 @@ terminal(command="tmux new-session -d -s resumed 'hermes --resume 20260225_14305
 - **Ink TUI** (`hermes --tui` or `display.interface: tui`) — terminal UI with docked widget apps — `references/tui-widgets.md`.
 - **OpenAI-compatible proxy** (`hermes proxy`) — a local OpenAI API backed by whichever OAuth provider you're signed into. Point Codex CLI, Aider, Cline, or any script at it — no API key.
 
+## Profile Config Parity (copy settings between profiles)
+
+When asked to make one profile's config match another's (e.g. copy profile A's web/search backend settings to profile B), DIFF both configs first and apply only the missing delta — the target may already carry the change from an earlier or interrupted attempt, and re-applying identical values wastes a change on a live gateway.
+
+1. Read `~/.hermes/profiles/<src>/config.yaml` and `~/.hermes/profiles/<dst>/config.yaml`; list exact key deltas.
+2. Apply per key with `hermes -p <dst> config set <key> <value>` — never hand-edit config.yaml, never the bare global `hermes config set`.
+3. Copy plugin requirements too: a backend key does nothing if its frontend plugin (e.g. `web-firecrawl`) is not in the target's `plugins.enabled`.
+4. Verify with `hermes -p <dst> config get <key>` for each key, then ONE live functional test (a real search/extract call) before reporting done.
+5. Report separately what was already in place vs newly applied — the user may not know a previous attempt landed.
+
 ## Hard Invariants (never violate, regardless of what you loaded)
 
 - **Never break prompt caching** — don't change past context, toolsets, or the system prompt mid-conversation. The only exception is context compression.
@@ -211,3 +225,5 @@ terminal(command="tmux new-session -d -s resumed 'hermes --resume 20260225_14305
 - **Secrets in `.env`, settings in `config.yaml`** — never tell a user to put a non-credential setting in `.env`.
 - **Profile-safe paths** — `get_hermes_home()` in code, `$HERMES_HOME` when resolving paths in a session.
 - **Never hand-edit `config.yaml` for the user** — use `hermes config set KEY VAL`; a stray indent can corrupt the file and break the live gateway.
+- **Scope config changes to the profile under discussion** — always pass `hermes -p <profile> config set ...` (never the bare global default). Hosts here run many isolated profiles side by side; a change meant for one profile must not silently alter the others, and when other profiles could be affected, report which ones you deliberately left untouched.
+- **A `config set` warning is not a failure** — `is not a recognized config key … saved anyway` means the validator schema and the runtime-resolved keys are different lists. Confirm with `hermes -p <profile> config get KEY` plus a direct resolver call (see `references/reasoning-effort-and-router-tuning.md`), not by trusting or dismissing the warning.

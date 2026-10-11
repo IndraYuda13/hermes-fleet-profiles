@@ -1,7 +1,7 @@
 ---
 name: fleet-v22-governance
 description: Fleet v3.2 Quality Governance Standard for multi-agent software engineering, visual QA, functional verification, independent review loops, revision integrity, disk guards, delegation controls, and release gates.
-version: 3.2.0
+version: 3.2.1
 author: Hermes Fleet Architecture
 license: MIT
 platforms: [linux, macos, windows]
@@ -52,6 +52,7 @@ Systemic operating rules for multi-agent software engineering, visual QA, functi
 ### Rule 4: Resource Ownership & Role-Scoped Capability Architecture
 Maintain strict role-scoped capability assignment. Do not load heavy MCP servers or broad toolsets into unassigned profiles for convenience.
 - **ORION (Chief of Staff):** Lightweight orchestrator. Strict zero-production-edit invariant (`orion_production_edits == 0`). Must NOT acquire Playwright, Puppeteer, Postman, Canva, Firecrawl, or broad coding toolsets. All code remediation is routed to specialists via Kanban.
+- **Kanban Board Scoping Invariant:** Always explicitly pass `--board <slug>` on CLI or `board="<slug>"` in `kanban_*` tools (e.g. `kanban_comment`, `kanban_list`, `kanban_show`). When multi-board workflows are active, omitting the board falls back to default/env board and triggers `unknown task` failures.
 - **LENS / FRAME:** Visual QA, Playwright browser automation, cross-browser rendering inspection, frontend engineering.
 - **AURORA:** Product design, Canva/design tools, visual architecture, Design DNA & Contract.
 - **FORGE:** Software engineering, GitHub MCP, Postman MCP, API integration, backend services.
@@ -62,11 +63,19 @@ Maintain strict role-scoped capability assignment. Do not load heavy MCP servers
 - **QUANT:** Market and quantitative trading research.
 - **NEXUS:** Documentation, SOPs, personal operations, and administration.
 
-### Rule 5: QA Side-Effect Boundary & Sandbox Isolation
-- **Strict Side-Effect Boundary:** During tasks classified as `READ-ONLY`, `TEST-ONLY`, or `ACCEPTANCE AUDIT`, QA workers (LENS, PRISM, Reviewers) are strictly forbidden from creating persistent production records, accounts, financial transactions, or mutating live balances without explicit user authorization.
+### Rule 5: QA Side-Effect Boundary, Sandbox Isolation & Probe Safety
+- **Strict Side-Effect Boundary:** During tasks classified as `READ-ONLY`, `TEST-ONLY`, or `ACCEPTANCE AUDIT`, QA workers (LENS, PRISM, Reviewers, SENTINEL) are strictly forbidden from creating persistent production records, accounts, financial transactions, or mutating live balances without explicit user authorization.
 - **Control Classification Pre-Execution:** Every control must be classified before interaction:
   - `SAFE_READ_ONLY` / `SAFE_EPHEMERAL` → Runtime execution allowed.
   - `PERSISTENT_WRITE` / `AUTH_CREATION` / `FINANCIAL` / `DESTRUCTIVE` → Prohibited in production; must use isolated ephemeral fixture, mock sandbox, or transaction rollback.
+- **Zero-Assumption on Non-GET HTTP Probes (Auditor Probe Safety):**
+  - Never assume an HTTP `POST`, `PUT`, `PATCH`, or `DELETE` request is "read-only" or will safely fail harmlessly on a live production URL, even when testing with intentionally malformed, incomplete, or dummy payloads. Internal framework validation, database defaults, or upstream gateway SDKs can still generate database records or trigger live financial invoices (e.g. creating pending QRIS invoices upstream).
+  - All exploratory fuzzing and vulnerability scanning on live endpoints MUST use strictly safe methods (`GET`, `HEAD`, `OPTIONS`) or provably non-existent synthetic IDs that short-circuit on read-only queries (e.g. year 2099 codes). Any mutating payload tests must run against an isolated replica DB or staging instance.
+- **Inadvertent Mutation Protocol (Disclosure & Non-Intervention):**
+  - If an audit probe accidentally creates a live production record:
+    1. Immediately publish a formal disclosure (`DISCLOSURE_*.md`) documenting the exact request headers, payload, timestamp, and row delta.
+    2. Measure financial invariants (wallet balances, ledger sums, external provider credits) against the frozen pre-audit backup anchor.
+    3. **DO NOT** perform reactive live rollbacks or ad-hoc cancellation requests (such as calling payment cancellation APIs which trigger secondary upstream provider mutations). Allow self-expiring records to expire naturally and document expected state lifecycle drift in an Anchor Delta Log.
 - **Mixed Evidence Hierarchy:** A skipped persistent control with suitable lower-level evidence (e.g. client validation assertion + mock integration test) is valid and preferred over unsafe production mutations.
 - **Adversarial Gate (SENTINEL):** SENTINEL must audit for `P0/P1 QA_UNAUTHORIZED_SIDE_EFFECT` whenever reviewer actions introduce unapproved production state mutations.
 
@@ -86,13 +95,24 @@ Specialists permitted to use subagent delegation (`delegate_task`) must follow s
 4. **Truncation & Max-Iterations Guard:** A truncated or iteration-capped child result is incomplete evidence and must never be counted as PASS.
 5. **Worktree Isolation:** Coding subagents (FRAME/FORGE) must execute inside isolated Git worktrees (`worktree_isolation: true`) to prevent branch collision.
 
+### Rule 8: Fleet Pre-Flight & End-to-End Readiness Verification
+- **Multi-Layer Readiness Probe:** When mobilizing the fleet prior to high-stakes missions or upon operational readiness requests, verify peer agents across three distinct layers:
+  1. *Catalog Discovery:* Query `a2a_list` to enumerate configured peer endpoints and ports.
+  2. *Daemon Liveness:* Probe HTTP endpoints (`curl -s http://127.0.0.1:<port>/.well-known/agent.json`) to confirm local server processes are listening.
+  3. *Active E2E Handshake:* Issue a single-turn `a2a_call` to each required specialist with a lightweight echo task (e.g. prompt for name, ready status, and core specialty).
+- **Pitfall — Static HTTP is Not Execution Readiness:** A listening port or HTTP 200 response on `.well-known/agent.json` only proves the HTTP daemon is up; it fails to catch exhausted model quotas, rate-limiting, corrupted context databases, or crashed inference workers. Only an end-to-end task completion (`status='completed'`) confirms the peer's LLM pipeline is actually capable of processing work.
+- **Batch Independent Probes:** Issue peer ping `a2a_call` requests concurrently across parallel tool calls or small batches with tight per-call expectations rather than serial blocking, preventing a single unresponsive peer from halting the entire pre-flight routine.
+- **Readiness Matrix Synthesis:** Synthesize pre-flight results into an explicit status matrix (Role, Live Status, Verified Specialty, Infrastructure State) before accepting or dispatching complex multi-agent missions.
+
 ## Verification Checklist
 
 - [ ] Exact Git commit SHA verified across PRISM, LENS, SENTINEL, and ORION.
 - [ ] Defect Disposition Ledger complete (0 unclassified P0/P1/P2 items).
 - [ ] QA Side-Effect Boundary verified: 0 unauthorized persistent records created by reviewers in production.
+- [ ] Zero non-GET live probes without isolated sandbox or guaranteed read-only short-circuit.
 - [ ] Root free disk space checked before browser runs; temp artifacts cleaned post-QA.
 - [ ] Role-scoped capability architecture respected without capability creep on ORION.
 - [ ] Independent reviewer invariant verified (`implementer != reviewer`).
 - [ ] Delegation control protocol enforced on subagents with schema validation and truncation guards.
 - [ ] Worktree isolation active and verified on parallel coding branches.
+- [ ] Fleet pre-flight verification: active E2E handshake confirmed on all required peer agents before multi-agent DAG dispatch.

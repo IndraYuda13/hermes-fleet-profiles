@@ -203,7 +203,7 @@ For self-hosted web scrapers and AI agents (e.g., Firecrawl, n8n, Vibe-Trading):
 
 ## Node.js / Next.js Daemons
 
-For Next.js standalone builds (like 9router), test PRs without modifying the global system path by isolating the build and running the standalone server directly. Next.js standalone requires the `PORT` env var instead of `-p` flags. Watch out for bash auto-restart scripts outpacing standard kills — use `fuser -k` on the port immediately before starting the test instance. Also covers resolving a 9router combo alias (e.g. `ag-opus-pool`) to its real upstream model via `/v1/models` plus the `combos` table in `~/.9router/db/data.sqlite`. See `references/nextjs-node-daemon.md`.
+For Next.js standalone builds (like 9router), test PRs without modifying the global system path by isolating the build and running the standalone server directly. Next.js standalone requires the `PORT` env var instead of `-p` flags. Watch out for bash auto-restart scripts outpacing standard kills — use `fuser -k` on the port immediately before starting the test instance. Also covers resolving a 9router combo alias (e.g. `ag-opus-pool`) to its real upstream model via `/v1/models` plus the `combos` table in `~/.9router/db/data.sqlite`. See `references/nextjs-node-daemon.md` for standalone mode, PR swapping, model resolution, and dashboard auth recovery.
 
 ## Firecrawl and browser-heavy scraping services
 

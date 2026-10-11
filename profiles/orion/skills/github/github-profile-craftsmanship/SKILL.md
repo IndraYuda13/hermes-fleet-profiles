@@ -53,4 +53,26 @@ When curating developer certifications, digital badges, and academic credentials
 - **Academic SKPI Compliance:** Enforce study-period date validity (`T_enroll <= T_issue <= T_defense`), exact name/NIM matching, vector PDF formats under 2MB, and directory naming conventions: `[YYYYMMDD]_[KATEGORI]_[PENERBIT]_[NAMA]_[ID].pdf`. See `references/skpi_compliance_checklist.md`.
 - **Anti-Spam LinkedIn Discipline:** Never auto-broadcast micro-badges to the LinkedIn main feed; add them quietly to Licenses & Certifications to avoid recruiter feed fatigue.
 
+## 9. Contact & Social Badges Craftsmanship
+When adding social channels or contact badges (Telegram, Discord, X, LinkedIn, Email) to a profile README:
+- **Case Preservation vs. Uppercase Degradation:** Never use Shields.io `style=for-the-badge` for usernames or contact handles. `for-the-badge` forces all text into uppercase (e.g. `@LemonTeaNyegerin` becomes `@LEMONTEANYEGERIN`), breaking case sensitivity, visual identity, and brand styling. Always use `style=flat-square` to preserve exact handle capitalization.
+- **Icon-Led Two-Segment Anatomy:** To avoid a flat single-color blob, construct a clean two-segment flat badge using `label=%20` and `labelColor=18181b` with `logo=<platform>&logoColor=white`:
+  `https://img.shields.io/badge/<Platform>-<@handle>-<brandColor>?style=flat-square&labelColor=18181b&logo=<platform>&logoColor=white&label=%20`
+  This frames the white glyph in a clean dark container on the left, paired with the platform brand color and readable handle on the right. Note: `logoWidth` has no effect on `flat-square` badge dimensions.
+- **GitHub Camo Proxy & Layout Constraints:**
+  - GitHub markdown headers (`###`) remain strictly left-aligned by GitHub CSS even when nested inside `<p align="center">`. For intentional centering, use explicit HTML `<h3 align="center">`, or keep headers left-aligned with centered badges and `<sub>` caption copy below.
+  - GitHub normalizes badge `<img>` height attributes through its asset proxy (`camo.githubusercontent.com`) and CSS aspect-ratio rules; inline `height="24"` will often render at the badge's native 20px height. Keep inline heights at 20–24px.
+  - **Live Verification Protocol:** Always verify target URL availability (HTTP 200 via `curl -I` on `t.me/...` or destination), verify GitHub Camo cache resolution, and inspect actual rendered pixels via browser + vision analysis on the live profile page before closing.
+
+## 10. Repository Initialization, Pre-Push Hygiene & Verification
+When publishing a local workspace or project to a new GitHub repository:
+- **Pre-Push Secret Audit:** Inspect `.gitignore` and `git status`. Run `git ls-files | grep -E "(\.env|secret|key|token)"` to verify no live credentials or un-gitignored `.env` files are tracked. Commit only `.env.example` templates.
+- **README Verification:** Confirm `README.md` documents project overview, features, tech stack, environment variables, and run/build commands before initial push.
+- **Remote Repository Creation:** Check existing remotes (`git remote -v && gh repo view <owner>/<repo>`). Default to `--private`:
+  ```bash
+  gh repo create <owner>/<repo> --source=. --remote=origin --private --push --description "<description>"
+  ```
+- **Verification:** Confirm branch tracking and fetch URL via `git remote -v` and `gh repo view <owner>/<repo>`.
+
+
 

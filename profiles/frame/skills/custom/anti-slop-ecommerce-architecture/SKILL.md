@@ -1,6 +1,10 @@
 ---
 name: anti-slop-ecommerce-architecture
-description: "Build clean, zero-slop digital catalogs and e-commerce UI."
+description: "Build zero-slop digital catalogs & topup storefront UI."
+metadata:
+  hermes:
+    tags: [ecommerce, catalog, storefront, topup, checkout, qris, anti-slop]
+    related_skills: [anti-ai-slop-web-design, frontend-craftsmanship, responsive-experience-engineering]
 ---
 
 # Anti-Slop E-Commerce & Catalog Architecture

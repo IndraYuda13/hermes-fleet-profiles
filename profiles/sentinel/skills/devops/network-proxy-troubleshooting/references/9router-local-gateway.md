@@ -86,8 +86,8 @@ RTK and external compression are separate:
 
 ## Common pitfalls
 
-- Do not copy terminal values elided with `...`. Retrieve an untruncated representation only when needed, and keep credentials inside the process performing the request.
+- Do not copy terminal values elided with `...`. Retrieve an untruncated representation only when needed — read the column as hex (`select hex(<col>) ...`) and decode locally — and keep credentials inside the process performing the request.
 - An `invalid character` parser error often means HTML, text, or SSE was treated as JSON. Capture raw content type and framing first.
 - Do not print full request logs or provider blobs; they can contain prompts, responses, credentials, and account identifiers.
 - Host-header rewriting does not override the custom server's trusted peer-IP decision.
-- If 9Router is service-managed, preserve its lifecycle environment and dynamic tokens by using the owning manager for any explicitly authorized restart.
+- If 9Router is service-managed, preserve its lifecycle environment and dynamic tokens by using the owning manager for any explicitly authorized restart. Never `fuser -k 20128/tcp` or otherwise kill the listener during an agent run routed through it — that disconnects the in-flight turn.

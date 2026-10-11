@@ -39,15 +39,10 @@ Do not reach for this unless explicitly requested or dealing with extremely host
 - **Decision:** Stick to `r.jina.ai` or `curl` for one-off tasks.
 
 ## 5. Cloudflare Turnstile Bypass (Turnstile-Solver-NEW + Patchright)
-When scraping/automating sites protected by Cloudflare Turnstile or Cloudflare Bot Management (e.g. `accounts.x.ai`):
-- Use `Turnstile-Solver-NEW` (`https://github.com/D3-vin/Turnstile-Solver-NEW`) with `patchright`.
-- Setup:
-  ```bash
-  git clone https://github.com/D3-vin/Turnstile-Solver-NEW /root/projects/Turnstile-Solver-NEW
-  pip install patchright quart rich psutil
-  patchright install
-  echo "http://20.192.4.173:33101" > /root/projects/Turnstile-Solver-NEW/proxies.txt
-  cd /root/projects/Turnstile-Solver-NEW && python3 api.py
-  ```
-- Always attach node-1 proxy (`http://20.192.4.173:33101`) to maintain clean IP reputation.
-- For in-depth architecture evaluation, Camoufox/Gecko shadow-DOM click fixes, and browser pooling mitigations, see `references/turnstile-solver-architecture-and-mitigations.md`.
+
+For scraping/automating sites protected by Cloudflare Turnstile or Cloudflare Bot Management:
+
+- Use `Turnstile-Solver-NEW` (`https://github.com/D3-vin/Turnstile-Solver-NEW`) with `patchright` (a patched Playwright fork that keeps a native, human-like fingerprint).
+- Setup: clone the repo, `pip install patchright quart rich psutil`, `patchright install`, then run its `api.py`.
+- Always route solves through a clean-reputation proxy (write `http://<proxy-ip>:<port>` to the solver's `proxies.txt`) — datacenter or repeatedly-used IPs depress Turnstile pass rates.
+- For engine benchmarks, persistent-browser vs cold-start trade-offs, Gecko/Camoufox shadow-DOM click fixes, UA/fingerprint hardening, and route-interception wildcard rules, see `references/turnstile-solver-architecture-and-mitigations.md`.

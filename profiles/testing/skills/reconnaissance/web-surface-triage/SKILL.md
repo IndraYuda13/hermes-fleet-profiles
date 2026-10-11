@@ -1,7 +1,7 @@
 ---
 name: web-surface-triage
 description: Separate real web exposures from scanner false positives.
-version: 1.0.0
+version: 1.1.0
 author: Nous Research
 license: MIT
 metadata:
@@ -20,6 +20,8 @@ Discovery (see `asset-discovery`) produces hundreds of hosts and thousands of sc
 - After a subdomain/inventory pass, when you have a list of live hosts and a pile of scanner output.
 - Any time a scanner or wordlist reports an "exposure" you have not personally confirmed.
 - Before reporting: every finding must survive this triage.
+- A single target URL handed to you with no scanner output — treat the page itself as the discovery pass: fingerprint, extract nav/version/asset intel from the HTML, then run the platform baseline (WordPress: `references/wordpress-surface-baseline.md`).
+- A target that times out from every sandbox tool while DNS still resolves — the host filters datacenter IP ranges. Re-route the whole test through the cloud browser's separate egress (`references/datacenter-blocked-targets.md`).
 
 ## Procedure
 
@@ -47,6 +49,7 @@ Judge a candidate by **`Content-Type` + body content**, not by status code. A 20
 ## Recovering endpoints without brute force
 
 - **Read login links, not guesses.** `href="/login"`, `href="/sso"`, `href="/admin"` reveal the real auth path; requesting guessed variants (`/oauth/authorize`, `/.well-known/openid-configuration`) blind wastes requests and usually 404s.
+- **Inventory every external host the site's own menus link to, then resolve each.** Menu/footer links to third-party domains are part of the trust surface: harvest `https?://` hosts from the nav HTML, check the A record, and fetch the page. A linked domain with no A record (registrar MX only) or serving "for sale" content is burnable — anyone can re-register it and host a phishing portal under the official menu's label. That is a High supply-chain finding, not a dead link.
 - **Decode mangled redirect JavaScript.** Sites that redirect client-side often emit garbage because the URL was embedded unquoted, e.g. `top.location=Jam.BMKG` came from `location="https://jam.bmkg.go.id/"` mangled by the template. When a redirect target is a bare token, `grep -oE 'https?://[a-z0-9.-]+' <bundle>` and test the plausible hosts twice before trusting it — do **not** treat a crafted-looking hostname as a valid domain.
 - **Follow the app's SSO link to find the IdP.** The app that serves the login link is usually un-challenged even when the IdP is bot-walled; its 302 `Location` gives the authorize URL, realm, and `client_id`. Pivot there, then apply the `oauth` skill's redirect tests.
 
@@ -72,8 +75,11 @@ Judge a candidate by **`Content-Type` + body content**, not by status code. A 20
 - **Framework-independence:** the same patterns (hidden API called from login JS, action-by-flag params, `<dbname>.sql` at root) recur across hand-rolled PHP school/attendance/absensi apps. Fingerprint the stack first, then apply these checks before broad wordlist scans.
 - **A 200 to an arbitrary path is the default behaviour of an SPA, not a finding.** Confirm the `Content-Type` and body before writing anything down.
 - **A WAF block page can arrive with HTTP 200.** Save the raw body and read it; block wording means blocked.
-- **Do not disable TLS verification (`curl -k`) by reflex.** A valid cert is identity evidence; a cert-verification error is itself informative and may indicate an internal name or a misissued cert.
+- **Do not disable TLS verification (`curl -k`) by reflex.** A valid cert is identity evidence; a cert-verification error is itself informative and may indicate an internal name or a misissued cert. Inspect first: `echo | openssl s_client -connect host:443 -servername host -showcerts | grep -E ' s:| i:'` — a leaf-only chain (no issuer entries beyond the leaf) still passes browsers via AIA fetch but breaks curl/openssl and non-browser API clients, and the incomplete chain is itself a Low finding. Record it, then proceed with `-k` noting the justification.
 - **A blocked request is not a clean result.** If a WAF challenge stops you testing a host, mark it **untested**, not "no issue" — the test never ran.
+- **Fingerprint the WAF before pacing the test, then stay low-and-slow.** An active WAF plugin (Wordfence etc. — its REST namespace in `/wp-json/` gives it away even when page HTML hides it) is compatible with a complete triage: single curls or pools ≤8 workers, tens of requests spread over tens of minutes, zero credential guessing. Bursts convert a clean finding set into a ban that marks the host untested.
+- **Parameter-validation errors enumerate server state — probe with a bogus value for a required param, never a real one.** `400 rest_missing_callback_param` means the route dispatched to validation before any permission check; `401/403 rest_forbidden` at the same spot means auth is enforced. When the error lists accepted values (e.g. every installed plugin slug), that list is already an unauth inventory disclosure. Follow with all required params set but ids/slugs that cannot exist, and never supply the final value that completes a state-changing flow (save/rollback/activate).
+- **Listed ≠ active.** A component revealed by inventory is only live attack surface if its code loads: confirm a known asset (`readme.txt` for the version, a css/js for load state — a 404 asset usually means the plugin is inactive) before scoring any CVE against it.
 - **Do not claim impact you did not reproduce.** An RCE whose trigger route returns 404 is not an RCE; label it needs-validation and keep the narrative factual.
 - **A suspiciously synthetic dataset** (generic names, mixed public email domains, an obvious "backup admin" row) is often a canary planted to catch researchers who over-exploit. Report the exposure; do not download or exfiltrate the full artifact.
 

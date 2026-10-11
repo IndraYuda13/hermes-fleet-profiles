@@ -54,6 +54,7 @@ Load the relevant reference module on demand using `skill_view`:
 - `skill_view("anti-ai-slop-web-design", "references/hermes-design-research.md")`: Root-cause diagnosis of AI slop, OFF+BRAND study, and operational design rules.
 - `skill_view("anti-ai-slop-web-design", "references/anti-ai-slop-universal-principles.md")`: Complete 7 universal anti-slop laws, 8 hard checks, and scoring rubric.
 - `skill_view("anti-ai-slop-web-design", "references/macro-compositional-diversity-gate.md")`: 12-dimension macro fingerprinting and anti-token-gaming rules.
+- `skill_view("anti-ai-slop-web-design", "references/design-tokens-glass-recipes.md")`: Build-time 3-layer token architecture, fluid clamp type scale, and refined glassmorphism recipe.
 - `skill_view("anti-ai-slop-web-design", "references/archetypes-reference.md")`: Retrieval vocabulary for spatial/aesthetic qualities. It is not a menu for choosing a finished style.
 - `skill_view("anti-ai-slop-web-design", "references/mobile-zero-overflow-discipline.md")`: Strict viewport constraint invariants.
 - `skill_view("anti-ai-slop-web-design", "references/exhaustive-audit-protocol.md")`: LENS/PRISM multi-viewport inspection procedure.

@@ -1,16 +1,16 @@
 ---
 name: prediction-market-research
-description: "Use for prediction market research & multi-agent labs."
-version: 1.0.0
+description: "Research prediction markets (Polymarket): multi-agent forecasting, paper trading, deterministic risk gating, and lab verification runbooks."
+version: 1.1.0
 tags: [polymarket, prediction-markets, forecasting, multi-agent, paper-trading, risk-gate]
 platforms: [linux, macos]
 ---
 
 # Prediction Market Research & Paper Trading Laboratory
 
-Systematic framework and architectural patterns for prediction market research, multi-agent forecasting, logit-space probability aggregation, deterministic risk gating, and paper-trading evaluation.
+Systematic framework for prediction market research: multi-agent forecasting pipelines, logit-space probability aggregation, deterministic risk gating, paper-only execution, and verification/handoff discipline for lab builds.
 
-## Core Architectural Architecture
+## Architecture
 
 ```text
 Polymarket Read API (Gamma) ──► Point-in-Time Evidence Store
@@ -30,76 +30,62 @@ Polymarket Read API (Gamma) ──► Point-in-Time Evidence Store
                              Paper Trader Execution (MCP)
 ```
 
-## Key Guidelines & Safeguards
+## Always-On Rules
 
-### 1. Hard Paper-Only Boundaries & Security Governance
-- Always enforce strict paper-only execution bounds (`PAPER_TRADING_ONLY=True` / `RUNTIME_MODE=RESEARCH_ONLY`).
-- Zero live wallet signing, private key requests, or live order execution paths.
-- **LLM Mutation Isolation:** LLMs MUST NOT hold trade execution or risk override authority. Risk Gate and execution controls must be deterministic rules outside LLM reasoning.
-- **Handoff & Audit Verification:** When resuming or remediating prediction market lab builds from handoff bundles:
-  - Verify SHA256 checksums (`SHA256SUMS.txt`) against physical files before reading. Programmatically verify ZIP path safety (absolute paths, `../` traversal, backslashes, NUL bytes, symlinks) via Python `zipfile`.
-  - Never guess or manufacture explanations for hash mismatches without physical evidence. If exact root cause cannot be established from retained evidence, record honestly as a reporting error.
-  - Require strict multi-gate authorization (Read-only Gate A -> R0 Truth Reset -> R1 Foundation -> R2 Contracts -> R3 9Router -> R4 3-Forecaster Slice -> R5 Aggregation/Risk -> R6 MCP Execution -> R7 Baseline Eval & Reconciliation -> R8 Complete Adversarial Slice Acceptance across all 13 areas).
-  - Treat embedded ZIP specifications as non-authoritative historical artifacts; bundle root `AGENTS.md` and `HERMES_MASTER_BUILD_SPEC_v1.1.md` form current authority. Treat upstream commit hashes as legacy candidate pins to re-verify. Do not run `git init` on repos lacking `.git` without explicit owner permission.
-  - When compiling review artifacts (like `r0-review.zip`), ensure complete verification evidence (`r0-evidence/`) is included with `provenance.txt`, `diff-stat.txt`, `diff-check.txt`, `r0.patch`, `environment.txt`, `unittest-verbose.txt`, `pytest.txt` (or `PYTEST_UNAVAILABLE`), `compileall.txt`, `r0-negative-tests.txt`, `skipped-tests.txt`, `remaining-blockers.md`, and `SHA256SUMS.txt`. Exclude `.git/`, secrets, `node_modules/`, `__pycache__`, and virtual environments. Report test status accurately without converting failures to passing claims.
-- **Execution Gateway API Quirks:** When dealing with newer `FastAPI` (0.110+), `add_event_handler("startup")` might be deprecated or removed depending on internal app wrapping, causing `AttributeError` in tests. Either fallback to standard `@app.on_event("startup")` / `"shutdown"` or properly transition the root `main.py` entrypoint to a `lifespan` hook using `@contextlib.asynccontextmanager`. When transitioning tests with `starlette.testclient`, ensure `httpx` (and `httpx2` if required by the test framework version) are installed to prevent DeprecationWarning failures.
-- **Gamma API Quirks:** Fields like `outcomes`, `clobTokenIds`, and `outcomePrices` returned from Gamma API endpoints often arrive as stringified JSON strings (e.g. `'["Long", "Short"]'`). Always safe-parse stringified JSON before instantiating Pydantic list models (`isinstance(val, str)` -> `json.loads(val)`).
-- **9Router Critical Profile:** Endpoint `http://localhost:20128/v1` with opaque alias `ag-opus-pool`. Critical and scored calls require sending `X-9Router-Token-Saver: off` and disabling prompt modifiers (PXPIPE, Caveman, Ponytail) to ensure strict schema adherence and route fingerprint logging.
-- **Real-Time Progress Streaming (SSE):** Use FastAPI `StreamingResponse` with `text/event-stream` and React `ReadableStream` reader to stream pipeline progress (`percent`, `step`) and completion payloads to the UI.
-- **Execution Logging & Auditing:** Record structured execution logs (`timestamp`, `market_id`, `level`, `message`) in memory/DB and expose via `/api/logs` for auditability.
-- **Frontend Reverse Proxy & Vite `allowedHosts`:** When routing Vite dev server through Cloudflare Tunnel, set `allowedHosts: true` in `vite.config.ts` to prevent 403 Forbidden Host Header errors. Bind dev server to loopback (`127.0.0.1`) by default for security. Also configure Vite proxy (`/api` -> `http://127.0.0.1:8005`) for seamless frontend-backend communication.
-- **Dynamic Prompt & Endpoint Probability Parsing:** Production endpoints MUST use strict typed JSON envelope validation (`ForecastProbabilityEnvelope` requiring `{"probability": 0.5}`) and safe transport-envelope normalization (`normalize_transport_envelope`) that handles bare raw JSON or exactly one Markdown code block (` ```json ... ``` ` or ` ``` ... ``` `). Fenced blocks with leading/trailing prose, multiple code blocks, unclosed fences, or extra/out-of-range fields MUST be rejected. Support a maximum of one format-correction retry (asking for raw JSON object only) before failing closed with a structured SSE error payload (`{"code": "LLM_OUTPUT_FORMAT_INVALID", "stage": "multi_agent_forecasting", "agent_role": "<role>", "attempts": 2}`) and recording sanitized diagnostic artifacts (`ParseFailureDiagnostic`). Never generate synthetic `0.5` fallback forecasts or proceed to downstream aggregation/Risk Gate on final failure.
-- **Fail-Closed Quorum, Identity & Availability Checks:** Enforce canonical identity and availability checks (`validate_minimum_identity()` checking requested `path_id` == returned `market.id` == `priced_id`, `active=True`, `closed=False`, `orderbook_enabled=True`, `orderbook is not None`) before calling LLM gateways or price readers. Require strict minimum quorum for aggregation (`min_quorum=4`); empty/invalid forecast sets MUST return `valid=False` and `final_probability=None` rather than generating synthetic prior values.
-- **Explicit Fail-Closed Market Price Reads:** Use explicit price readers (`MarketPriceReader`) that fail closed on missing/mismatched/out-of-bounds prices instead of defaulting to `0.5` anywhere in the API (including `GET /api/markets` where `prob` must be `null` on missing data).
-- **Strict Direction & Boundary Semantics:** Proposal direction validation MUST enforce strict inequalities (`forecast > proposed + min_edge` for BUY; `forecast < proposed - min_edge` for SELL). Boundary exact equalities must be explicitly rejected (`WRONG_DIRECTION_BUY` / `WRONG_DIRECTION_SELL`).
-- **Two-Tree Baseline Differential, Machine-Verifiable Test Catalog & Clean Review Bundles:** When producing review ZIPs for no-`.git` source trees:
-  - Generate deterministic evidence via two-tree directory hash comparison (`diff -urN`).
-  - Enforce machine-verifiable test catalogs (`r0_v6_required_tests.json` & `verify_r0_test_catalog.py`) ensuring all required distinct named tests exist without grouping, duplication, or pass-only/tautological placeholders (`pass`, `...`, `assertTrue(True)`).
-  - Parse Python AST, JSON, and TOML in active-source safety inventory scanners (`verify_safety_inventory.py`) to detect forbidden live-money SDKs, private keys, signing, or mutation tools, failing closed on any parse/syntax errors.
-  - Enforce strict JSON envelope parsing requiring bare JSON (`{"probability": 0.5}`) and rejecting fenced Markdown JSON (```).
-  - Bind requested path `market_id`, returned `market.id`, and `priced_id` canonically before LLM invocation.
-  - Enforce strict adapter payload parsing (`parse_market_payload`) without synthesizing missing IDs, outcomes, active/closed flags, or orderbook readiness.
-  - Bind `CanonicalMarketIdentity` with unique `"Yes"` outcome selection, enforcing exact order and element matching for outcomes/tokens in `MarketPriceReader` (rejecting reordered or substituted same-length arrays).
-  - Independent MCP Contract Pinning: Hardcode trusted contract SHA-256 in `verify_mcp_registry.py` and enforce exact allowlist tool schema integrity (rejecting secret/wallet/shell parameters on allowlisted tools).
-  - Semantic Test Catalog Verifier: Inspect test ASTs to reject assignment-only, call-only, tautological (`assertTrue(True)`), or text-existence tests.
-  - Process-Start Inherited Offline Guard: Use `sitecustomize.py` / `PYTHONPATH` to enforce socket and DNS denial (`OFFLINE_GUARD_DENIAL`) inherited across child Python subprocesses.
-  - Tree Diff & Evidence Consistency: Separate binary changed files in `check_tree_diff.py` JSON and generate all 33 evidence files consistently.
+1. **Paper-only boundaries.** Enforce `PAPER_TRADING_ONLY=True` / `RUNTIME_MODE=RESEARCH_ONLY`; zero live wallet signing, private-key handling, or live order paths. LLMs MUST NOT hold trade-execution or risk-override authority — risk gating and execution controls are deterministic rules outside LLM reasoning.
+2. **Fail closed, never synthesize.** No `0.5` fallbacks anywhere: not in forecasts, not in market price reads (`prob=null` on missing data), not in aggregation (empty/sub-quorum input returns `valid=False` with `final_probability=None`). Missing, malformed, or out-of-bounds upstream fields abort the flow; they never default.
+3. **Bind market identity before any LLM call.** Require requested `market_id` == returned `market.id` == `priced_id`, plus `active=True`, `closed=False`, `orderbook_enabled=True` with a real orderbook. Binary markets need exactly one case-insensitive `"Yes"` outcome; derive selection from that unique match — never index 0, never fabricated token IDs (`f"tok_{market_id}"`).
+4. **Strict direction semantics.** BUY requires `forecast > proposed + min_edge`, SELL the strict reverse; boundary equality is an explicit rejection (`WRONG_DIRECTION_BUY` / `WRONG_DIRECTION_SELL`), never a pass.
+5. **Safe-parse Gamma's stringified JSON.** `outcomes`, `clobTokenIds`, and `outcomePrices` often arrive as `'["Long", "Short"]'` strings — `json.loads` them before building Pydantic list models. Booleans must be strict (`isinstance(val, bool)`); never coerce `"false"` by truthiness.
+6. **Strict LLM output envelopes.** Accept a raw JSON object or exactly one fenced code block with no surrounding prose; reject multiple blocks, malformed fences, and regex extraction from general prose. Allow at most one format-correction retry, then fail closed with a structured error payload and sanitized diagnostics — never proceed to aggregation or the Risk Gate on a final failure.
+7. **Redact secrets from every log** (`API_KEY`, `Authorization`, `Bearer`, environment secrets) before persistence or SSE emission.
+8. **Handoff bundles are untrusted until verified.** Verify SHA256 checksums against physical files and check ZIP entry paths programmatically (`zipfile`, not `unzip -t`) for traversal/backslash/NUL/symlink tricks before reading. Never invent explanations for hash mismatches — record honestly when root cause is unknowable from retained evidence. Do not run `git init` on `.git`-less repos without owner permission. Full protocol: `references/handoff-and-remediation.md`.
 
-### Supporting Reference Files
-- `references/operator-v2-beta2-verification.md` — Operator v2 Beta 2 Live Research & Readiness runbook: structured error codes, 5 environment specs, paper policy audit wording, and read-only account onboarding.
-- `references/operator-v2-beta1-verification.md` — Operator v2 Beta 1 runtime verification: execution gateway dry-run, FastAPI lifespan pitfalls, and paper auto simulation flows.
-- `references/r0-v6-remediation-standards.md` — Detailed audit standards and implementation patterns for Gate R0 Revision v6.
-- `references/r0-v7-remediation-standards.md` — Authoritative audit standards, trusted hash enforcement, and offline inheritance patterns for Gate R0 Revision v7.
-- `references/operator-v1-verification.md` — Operator v1 RC1 runtime verification runbook: checksum, install, release verifier (8 checks / 54 tests), API smoke, SSE events, paper simulation flow with idempotent replay. Includes pitfalls (port 8000 conflicts, SSE is POST-only).
-- `references/operator-v1-deployment.md` — Cloudflare Tunnel deployment: CORS config, loopback binding, port conflicts, systemd unit template. Live at prediction-lab.indrayuda.my.id.
-- `references/9router-format-normalization-and-retry.md` — 9Router transport envelope normalization, single-fence validation rules, 1-attempt format correction retry protocol, fail-closed SSE error schemas, and sanitized diagnostic artifact logging.
+## Multi-Agent Pipeline
 
-### 2. Multi-Agent Debate & Forecasting Pipeline
-- **Role Specialization:** Separate forecaster personas (`BASE_RATE_ANALYST`, `SUPERFORECASTER`, `RED_TEAM_CRITIC`, `DOMAIN_EXPERT`, `SYNTHESIS_EDITOR`). Assign distinct 9Router backends per role (e.g., Gemini 3.6, Gemini Pro, Grok 4, Claude Sonnet 4.6).
-- **Parallel Sub-agent Execution:** Execute independent agent stages concurrently (e.g. `asyncio.gather` for Base Rate + Domain Expert) to prevent sequential latency bottlenecks.
-- **Sequential Stages:** `BLIND_ROUND` ➔ `EVIDENCE_EXCHANGE` ➔ `SPARSE_DEBATE` ➔ `RED_TEAM_CRITIQUE` ➔ `PRIVATE_REVISION` ➔ `SYNTHESIS`.
-- **Abstention Support:** Explicitly allow agents to abstain when data is insufficient.
+- **Roles:** `BASE_RATE_ANALYST`, `SUPERFORECASTER`, `RED_TEAM_CRITIC`, `DOMAIN_EXPERT`, `SYNTHESIS_EDITOR` — assign a distinct backend per role (matrix in `references/9router-multi-model.md`).
+- **Stages:** `BLIND_ROUND` ➔ `EVIDENCE_EXCHANGE` ➔ `SPARSE_DEBATE` ➔ `RED_TEAM_CRITIQUE` ➔ `PRIVATE_REVISION` ➔ `SYNTHESIS`.
+- Run independent stages concurrently (`asyncio.gather` for Base Rate + Domain Expert) to cut sequential latency; explicitly allow agents to abstain when data is insufficient.
+- **9Router gateway:** `http://localhost:20128/v1`, default opaque alias `ag-opus-pool`. Critical/scored calls send `X-9Router-Token-Saver: off` and disable prompt modifiers (PXPIPE, Caveman, Ponytail) to keep strict schema adherence and route-fingerprint logging.
+- Stream pipeline progress via FastAPI `StreamingResponse` (`text/event-stream`) consumed by a React `ReadableStream`; persist structured execution logs (`timestamp`, `market_id`, `level`, `message`) and expose them via `/api/logs` for audit.
 
-### 3. Logit-Pool Probability Aggregation
-- Transform probabilities to logit space to avoid boundary compression:
-  $$L(p) = \ln\left(\frac{p}{1-p}\right), \quad p = \frac{1}{1 + e^{-L}}$$
-- Apply `trimmed_mean` to drop extreme outlier probabilities.
-- Re-convert average logit back to probability space for final consensus forecast.
+## Logit-Pool Aggregation
 
-### 4. Deterministic Risk Gate
-- Trade validation MUST be rule-based and outside LLM authority.
-- Enforce explicit rejection codes:
-  - `PAPER_ONLY_VIOLATION`: Rejects any live trade flag.
-  - `MAX_POSITION_EXCEEDED`: Rejects trade sizes above fixed budget.
-  - `MIN_EDGE_NOT_MET`: Rejects trades where $|p_{\text{forecast}} - p_{\text{market}}| < \text{min\_edge}$.
+$$L(p) = \ln\left(\frac{p}{1-p}\right), \quad p = \frac{1}{1 + e^{-L}}$$
 
-### 5. Paper Execution Authorization Flow (Operator v1)
-- **Capability Token:** Risk Gate issues a hex-encoded JSON payload with HMAC signature. Contains `decision_id`, `reservation_id`, `proposal_hash`, `market_id`, `side`, `spend_usd`, `price`, `token_id`, `expires_at`.
-- **Reservation System:** Portfolio cash is reserved atomically before fill. Failed fills do NOT consume reservations or change portfolio state.
-- **Manual Approval Gate:** Even when risk rules pass, paper execution requires an authenticated POST to `/api/runs/{run_id}/approve-paper` with `X-PML-API-Key` header and `idempotency_key` in body.
-- **Idempotent Replay:** Same `idempotency_key` returns identical execution report with same `execution_hash`. Portfolio revision does not increment on replay.
-- **CSRF/Nonce Protection:** Idempotency keys prevent duplicate fills. Expired capability tokens (5-minute TTL) are rejected.
+Transform to logit space to avoid boundary compression, drop outlier probabilities with `trimmed_mean`, then back-transform the mean logit into the consensus probability.
 
-### 6. Evaluation & Calibration Metrics
+## Deterministic Risk Gate & Paper Execution
+
+Risk Gate rejection codes: `PAPER_ONLY_VIOLATION` (any live-trade flag), `MAX_POSITION_EXCEEDED` (over fixed budget), `MIN_EDGE_NOT_MET` (`|p_forecast - p_market| < min_edge`).
+
+Paper execution authorization (Operator v1 pattern):
+- Risk Gate issues an HMAC-signed capability token carrying `decision_id`, `reservation_id`, `proposal_hash`, `market_id`, `side`, `spend_usd`, `price`, `token_id`, and a 5-minute TTL.
+- Portfolio cash is reserved atomically before fill; failed fills do NOT consume reservations or change portfolio state.
+- Manual approval gate: even when risk rules pass, paper execution requires an authenticated `POST /api/runs/{run_id}/approve-paper` with `X-PML-API-Key` and an `idempotency_key` in the body.
+- Idempotent replay: the same `idempotency_key` returns the identical execution report with the same `execution_hash`; expired tokens are rejected.
+
+## Evaluation & Calibration Metrics
+
 - **Brier Score:** $(p - o)^2$ where outcome $o \in \{0, 1\}$.
-- **Binary Log Loss:** $-[o \ln(p) + (1-o) \ln(1-p)]$ with $\epsilon$-clamping ($10^{-4}$) to prevent infinities.
+- **Binary Log Loss:** $-[o \ln(p) + (1-o) \ln(1-p)]$ with $10^{-4}$ clamping to prevent infinities.
+
+## References
+
+- `references/handoff-and-remediation.md` — handoff/remediation protocol: ZIP path-safety checks, hash verification, authority hierarchy (root `AGENTS.md` + master spec over legacy zip specs), gate sequence, review-evidence packaging checklists.
+- `references/r0-v5-remediation-standards.md` — AST-based safety scanner pattern, canonical JSON matching for MCP contracts, machine-verifiable test catalogs.
+- `references/r0-v6-remediation-standards.md` — strict adapter payload parsing, canonical market identity, MCP allowlist pinning, fail-closed scanners, offline deny guard, tree diffs.
+- `references/r0-v7-remediation-standards.md` — byte-exact packet preservation, hardcoded hash pinning, unique-"Yes" selection, semantic test-catalog verification, inherited offline guard, 33-evidence-file consistency.
+- `references/operator-v1-verification.md` — RC1 release verification runbook: checksum, install, release verifier (8 checks / 54 tests), 9Router smoke tests, API endpoint table, tunnel setup; pitfalls (port 8000 conflicts, SSE is POST-only, capability secret length, multiple cloudflared configs).
+- `references/operator-v1-deployment.md` — Cloudflare Tunnel deployment: CORS config, loopback binding, port conflicts, systemd unit template.
+- `references/operator-v2-beta1-verification.md` — v2 Beta 1 runtime verification: execution gateway dry-run (`LIVE_CONFIRM`), FastAPI lifespan migration, paper auto simulation flows.
+- `references/operator-v2-beta2-verification.md` — v2 Beta 2 runbook: structured `LIVE_*` error codes, 5 test environments, CLOB-vs-Gamma ID matching pitfall, paper audit event types, read-only account onboarding.
+- `references/9router-format-normalization-and-retry.md` — transport-envelope normalization rules, single-fence validation, 1-retry format-correction protocol, fail-closed SSE error schemas, `ParseFailureDiagnostic` logging, secret redaction.
+- `references/9router-multi-model.md` — role→model assignment matrix, SSE `data:` delta parsing, concurrent stage execution pattern.
+- `references/prediction-market-lab.md` — local lab architecture and endpoints (FastAPI 8005, Vite 3000, PostgreSQL 16, 9Router 20128), Gamma schema quirks, Vite `allowedHosts` fix.
+
+## Cross-Cutting Pitfalls
+
+- **FastAPI lifespan:** newer FastAPI (0.110+) drops `add_event_handler("startup")` on wrapped apps (`AttributeError` in tests) — migrate to a `@contextlib.asynccontextmanager` lifespan hook in `create_app()`, or fall back to `@app.on_event("startup")`. Install `httpx` (plus `httpx2` where the test framework requires it) for Starlette TestClient runs.
+- **Vite behind Cloudflare Tunnel:** set `server: { allowedHosts: true }` in `vite.config.ts` (untrusted Host headers otherwise 403) and bind dev servers to loopback.
+- **CLOB vs Gamma IDs:** the CLOB `/book` endpoint returns `market` as the 0x-prefixed condition hash while Gamma uses numeric string IDs — match against `condition_id`/`asset_id`, never raw ID string equality.

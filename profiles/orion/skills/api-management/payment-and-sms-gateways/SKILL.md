@@ -1,7 +1,7 @@
 ---
 name: payment-and-sms-gateways
 description: Use when integrating QRIS payments or SMS OTP number APIs.
-version: 1.0.0
+version: 1.1.0
 author: Hermes Agent Curator
 license: MIT
 metadata:
@@ -24,19 +24,30 @@ Consolidated operational runbook for integrating Indonesian digital payment gate
 ## 1. QRIS & Payment Gateway Integration (PaKasir Standards)
 
 ### API Profiles & Contracts
-1. **Legacy Profile (`app.pakasir.com/api`):**
+1. **Legacy Profile (`app.pakasir.com/api` — DEPRECATED):**
+   - **Deprecation Warning:** PaKasir API v1 is officially deprecated and scheduled for complete shutdown on **20 October 2026**. All active integrations must migrate to v2 immediately.
    - Create QRIS: `POST /api/transactioncreate/qris` with `project`, `order_id`, `amount`, `api_key`. Returns `payment_number` (raw QR string) and `expired_at`.
    - Transaction Detail: `GET /api/transactiondetail?project=...&amount=...&order_id=...&api_key=...`. *Security Rule:* Redact query credentials in outbound logging.
    - Cancel / Simulation: `POST /api/transactioncancel` and `POST /api/paymentsimulation`.
-2. **v2 Profile (`app.pakasir.com/api/v2`):**
-   - Create: `POST /api/v2/create-transaction/{slug}/{order_id}` with headers `X-Signature` and body `{"method": "qris", "amount": 10000}`.
-   - Status: `GET /api/v2/transaction-status/{slug}/{txn_id}` with header `X-Api-Key`.
-   - *Profile Isolation Rule:* Never implement silent runtime fallback between legacy and v2 due to incompatible schemas (`payment_number` vs `qr_string`). Keep the profile explicitly configured or fail closed.
+2. **v2 Profile (`app.pakasir.com/api/v2` — Mandatory Standard):**
+   - Create: `POST /api/v2/create-transaction/{slug}/{order_id}` with header `X-Api-Key: <api_key>` and body `{"method": "qris", "amount": 10000}`. Idempotent (*find or create*).
+   - Response Fields: Returns `txn_id`, `qr_string`, `fee`, `total_payment`, `expired_at`, `is_sandbox`.
+   - Transaction Status: `GET /api/v2/transaction-status/{slug}/{txn_id}` with header `X-Api-Key: <api_key>`. Rate limit: 1 request every 4 seconds per transaction.
+   - Cancel Transaction: `POST /api/v2/cancel-transaction/{slug}/{txn_id}` with header `X-Api-Key: <api_key>`. Rate limit: 2 requests/second.
+   - Fee Calculator: `GET /api/v2/payment-fee/{amount}` (public endpoint, no API key required).
+   - *Profile Isolation Rule:* Never implement silent runtime fallback between legacy and v2 due to incompatible schemas (`payment_number` vs `qr_string`) and credential formats (`api_key` in body vs `X-Api-Key` header). Store `txn_id` permanently in the database upon order creation.
 
 ### Webhook Handling Protocol
-1. **Project Slug Assertion:** Drop payloads where `payload.project != configured_project`.
-2. **Fail-Closed Secret Token Guard:** Protect webhook endpoints against fake-payload flooding by registering a secret URL token (e.g. `/webhook/pakasir?token=<secret>`). If the secret is missing or invalid, fail closed immediately.
-3. **Mandatory Authenticated Status Inquiry:** Webhook callbacks are untrusted hints. Never settle an order directly from webhook bodies; make an authoritative outbound call (`GET /api/transactiondetail`) to verify `status == 'completed'`.
+1. **v2 Webhook Authentication Header (`X-Secret`):**
+   - PaKasir v2 delivers payments via `POST` with header `X-Secret: <webhook_secret>` (configured at project level).
+   - Validate `X-Secret` using constant-time comparison (`hmac.compare_digest`). Reject missing or mismatching headers with HTTP 401 immediately (fail-closed).
+2. **Fail-Closed Secret Trap (Anti-Bypass Invariant):**
+   - Never write `if token and token != secret: raise 401`. An empty or omitted token makes the condition falsy, allowing unauthenticated callers to bypass validation completely. Always enforce fail-closed: `if not token or not hmac.compare_digest(str(token), str(secret)): raise HTTPException(401)`.
+3. **Mandatory Field Assertions:**
+   - Webhook v2 body payload: `{"txn_id": "...", "order_id": "...", "amount": 10000, "status": "completed", "completed_at": "...", "is_sandbox": false}`.
+   - Notice: v2 payloads omit the legacy `project` slug. Always validate that `amount` and `order_id` match the database order record exactly before crediting funds.
+3. **Mandatory Authenticated Status Inquiry:**
+   - Webhook callbacks are untrusted hints. Never settle an order directly from webhook bodies alone without verifying `status == 'completed'`. When in doubt, make an authoritative outbound call (`GET /api/v2/transaction-status/{slug}/{txn_id}`).
 4. **Atomic DB State Lock (Anti-Double Fulfillment):**
    ```sql
    UPDATE orders
@@ -65,6 +76,7 @@ Providers like 5sim.net operate strictly via **HTTP GET polling** (no webhooks).
 - Check Order / SMS: `GET /v1/user/check/{order_id}`.
 - Finish Order: `GET /v1/user/finish/{order_id}` (+0.5 rating).
 - Cancel Order: `GET /v1/user/cancel/{order_id}` (USD balance refunded).
+- Ban Order: `GET /v1/user/ban/{order_id}` (Number reused/burned).
 
 ### Invariants & Best Practices
 1. **Rating Protection & Proactive Cancellation:**
@@ -74,15 +86,30 @@ Providers like 5sim.net operate strictly via **HTTP GET polling** (no webhooks).
    - Never pass `operator="any"` blindly (frequently checks only physical carriers with 0 stock).
    - In `/v1/guest/prices`, virtual operators may show huge stock but `rate: 0` (0% delivery rate).
    - Hierarchy: (1) Real physical carriers first, (2) Proven delivery rates (`rate > 0`), (3) Lowest wholesale cost, (4) Available stock count.
-3. **Strict Maximum Wholesale Cost Guard (`max_price`):**
-   - At checkout, compute break-even cost: `max_breakeven_usd = round(price_idr / exchange_rate, 4)`.
-   - Always pass `max_price = max_breakeven_usd` to the upstream buy call to prevent purchasing unexpectedly price-spiked numbers.
-4. **Masked Number Rejection (`*` in Phone Numbers):**
+3. **Strict Maximum Wholesale Cost Guard (`max_price` Quirk):**
+   - **5sim API Pitfall:** The `maxPrice` query parameter is **strictly ignored by 5sim upstream unless `operator` is explicitly set to `any`**. When purchasing with a specific operator name, `maxPrice` has no effect.
+   - Rule: Always check wholesale cost locally against `/v1/guest/prices` before issuing the buy call. Compute break-even cost: `max_breakeven_usd = round(price_idr / exchange_rate, 4)` and abort if operator price exceeds threshold.
+4. **Money-Loss Guard on Cancel/Ban Failure:**
+   - **Merchant Financial Loss Pitfall:** In 5sim, `/cancel/{id}` and `/ban/{id}` reject with HTTP 400 if SMS has already arrived (`order has sms`) or the order has expired.
+   - Never catch/swallow provider cancel/ban exceptions and proceed to refund the customer's wallet 100%. If upstream cancellation fails, the customer may obtain the OTP while also receiving a full refund, forcing the merchant to absorb the wholesale cost. Only refund after upstream returns HTTP 200 / status `CANCELED`, or route to manual merchant review.
+5. **Guest Order Refund Misattribution Trap:**
+   - When supporting guest checkouts alongside registered accounts, never fall back to `order["user_id"] or caller_user_id` when crediting refunds.
+   - An authenticated caller could cancel expired/unclaimed guest orders and fraudulently absorb the refund into their own account balance.
+   - Invariant: Only credit user balance if `order["user_id"]` is explicitly set AND matches the authenticated session. Guest refunds must route to original gateway payment method or manual administrative triage.
+6. **Masked Number Rejection (`*` in Phone Numbers):**
    - If an allocated phone number contains asterisks (e.g. `+447****7658`) or has < 7 digits, cancel immediately via `/cancel/{order_id}` and advance to the next candidate operator.
-5. **Zero-Simulation & Fail-Closed Invariant:**
+7. **Zero-Simulation & Fail-Closed Invariant:**
    - Never generate fake `OTP-XXXXXX` mocks or fake numbers in production when provider allocation fails. Roll back user wallet balance atomically and report honest exhaustion.
-6. **Explicit UTC Timezone Contract:**
-   - Emit backend order creation timestamps in explicit ISO-8601 with `"Z"` suffix (e.g. `2026-09-17T11:46:37Z`) to prevent browsers in positive GMT offsets (UTC+7) from misinterpreting dates as local time and prematurely expiring countdown timers.
+8. **Explicit UTC Timezone Contract & Worker TypeError Trap:**
+   - SQLite `datetime('now')` generates naive UTC strings (`YYYY-MM-DD HH:MM:SS`). Python's `datetime.fromisoformat()` produces naive datetimes.
+   - Comparing a naive datetime with an aware UTC datetime (`datetime.now(timezone.utc)`) raises `TypeError: can't compare offset-naive and offset-aware datetimes`.
+   - If wrapped in `try ... except Exception: pass`, background auto-cancel/auto-refund workers fail silently on every tick and never execute.
+   - Always normalize:
+     ```python
+     if dt.tzinfo is None:
+         dt = dt.replace(tzinfo=timezone.utc)
+     ```
+   - Emit backend order creation timestamps in explicit ISO-8601 with `"Z"` suffix (e.g. `2026-09-17T11:46:37Z`) to prevent client and server timezone drift.
 
 ---
 

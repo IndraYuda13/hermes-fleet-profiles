@@ -1,6 +1,6 @@
 ---
 name: hermes-operations
-description: Use when operating, safeguarding, or troubleshooting a Hermes installation's runtime state, backups, dashboard exposure, or memory storage.
+description: Operate, safeguard, or troubleshoot a Hermes installation's runtime state, backups, dashboard exposure, or memory storage.
 version: 1.0.0
 author: Hermes Agent Curator
 license: MIT
@@ -49,6 +49,10 @@ When the host uses a proxy and tools like `web_search` or `web_extract` need it,
 ## Dashboard exposure
 
 Run a dashboard as a supervised service with a deliberate bind address and authentication boundary. When using a tunnel, verify local HTTP, DNS routing, public HTTP, and WebSocket/PTY behavior separately; host-header rewriting that enables a loopback HTTP origin may not satisfy a public-origin WebSocket. The tunnel umbrella and dashboard references contain the deployment-specific details.
+
+- The dashboard refuses to bind `0.0.0.0` when no auth provider is configured — expose it via auth + loopback or SSH tunneling, not by disabling the guard.
+- PTY WebSocket `origin_mismatch` behind a tunnel is DNS-rebinding protection: fix with `hermes config set dashboard.cors_origins "['https://<domain>']"` or `dashboard.host: 0.0.0.0` plus `dashboard.auth: "password:<pw>"` — never patch `web_server.py`.
+- Missing tool-progress output on Telegram is a mobile-friendly display default: restore with `hermes config set display.tool_progress all` and `hermes config set display.platforms.telegram.busy_ack_detail true`, then restart the dashboard service.
 
 ## Memory and large documents
 

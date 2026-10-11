@@ -1,49 +1,51 @@
 ---
 name: native-sdlc-orchestration
 description: Orchestrate multi-stage SDLC pipelines via Kanban events.
-version: 0.1.0
-author: Hermes
+version: 0.2.0
+author: Hermes Fleet Architecture
 platforms: [linux]
 metadata:
   hermes:
-    tags: [Kanban, Sdlc, Orchestration, Multi-Agent, Event-Driven]
+    tags: [Kanban, Sdlc, Orchestration, Multi-Agent, Event-Driven, Dedicated-Boards, Rollback-Anchor]
     category: software-development
     requires_toolsets: [kanban, terminal]
 ---
 
 # Native SDLC Orchestration
 
-Orchestrate end-to-end software development lifecycles across specialized fleet profiles using event-driven Kanban wake notifications. This skill manages task stage gating, role handoffs, independent review gates, and defect remediation loops without busy-waiting or manual polling. It does not perform code edits directly; all implementation and review work is delegated to specialized agent profiles.
+Orchestrate end-to-end software development lifecycles across specialized fleet profiles using event-driven Kanban wake notifications. This skill manages task stage gating, role handoffs, independent review gates, defect remediation loops, and campaign synthesis without busy-waiting or manual polling. Direct code changes are never performed by the orchestrator; all implementation and review work is routed to specialized agent profiles.
 
 ## When to Use
 
-- When the user asks to build, refactor, or overhaul a web application or software project across multiple stages.
-- When coordinating sequential or parallel handoffs between designers (`aurora`), implementers (`frame`, `forge`), verifiers (`lens`, `prism`, `sentinel`), and operators (`atlas`).
+- When the user asks to audit, test, build, refactor, or overhaul a web application or software project across multiple stages.
+- When coordinating sequential or parallel handoffs between designers (`aurora`), implementers (`frame`, `forge`), verifiers (`lens`, `prism`, `sentinel`), infra/SRE (`atlas`), research (`radar`, `quant`), and synthesis (`nexus`).
 - When managing multi-stage SDLC gates: design contract, implementation slice, visual audit, functional testing, remediation loop, and production release.
 - When an in-flight Kanban task completes and the orchestrator must inspect outcomes and determine the next stage.
 
 ## Prerequisites
 
-- Hermes Agent runtime with active Kanban database (`/root/.hermes/kanban.db`).
-- Hermes Gateway running with native event wake enabled (`gateway/wake.py` supporting `delivery_mode="notify+wake"`).
-- Target specialist profiles configured: `aurora` (design), `frame` (frontend), `forge` (backend), `lens` (visual QA), `prism` (functional/data verification), `sentinel` (security), `atlas` (SRE/infra).
-- CLI access to `hermes kanban` via the `terminal` tool.
+- Hermes Agent runtime with active Kanban database (`/root/.hermes/kanban/boards/<board>/kanban.db` or current board DB).
+- Hermes Gateway running with native event wake enabled (`delivery_mode="notify+wake"`).
+- Target specialist profiles configured: `aurora` (design), `frame` (frontend), `forge` (backend), `lens` (visual QA), `prism` (functional/data verification), `sentinel` (security), `atlas` (SRE/infra), `radar` (technical/market research), `quant` (economics/pricing), `nexus` (synthesis/runbooks).
+- Direct access to native `kanban_*` tools (`kanban_create`, `kanban_list`, `kanban_show`, `kanban_complete`).
 
 ## How to Run
 
-Invoke orchestration actions through the `terminal` tool using the Hermes CLI and native Kanban inspection tools:
+Invoke orchestration actions primarily using the native `kanban_*` tools and board CLI when managing boards:
 
-1. Create and dispatch stage tasks with `/usr/local/lib/hermes-agent/venv/bin/hermes kanban create`.
-2. Subscribe the active session with `/usr/local/lib/hermes-agent/venv/bin/hermes kanban notify-subscribe --delivery-mode notify+wake`.
-3. Release the conversation turn to allow the gateway to sleep and wake on terminal task events.
-4. On wake, inspect the completed run via `kanban_show`, evaluate acceptance criteria, and trigger the next stage or remediation.
+1. For multi-agent campaigns, create an isolated board with `hermes kanban boards create <slug>`.
+2. Anchor live target state (revision manifest + verified SQLite backup) if working against a live deployment.
+3. Create stage tasks with native `kanban_create(board="<slug>", ...)` — the session is automatically subscribed for `notify+wake`.
+4. Release the conversation turn immediately to allow the gateway to run workers and wake on completion events.
+5. On wake, inspect the completed run via `kanban_show`, evaluate acceptance criteria, and trigger the next stage or remediation.
 
 ## Quick Reference
 
-- Create task: `/usr/local/lib/hermes-agent/venv/bin/hermes kanban create --assignee <profile> --workspace scratch --priority <1-100> --body "<spec>" --json "<title>"`
-- Subscribe for wake: `/usr/local/lib/hermes-agent/venv/bin/hermes kanban notify-subscribe --platform telegram --chat-id "<chat_id>" --chat-type dm --notifier-profile orion --delivery-mode notify+wake <task_id>`
-- Trigger dispatch: `/usr/local/lib/hermes-agent/venv/bin/hermes kanban dispatch`
-- Inspect result: `kanban_show(task_id="<task_id>")`
+- Create dedicated campaign board: `hermes kanban boards create <slug> --name "<name>" --description "<desc>"`
+- Create task (native tool): `kanban_create(board="<slug>", assignee="<profile>", title="<title>", body="<spec>", priority=80, workspace_kind="scratch")`
+  *(Note: Native `kanban_create` automatically subscribes the active session with `notify+wake`)*
+- Inspect board tasks: `kanban_list(board="<slug>")`
+- Inspect result: `kanban_show(board="<slug>", task_id="<task_id>")`
 - Read deliverable: `read_file(path="<artifact_path>")`
 
 ## Procedure

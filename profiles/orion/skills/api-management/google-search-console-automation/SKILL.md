@@ -1,7 +1,7 @@
 ---
 name: google-search-console-automation
 description: Use when automating Google Search Console API operations.
-version: 1.6.0
+version: 1.7.0
 author: Orion Fleet Lead
 license: MIT
 metadata:
@@ -91,13 +91,20 @@ def get_gsc_access_token(creds_path):
 
 ## 2. Site Property Identifier & Domain Verification Protocol
 
-### A. Site Property Types
+### A. Site Property Types & Discovery API
 Google Search Console has two property types:
 1. **Domain Properties**: Covers all subdomains and protocols (`http`, `https`, `www`, non-www).
    - Format: `sc-domain:<domain>` (e.g. `sc-domain:example.com`). Requires DNS verification (TXT record).
 2. **URL-Prefix Properties**: Covers exact protocol and directory.
    - Format: `https://example.com/`. Supports HTML file, meta tag, GTM, or DNS verification.
 
+* **Discovery via Webmasters API (`GET /sites`)**: Never guess whether a property is configured as a URL-prefix or a Domain Property. Query the sites endpoint:
+  ```python
+  req = urllib.request.Request("https://www.googleapis.com/webmasters/v3/sites", headers={"Authorization": f"Bearer {token}"})
+  with urllib.request.urlopen(req, timeout=10) as resp:
+      sites = json.loads(resp.read().decode('utf-8')).get("siteEntry", [])
+      # Example: [{"siteUrl": "sc-domain:dailyfinance.id", "permissionLevel": "siteOwner"}, ...]
+  ```
 * **REST Path URL Encoding**: When constructing URL paths in the Webmasters API v3, always URL-encode the site identifier:
   `sc-domain:example.com` becomes `sc-domain%3Aexample.com`.
 
@@ -160,6 +167,11 @@ Inspect real-time indexing status without waiting for aggregated dashboard chart
     "siteUrl": "sc-domain:example.com"
   }
   ```
+* **Property Identifier Preflight (`siteUrl` Matching Trap)**:
+  - The `siteUrl` field in the payload must **strictly match** the exact property identifier registered in Search Console.
+  - If the site was registered as a Domain Property (`sc-domain:example.com`), passing `https://example.com/` causes Google to return HTTP 403:
+    `PERMISSION_DENIED: You do not own this site, or the inspected URL is not part of this property.`
+  - When unsure, resolve the exact identifier via `GET https://www.googleapis.com/webmasters/v3/sites` before calling `index:inspect`.
 * **Status Triage Matrix**:
   | `verdict` | `coverageState` | Operational Meaning & Immediate Action |
   | :--- | :--- | :--- |
@@ -359,6 +371,7 @@ def verify_publication_pipeline(target_url, sitemap_url, gsc_client):
 
 ## 6. Pitfalls & Anti-Patterns
 
+- **Mismatching Property Identifier in URL Inspection API (`siteUrl` Parameter)**: Passing a standard URL prefix (`https://example.com/`) for a domain property registered in GSC as `sc-domain:example.com` triggers HTTP 403 `PERMISSION_DENIED: You do not own this site, or the inspected URL is not part of this property.` Always query `GET /webmasters/v3/sites` first to retrieve the exact registered `siteUrl` string (domain property format `sc-domain:<domain>` vs URL-prefix format `https://<domain>/`) before constructing inspection payloads.
 - **Sequential URL Inspection Timeout on Site Audits**: Inspecting 20+ URLs sequentially via the GSC URL Inspection API will exceed standard script and tool execution timeouts (each inspection takes 2–4 seconds over HTTPS). Always execute inspections concurrently using `ThreadPoolExecutor(max_workers=5)` with per-request timeouts (10–12s), and isolate failed reads for single-URL retries with a generous timeout (25–30s).
 - **Conflating Public Web Accessibility with Search Engine Indexing**: Telling stakeholders a newly launched feature or page "is not yet visible to people" when it is merely awaiting Googlebot's asynchronous crawl queue. The page is immediately accessible to any human visitor while Googlebot processes indexing asynchronously.
 - **Assigning 'Full' Instead of 'Owner' Permissions for Indexing API**: While 'Full' permission in Search Console allows reading analytics and submitting sitemaps, the Web Search Indexing API (`urlNotifications:publish`) strictly enforces verified ownership and fails with HTTP 403 `Permission denied. Failed to verify the URL ownership.` The service account must be designated as 'Owner' (Pemilik) in GSC Users and permissions.

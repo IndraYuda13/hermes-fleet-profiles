@@ -168,7 +168,7 @@ assert len(missing) == 0, f"Missing {len(missing)} asset files: {missing}"
 
 ---
 
-## 4. Critical Pitfalls & Solutions
+## 5. Critical Pitfalls & Solutions
 
 ### A. Vignette Math on Normalized Height
 When generating smooth power curves on normalized heights `norm = float(y - start_y) / float(height - start_y)`:

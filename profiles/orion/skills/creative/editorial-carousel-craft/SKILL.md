@@ -1,26 +1,26 @@
 ---
 name: editorial-carousel-craft
 description: Generate editorial social carousels and visual flows.
-version: 1.0.0
+version: 1.1.0
 author: Indra Yuda (IndraYuda13), Hermes Agent
 license: MIT
 platforms: [linux, macos, windows]
 metadata:
   hermes:
-    tags: [carousel, social-media, instagram, linkedin, twitter, excalidraw, visual-craft]
+    tags: [carousel, social-media, instagram, linkedin, twitter, threads, excalidraw, visual-craft]
     related_skills: [excalidraw, popular-web-designs]
 ---
 
 # Editorial Carousel Craft
 
-Framework and templates for generating high-craftsmanship social media carousels (Instagram, LinkedIn, X) and architectural visual flow cards.
+Framework and templates for generating high-craftsmanship social media carousels (Instagram, LinkedIn, X, Threads) and architectural visual flow cards.
 
 ## When to Use
 
-- Designing swipeable carousel presentations for Instagram, LinkedIn, or Twitter/X.
-- Creating educational tech breakdowns, system design explainers, and thought leadership decks.
+- Designing swipeable carousel presentations or standalone graphic cards for Instagram, LinkedIn, Twitter/X, or Threads.
+- Creating educational tech breakdowns, financial simulation cards, system design explainers, and thought leadership decks.
 - Combining architectural diagrams (Excalidraw / SVG) with clean editorial typography.
-- Exporting slide carousels to multi-page PDF (LinkedIn) or individual high-DPI PNGs (Instagram / X).
+- Exporting slide carousels to multi-page PDF (LinkedIn) or individual high-DPI PNGs (Instagram / X / Threads).
 
 Don't use for:
 - Video reels/shorts generation (use `auto-shorts` / `media-streaming-pipeline` instead).
@@ -30,12 +30,12 @@ Don't use for:
 
 | Platform | Optimal Dimensions | Aspect Ratio | Max Slides | Delivery Format |
 |---|---|---|---|---|
-| **Instagram** | 1080 × 1350 px | 4:5 (Portrait) | 20 | PNG / JPG slides |
+| **Instagram / Threads** | 1080 × 1350 px | 4:5 (Portrait) | 20 | PNG / JPG slides |
 | **Instagram Square** | 1080 × 1080 px | 1:1 (Square) | 20 | PNG / JPG slides |
 | **LinkedIn** | 1080 × 1350 px | 4:5 (Portrait) | 20+ | Multi-page PDF (auto-renders as carousel) |
 | **Twitter / X** | 1200 × 675 px / 1080 × 1080 px | 16:9 or 1:1 | 4 per tweet | PNG / JPG |
 
-*Recommendation:* Standardize on **1080 × 1350 px (4:5)** — it occupies maximum vertical viewport screen real estate on mobile feeds for both Instagram and LinkedIn.
+*Recommendation:* Standardize on **1080 × 1350 px (4:5)** — it occupies maximum vertical viewport screen real estate on mobile feeds across Instagram, Threads, and LinkedIn.
 
 ## The 7-Slide Narrative Architecture
 
@@ -66,6 +66,10 @@ Don't use for:
   - *Editorial Dark:* Obsidian `#0a0b0e`, Surface `#12141a`, Accent `#10b981`, Text `#f1f3f7`.
   - *Warm Newspaper:* Cream `#f9f8f4`, Card `#ffffff`, Accent `#d97706`, Text `#1c1917`.
   - *Tech Blueprint:* Deep Navy `#070e1b`, Card `#0e182c`, Accent `#38bdf8`, Text `#e0f2fe`.
+- **Vertical Budget & Boundary Safety (Scripted PIL / Canvas):** When generating infographic cards or slides procedurally via PIL/Pillow or script:
+  - Dynamically track `y_offset` and calculate total required height before drawing: ensure `y_final + bottom_box_height <= H - padding_bottom` (minimum 60–80px margin) so closing rows or warning strips are never clipped.
+  - Constrain headline line widths: measure `font.getlength(text)` and ensure it does not exceed `W - (padding * 2)` to avoid text clipping against the right margin.
+  - Perform visual verification with `vision_analyze` on every generated card to catch bottom-edge cropping, overlapping layers, or illegible text before final output.
 
 ## HTML/CSS Slide Template Engine
 

@@ -49,7 +49,7 @@ When syncing external JSON APIs or upstream data feeds into a local SQLite datab
 
 ## 2. Parameter Sanitization & Query Trimming
 
-- **Trailing Whitespace Pitfall**: Users or frontends often pass query strings with trailing spaces (e.g. `?operator=Telkomsel%20`). Exact SQL matches (`operator_name = ?`) or standard `LIKE ?` patterns will fail unless sanitized.
+- **Trailing Whitespace Pitfall**: Users or frontends often pass query strings with trailing spaces (e.g. `?operator=name%20`). Exact SQL matches (`operator_name = ?`) or standard `LIKE ?` patterns will fail unless sanitized.
 - **Rule**: Always trim string parameters at the handler level:
   ```javascript
   app.get('/api/resource', (req, res) => {
@@ -108,38 +108,11 @@ When syncing external JSON APIs or upstream data feeds into a local SQLite datab
 
 ---
 
-## 5. HTTP Transport MCP Server Integration
+## 5. External Automation: MCP & n8n Integration
 
-- **Pattern**: Adding HTTP-based MCP servers (such as n8n MCP endpoints) to Hermes config (`~/.hermes/config.yaml`).
-- **Structure**:
-  ```yaml
-  mcp_servers:
-    n8n-mcp:
-      url: "https://n8n.domain.com/mcp-server/http"
-      headers:
-        Authorization: "Bearer <token>"
-  ```
-- **Behavior**: Requires HTTP StreamableHTTP transport support in MCP SDK. Automatically negotiates SSE/JSON-RPC over HTTP.
-
----
-
-## 6. n8n Workflow Automation via `n8n-mcp`
-
-- **Workflow Creation**: When building automated workflows in n8n via MCP (`mcp__n8n_mcp__create_workflow_from_code`):
-  1. Retrieve best practices using `mcp__n8n_mcp__get_workflow_best_practices`.
-  2. Consult `mcp__n8n_mcp__get_sdk_reference` to build valid `@n8n/workflow-sdk` TypeScript/JS code.
-  3. Validate using `mcp__n8n_mcp__validate_workflow` before creating.
-  4. Publish using `mcp__n8n_mcp__publish_workflow` and test run via `mcp__n8n_mcp__execute_workflow`.
-- **n8n Expression & Telegram URL Syntax**:
-  - In `n8n-nodes-base.httpRequest`, when specifying `url: 'https://api.telegram.org/bot<token>/sendMessage'`, ensure the token format is valid (`<bot_id>:<hash>`).
-  - For static or literal JSON payloads in `jsonBody`, pass plain JSON strings instead of `expr(...)` wrappers to avoid n8n expression evaluation syntax errors (`invalid syntax`). Use `expr(...)` only when dynamic `{{ $json... }}` expressions are present.
-- **Workflow Version Hygiene & Cleanup**:
-  - When re-creating or refactoring n8n workflows from code, draft or duplicate workflow instances will accumulate in the workspace.
-  - Use `mcp__n8n_mcp__archive_workflow` with the old `workflowId` to clean up superseded drafts, keeping only active/published production workflows visible in the n8n UI.
-- **Multi-Agent Async Architecture in n8n & 9router Gateway**:
-  - For 20+ parallel agent workloads in single-instance n8n, use parent dispatcher emitting job items to sub-workflows with `Wait for Completion: OFF`.
-  - Map agent model routes (`model_route` in Postgres) to 9router local gateway endpoints (`http://127.0.0.1:20128`) such as `ag-opus-pool` for unified multi-agent LLM routing.
-  - Always write state/results to PostgreSQL (`mai` schema) before evaluating notification gates to ensure both notified and silent runs remain auditable.
-  - **Docker Container to Host 9Router Network Authentication**: When n8n runs inside a Docker container, queries to host 9router (`http://172.20.0.1:20128`) will present as remote connections. If 9router requires API keys for remote access (`401 API key required for remote API access`), use a valid bearer token or update `requireApiKey: false` in `settings` table inside `~/.9router/db/data.sqlite` and trigger daemon reload (`fuser -k 20128/tcp`). Avoid killing daemon unnecessarily; 9router auto-restarts via daemon supervisor.
+- HTTP MCP servers are registered in Hermes config (`~/.hermes/config.yaml`) under `mcp_servers` with a `url` and `Authorization` header; StreamableHTTP transport auto-negotiates SSE/JSON-RPC.
+- n8n workflow creation via `n8n-mcp` follows a fixed tool order: best practices → SDK reference → validate → create → publish → execute. In `jsonBody`, wrap values in `expr(...)` only when dynamic `{{ $json... }}` expressions are present — static payloads wrapped in `expr(...)` throw `invalid syntax`.
+- Archive superseded n8n workflow drafts (`archive_workflow`) so the workspace keeps only published workflows, and write run state to Postgres before notification gates so silent runs stay auditable.
+- Full patterns (config YAML, multi-agent fan-out, Docker-to-host gateway auth): `references/mcp-n8n-integration.md`.
 
 

@@ -1,7 +1,7 @@
 ---
 name: vps-operations
 description: Use when managing VPS security, git deploys, or AI apps.
-version: 1.7.0
+version: 1.8.0
 author: Hermes Agent Curator
 license: MIT
 metadata:
@@ -262,6 +262,11 @@ A VPS running live services is a runtime environment, not a development sandbox.
 - **Database Migrations on Pull:** Upstream commits often introduce new SQL migrations (e.g. `supabase/migrations/<timestamp>_<name>.sql` for schema changes or board resets). When local Postgres/Supabase services are active, check if new migration files exist in the pulled commits (`git diff HEAD origin/<branch> -- supabase/migrations/`). Execute the project's migration/preparation runner (e.g. `node scripts/test-db.mjs prepare` or `npm run db:migrate`) BEFORE compiling Next.js. Next.js static generation (`next build`) runs database queries at build time; missing tables or columns from unapplied migrations will cause static page generation to crash during build.
 - **Build Script Tracked-Artifact Pollution:** Compiling production builds often triggers pre-build or bundle generation scripts (e.g. `prepare-assets`, OMR worker generation, QA artifact bundlers) that mutate tracked test fixtures or manifests (e.g. `artifacts/qa/**/bundle.json`). Immediately inspect `git status` after building and revert unintentional modifications to tracked repository artifacts (`git checkout <file>`) to prevent dirty-tree blocking on future `git pull` or `git stash` operations.
 - **Next.js Standalone Build Asset Sync (`output: 'standalone'`):** When deploying a Next.js application configured for standalone output on a VPS systemd service, `npm run build` only places minimal runtime files into `.next/standalone/`. It does not automatically copy `.next/static/` or `public/` into `.next/standalone/`. If the systemd unit runs `node .next/standalone/server.js`, client CSS, fonts, and JS chunks will 404 unless `.next/static` is synced to `.next/standalone/.next/static` and `public` is copied to `.next/standalone/public`. Verify this copy step in the build script or deployment pipeline before reloading systemd.
+- **Next.js Standalone Ephemeral Build Wipe & Persistent Media Storage Trap:** In Next.js standalone mode (`output: 'standalone'`), `next build` purges and regenerates the `.next/` directory from scratch. If application code resolves storage paths relative to `process.cwd()` (e.g. `path.resolve(process.cwd(), 'storage/audio')`) while the server process runs inside `.next/standalone/`, files are saved under `.next/standalone/storage/`. On subsequent builds or redeployments, `.next/` is wiped, permanently deleting all user uploads or generated media while leaving database metadata intact.
+  - *Symptom:* Metadata queries report media exists (`hasAudio: true`), rendering active player controls in the UI, but playback triggers HTTP 404 stream errors ("File missing on disk").
+  - *Diagnosis:* Compare database `created_at` against `.next` directory mtime (`stat -c %y .next`). If missing files have creation timestamps *before* the build mtime and surviving files have timestamps *after* it, the storage was wiped during build.
+  - *Remediation:* Enforce persistent storage roots outside `.next/` entirely (e.g. `<project-root>/storage` or `/var/data/...`) via explicit absolute environment variables (`STORAGE_DIR` / `DATA_DIR`), never relying on relative `process.cwd()`. In metadata/status endpoints, verify `fs.existsSync(file_path)` before asserting resource presence to prevent misleading client UI states.
+- **Commit Timestamp Newer than Build Timestamp Diagnostic:** When auditing whether a live build is stale (`git log` commit time is newer than `.next/BUILD_ID`), do not conclude the build is stale solely from timestamps. If a commit was authored immediately after build or touched only docs/formatting without altering compiled source, test for the commit's changes directly: grep unique string tokens or function identifiers introduced in the commit diff against the compiled standalone bundle (`grep -rn '<unique_token>' .next/standalone/.next/server/`). If the token is present in compiled chunks, the active build is fresh.
 - **Port Listener Probe vs Unit State:** After `systemctl restart <service>`, do not conclude the service is ready solely from `systemctl is-active`. A daemon running under Node/Next.js may report active for several seconds while bootstrapping or fail on cold-start routes. Probe the internal loopback socket (`curl -s -I http://127.0.0.1:<port>`) or check socket bindings (`ss -tlnp | grep <port>`) to confirm the process has bound to the listening port before verifying ingress.
 - **Staging Database Fixture Seeding:** When exercising API endpoints that validate deep session state (e.g. classroom session syncing, teacher pairings) against PostgreSQL or SQLite, avoid empty JSON stub payloads that violate database schema validation. Seed valid payloads using existing test harness fixtures (e.g. `syncFixture().payload`) so endpoints return valid sync records instead of failing silently with 500 or 400 errors.
 - **Reverse-Proxy Origin Headers (QR Pairing):** Behind Cloudflare Tunnel or Nginx, internal requests resolve `origin` to `http://127.0.0.1:<port>`. Public handoffs (mobile QR pairing, OAuth redirects) must reconstruct the origin from `x-forwarded-proto` and `x-forwarded-host`.
@@ -317,30 +322,54 @@ When demonstrating, verifying, or handing off newly deployed features on a live 
 
 Long-lived production VPS servers running background workers, headless browsers, and containerized schedulers accumulate hidden disk hogs and process table leaks.
 
-### High-Yield Disk Rescue Targets
-When `/` partition usage spikes near 100% (e.g. <1 GB free):
+### Two-Tier Disk Rescue Protocol (Spikes Near 100% / <1 GB Free)
+When emergency disk reclamation is required, categorize targets strictly into two tiers before taking action:
+
+#### Tier 1: 100% Regenerable Garbage (Safe for Immediate Purge)
 1. **Chrome BrowserMetrics Dump Accumulation (`.pma` files):**
-   Headless Chrome/Chromium runs write metrics dumps to `~/.config/google-chrome/BrowserMetrics/` or profile directories. These unpruned diagnostic `.pma` files can quietly consume 5–10+ GB of root storage.
+   Headless Chrome/Chromium sessions (scrapers, solvers, auth probes, backup scripts) write a ~4MB `.pma` diagnostic dump on every launch. In environments with frequent runs, these accumulate hundreds of MBs per day and easily grow to 5–10+ GB across root and per-profile directories.
    ```bash
-   # Inspect and purge metrics dumps
-   du -sh ~/.config/google-chrome/BrowserMetrics/ 2>/dev/null
-   rm -rf ~/.config/google-chrome/BrowserMetrics/*.pma
+   # Scan and purge metrics dumps across known browser homes
+   find /root/.config/google-chrome -maxdepth 2 -name 'BrowserMetrics*.pma' -delete 2>/dev/null || true
+   find ~/.hermes/browser-profile -maxdepth 3 -name 'BrowserMetrics*.pma' -delete 2>/dev/null || true
+   find ~/.openclaw/browser -maxdepth 4 -name 'BrowserMetrics*.pma' -delete 2>/dev/null || true
    ```
-2. **Headless Browser Scratch Profiles & CRX Caches:**
-   Automation tools (Playwright, Puppeteer, browser sessions) generate temporary profile directories in `/tmp` and cache extension files:
+   - **Automated Watchdog Invariant:** A one-time purge is insufficient because background automation will regenerate files. Always embed `.pma` cleanup rules into the host's recurring maintenance script (`disk_watchdog.sh` or cron) so they are cleared automatically every hour.
+2. **Selective Browser Profile Cache Pruning (Cache vs Session Invariant):**
+   - Safe to delete: `Default/Cache/*`, `Default/Code Cache/*`, and `component_crx_cache/*`.
+   - **Never delete:** `Cookies`, `Login Data`, `Web Data`, `Local Storage/`, or `Preferences`. Purging the entire profile destroys live authenticated sessions (SSO, LMS, reseller auth, CDP bridges).
+3. **Stale Upgrade Snapshots & Build Caches:**
+   - Framework pre-update state snapshots (e.g. `~/.hermes/state-snapshots/`) after verifying the running version is active and healthy.
+   - Package manager download caches that do not affect runtime dependencies:
+     ```bash
+     rm -rf ~/.cache/uv ~/.npm ~/.npx ~/.cache/pip
+     pnpm store prune 2>/dev/null || true
+     journalctl --vacuum-time=3d
+     ```
+4. **Dangling Container Images & Orphaned Worktrees:**
+   - `docker image prune -f` reclaims unreferenced build layers without touching active containers.
+   - Stale git worktrees (`git worktree remove <path>` or `git worktree prune`) reclaim working copy disk while preserving all branches and commits in the primary git object database.
+
+#### Tier 2: Ambiguous / Legacy Artifacts (Reversible Staged Recycling)
+Never run irreversible `rm -rf` on deprecated tools, old project clones, or unknown virtual environments when executing an emergency disk cleanup:
+1. **Staged Migration to Secondary Storage:** Move ambiguous directories to a timestamped folder on a secondary mount or non-root partition:
    ```bash
-   # Clean orphaned headless profiles in /tmp
-   rm -rf /tmp/playwright* /tmp/.org.chromium.* /tmp/chromium*
-   # Clean extension installer caches across profiles
-   find ~/.hermes/profiles -name "component_crx_cache" -type d -exec rm -rf {} + 2>/dev/null || true
+   mkdir -p /mnt/.recycle_$(date +%Y%m%d)
+   mv /path/to/legacy-candidate /mnt/.recycle_$(date +%Y%m%d)/
    ```
-3. **Package Manager & Compile Caches:**
-   Safe pruning of package download caches that do not affect runtime dependencies:
-   ```bash
-   rm -rf ~/.cache/uv ~/.npm ~/.npx ~/.cache/pip
-   pnpm store prune 2>/dev/null || true
-   journalctl --vacuum-time=3d
-   ```
+2. **Immediate Health Check:** Immediately verify all systemd units and port listeners (`systemctl is-active`, `curl -s -I http://127.0.0.1:<port>`) to prove zero live services depended on the moved paths.
+3. **Inventory Hand-off:** Present the moved inventory to the operator with sizes and paths, allowing them to permanently purge (`rm -rf`) or restore with zero data loss risk.
+
+### Process Termination Discipline (`pkill -f` Self-Termination Trap)
+When terminating background watchers, test servers, or orphan processes from inside automation scripts or agent sessions:
+- **The Mechanism:** `pkill -f "<pattern>"` inspects `/proc/<pid>/cmdline`. If the pattern matches the command line of the executing subshell or agent command, the operating system sends SIGTERM to the caller, abruptly terminating the active session.
+- **The Rule:** Never run naked `pkill -f` on generic script names. Always filter out the calling process ID (`$$`), target recorded PIDs directly, or anchor to specific binary paths:
+  ```bash
+  # Safe pattern: exclude caller PID
+  for pid in $(pgrep -f "target-script.py" 2>/dev/null); do
+    [ "$pid" != "$$" ] && kill "$pid" 2>/dev/null
+  done
+  ```
 
 ### Diagnosing and Reaping Zombie Process Storms (`<defunct>`)
 When `ps aux` reveals hundreds or thousands of zombie processes (e.g. `[git] <defunct>`):

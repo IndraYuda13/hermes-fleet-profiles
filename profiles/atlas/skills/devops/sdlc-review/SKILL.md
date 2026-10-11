@@ -165,6 +165,7 @@ Do not edit the implementation while acting as reviewer. Request changes and let
 - **Skipping prior rounds:** Re-review must confirm both the requested corrections and preservation of previously passing behavior.
 - **Using blockers for ordinary rework:** Correctable defects belong in `kanban_request_changes`; reserve `kanban_block` for genuine external blockers or human decisions.
 - **Completing without evidence:** Every approval summary must name the checks or artifacts actually inspected.
+- **Assuming a missing task is truly missing:** Task ids are board-scoped. A bare `kanban_show`/`kanban_attachments` resolves against the DEFAULT board and reports 'task not found' for a task that lives on another board, and a bare `kanban_list` shows only the default board's rows. Pass `board=<slug>` (discover slugs with `kanban_boards`/`kanban_list`) before concluding a task does not exist.
 
 ## Verification
 

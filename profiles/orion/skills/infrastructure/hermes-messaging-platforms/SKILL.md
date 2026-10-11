@@ -86,3 +86,19 @@ In multi-profile Hermes setups with gateway multiplexing enabled:
 - The accurate sources of truth for multiplexed profile liveness are:
   1. `hermes profile list` — uses `_served_by_running_multiplexer` to verify whether the profile is covered by the active root gateway multiplexer.
   2. Live multiplexer state in `~/.hermes/gateway_state.json` — verify that the profile is listed in `served_profiles` and check the adapter connection status under the `platforms` map (e.g. `"<profile>:telegram": {"state": "connected"}`).
+
+## Discord Platform Operations & Server Administration (REST API v10 vs Gateway)
+When interacting with Discord:
+1. **Operational Mode Selection:**
+   - *On-Demand Remote Control (Direct REST API v10):* For executing actions directly from chat (kick, ban, timeout, announcements, server stats) without running persistent background bots. Use stateless HTTP requests via `httpx` or `curl` with `Authorization: Bot <TOKEN>`.
+   - *Persistent Gateway (`discord.py` / `discord.js`):* Required only for real-time inbound chat events, reactions, slash commands, or voice streaming.
+2. **Credentials & Privilege Intents:**
+   - Bot token, Guild ID, Server Members Intent, and Message Content Intent enabled in Discord Developer Portal.
+3. **Role Hierarchy Invariant:**
+   - In Server Settings -> Roles, the Bot's role MUST sit strictly above any member role it moderates. Discord rejects actions with HTTP 403 if the bot attempts to kick, ban, or timeout members with equal or higher roles.
+4. **Core Administrative Endpoints:**
+   - *Kick:* `DELETE https://discord.com/api/v10/guilds/{guild_id}/members/{user_id}` with `X-Audit-Log-Reason`.
+   - *Ban:* `PUT https://discord.com/api/v10/guilds/{guild_id}/bans/{user_id}`.
+   - *Timeout:* `PATCH https://discord.com/api/v10/guilds/{guild_id}/members/{user_id}` with `{"communication_disabled_until": "<ISO8601>"}`.
+   - *Member Search:* `GET https://discord.com/api/v10/guilds/{guild_id}/members/search?query={username}&limit=5`.
+

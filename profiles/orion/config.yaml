@@ -110,7 +110,7 @@ onboarding:
     busy_input_prompt: true
     openclaw_residue_cleanup: true
     tool_progress_prompt: true
-_config_version: 49
+_config_version: 50
 a2a_agents:
   atlas:
     timeout: 900
@@ -350,7 +350,6 @@ mcp_servers:
     auth: oauth
     enabled: true
   rea:
-    command: rea
-    args:
-    - mcp
-    enabled: true
+    command: /usr/local/bin/rea-mcp
+    connect_timeout: 60
+    timeout: 300

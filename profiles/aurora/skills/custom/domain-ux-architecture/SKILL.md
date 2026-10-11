@@ -4,13 +4,13 @@ description: "Use for domain-specific product UX architecture."
 version: 1.0.0
 metadata:
   hermes:
-    tags: [ux, architecture, accessibility, learning, documents, ats, fintech, checkout, product-design]
+    tags: [ux, architecture, accessibility, learning, documents, ats, fintech, checkout, ops, incident, console, product-design]
     category: custom
 ---
 
 # Domain UX Architecture
 
-Class-level guidance for designing product interfaces whose domain constraints materially shape the interaction model: inclusive learning tools, document and ATS builders, digital commerce, and fintech checkout. Start here when a product's users, data integrity, accessibility needs, export format, or payment lifecycle matter more than a generic component recipe.
+Class-level guidance for designing product interfaces whose domain constraints materially shape the interaction model: inclusive learning tools, document and ATS builders, digital commerce, fintech checkout, and ops/incident consoles. Start here when a product's users, data integrity, accessibility needs, export format, or payment lifecycle matter more than a generic component recipe.
 
 ## Always-On Architecture Rules
 
@@ -56,6 +56,18 @@ See `references/document-export-and-ats.md` for parser, scoring, persistence, an
 - Make tactile feedback optical or haptic by default in consumer checkout, and keep expensive effects bounded by visibility, viewport, and device-pixel-ratio budgets.
 
 See `references/fintech-commerce-patterns.md` for checkout state, catalog, media, responsive, and performance patterns.
+
+### Ops, Incident, and Telemetry Consoles
+
+- Build the command surface as a horizontal strip carrying service status, segmented navigation, keyboard hints, on-call identity, and the persistent critical action; a generic sidebar-plus-topbar shell buries the responder's primary task.
+- Split concurrent triage into a ledger/workspace layout with the incident list near 35–40% width so the selected incident becomes a dedicated workspace, then recompose deliberately (stacked at tablet, full-screen transitions with a collapsed command bar on phones) instead of shrinking desktop regions.
+- Encode status through at least two channels—color, shape/icon, text—and use all three for critical states, because responders under stress and on washed-out projectors cannot rely on hue alone.
+- Render IDs, timestamps, durations, and percentages in monospace with tabular numerals, keep rows 36–40px with 4px spacing increments, and prefer contextual inline metrics plus in-table sparklines over rows of generic KPI cards so density stays high but scannable.
+- Reserve signal colors exclusively for status and skip decorative gradients or shadows that compete with operational severity.
+- Make the typed timeline the detail backbone with elapsed time visible, reveal communications and extended actions progressively after triage, and keep incident declaration reachable everywhere with only title and severity required initially.
+- Display a keyboard shortcut only after its handler is implemented and tested, and never let live telemetry mutate layout geometry—animate composited transforms and pause render work when the view is hidden or offscreen.
+
+See `references/ops-and-incident-interfaces.md` for command-workspace, operational readability, response workflow, and fixture QA patterns.
 
 ## Domain QA Gate
 

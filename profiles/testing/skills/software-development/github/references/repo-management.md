@@ -488,6 +488,37 @@ for g in json.load(sys.stdin):
     print(f\"  {g['id']}  {g['description'] or '(no desc)':40}  {files}\")"
 ```
 
+## Publishing a local tool as a PUBLIC repo (with an informative README)
+
+When the user asks to "buat repo publik + push" for something built in-session:
+
+1. `gh auth status` once first — if it fails, fix auth before touching anything.
+2. Build the repo in a clean dir OUTSIDE the scratch workspace (scratch is
+   pruned), copying only the deliverables: code, `README.md`, `LICENSE`,
+   `requirements.txt`, `.gitignore`, and test fixtures. Do NOT copy probe/
+   scratch scripts, `__pycache__`, or generated output (`*.json`).
+3. Add a `.gitignore` that excludes generated artifacts but re-includes fixtures
+   (`*.json` + `!samples/*.hc`) so test vectors still ship.
+4. Commit, then create + push in one command (avoid a repo that exists with no
+   branch, since `gh repo view` resolves nothing before the first push):
+   `gh repo create <name> --public --source=. --remote=origin --push \
+      --description "<one-line, no filler>"`
+5. README expectations (the user asks for "readme yang informatif"): lead with a
+   REAL example of the output, then Features / Install / CLI+library usage /
+   a full format or architecture map / a Verification section quoting actual
+   test-run output / Limitations / License. Document the recovered
+   parameters as tables (keys, field names) — not prose.
+6. VERIFY after push, and report what the check returned: `gh repo view
+   <owner>/<repo> --json name,url,visibility,defaultBranchRef,pushedAt`, list
+   `gh api repos/<owner>/<repo>/contents`, then `git clone` into a fresh temp dir
+   and run the test suites THERE. A green run in the original working dir does
+   not prove the push (or the fixture set) is complete.
+7. If the README names a clone URL, use the real `<owner>/<repo>` — a
+   `<user>` placeholder in the committed README is a defect.
+
+Prefer adding a CI workflow running the self-test so correctness is enforced on
+future pushes. Never report a repo as published without the fresh `gh` read.
+
 ## Quick Reference Table
 
 | Action | gh | git + curl |

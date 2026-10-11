@@ -2,19 +2,27 @@
 
 Common patterns found in modern Indonesian telco/fintech Android apps (MyXL, Axisnet, etc.) that have migrated from Cordova hybrid to full Kotlin/Java native.
 
-## Encrypted Response Envelope
+## Encrypted Request/Response Envelopes (`xdata`/`xtime`)
 
-Server encrypts ALL API responses:
+Server encrypts ALL API responses and requires encrypted bodies for mutating/POST requests:
 ```json
 {"xdata": "<base64_aes_ciphertext>", "xtime": 1784355516}
 ```
 
-Decryption flow:
-1. Key comes from obfuscated helper (e.g. `CardamomHelper.getEncryptionKeyValue()`)
-2. Key is hashed before AES use (`decryptAesWithHashedKey`)
-3. AES mode typically CBC or GCM with key-derived IV
+Key and IV Derivation:
+1. **Body AES Key:** `sha256(seed_key)[:32]` (first 32 hex chars / ASCII bytes → AES-256)
+2. **Body AES IV:** `sha256(str(xtime))[:16]` (first 16 hex chars / ASCII bytes)
+3. **Cipher Mode:** `AES/CBC/PKCS7Padding` (equivalent to Java PKCS5Padding)
+4. **Encoding Asymmetry:**
+   - **Request body `xdata`:** standard Base64 (`base64.b64encode`)
+   - **Response body `xdata`:** **URL-Safe Base64** (`base64.urlsafe_b64decode`, replaces `+` with `-` and `/` with `_`)
 
-**Triage Rule:** If `EncryptionUtil` or the specific AES derivation class is missing from the decompiled APK (due to R8 stripping or missing split APKs), **do not waste time brute-forcing PBKDF2/SHA combinations statically.** Document the missing classes and immediately provide a Frida script to the user to hook the interceptor or dump the AES keys dynamically.
+**Triage Rule (Native Packer Detection):** If `EncryptionUtil` or other core utility classes are missing from all decompiled DEX files despite being referenced everywhere:
+- Do NOT assume R8 stripping or missing split APKs.
+- Check `AndroidManifest.xml` for an obfuscated `application android:name` (e.g. `gzple.yxktp`).
+- Check if its `attachBaseContext` loads a native `.so` (e.g. `libwwuivgwnlm.so`).
+- Check `assets/` for encrypted DEX blobs (e.g. `tmp*` files with entropy ~8.0).
+- The native library decrypts hidden DEX files at runtime (AES-GCM or AES-CBC + gzip). Extract keys from `.data` relative relocations in the `.so` and decrypt statically to recover all original DEX classes offline without needing a device.
 
 ## Request Signing Headers
 
