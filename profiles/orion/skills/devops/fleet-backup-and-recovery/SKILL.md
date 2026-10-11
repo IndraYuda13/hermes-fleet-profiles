@@ -1,7 +1,7 @@
 ---
 name: fleet-backup-and-recovery
 description: Use when syncing, backing up, or recovering fleet profiles.
-version: 1.7.0
+version: 1.8.0
 author: Hermes Fleet Architecture
 license: MIT
 metadata:
@@ -92,6 +92,7 @@ When auditing whether the fleet is currently backed up or has drifted:
 
 When creating the Disaster Recovery Secrets Layer (`secrets-live-<timestamp>`):
 - **Automated Dual-Layer Execution:** Run the deterministic backup script `python3 /root/.hermes/profiles/orion/skills/devops/fleet-backup-and-recovery/scripts/backup_fleet_dual_layer.py` to create the paired `<timestamp>-fleet-complete` declarative snapshot and `secrets-live-<timestamp>` secrets layer with atomic 700/600 permissions.
+- **Session-Independent Root Resolution & Fail-Closed Verification:** The script resolves the fleet root regardless of the calling session (`HERMES_HOME` may point at a profile dir), verifies every expected root, profile, and platform artifact after copying, and exits non-zero on any miss. A generation that fails verification or lacks artifacts is quarantined by renaming with a `.BROKEN-` suffix and is never a recovery point.
 - **Atomic Permission Lockdown:** Immediately enforce POSIX permissions on the target directory:
   ```bash
   find "${SECRETS_DEST}" -type d -exec chmod 700 {} +
