@@ -103,6 +103,9 @@ registration loses the wrapper env layering. Doctor's skill identity resolves pe
 missing` (`config_drift`, cosmetic — the skill still loads in Hermes). To satisfy doctor,
 the skill would need to sit at `skills/reverse-engineer-anything` (flat); the category
 layout is fine otherwise.
+Likewise `registration:hermes` shows state `stale` under the wrapper launcher — doctor
+compares against the raw-node registration `rea setup` would write, so this is expected,
+not breakage. Confirm liveness with `hermes -p <p> mcp test rea` and a real decompile.
 
 ## Release cadence & version pinning (observed Oct 2026)
 

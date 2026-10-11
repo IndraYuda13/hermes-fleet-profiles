@@ -1,7 +1,7 @@
 ---
 name: google-search-console-automation
 description: Use when automating Google Search Console API operations.
-version: 1.7.0
+version: 1.8.0
 author: Orion Fleet Lead
 license: MIT
 metadata:
@@ -295,14 +295,27 @@ Webmasters, clients, and automated agents frequently conflate three distinct ope
   - **Operational Rule**: Never report this to the user as an error, broken link, or failed submission. It simply means the URL is in the normal Googlebot crawl queue between Stage 2 and Stage 3. Googlebot typically processes new sitemap items within 2 to 24 hours.
   - To accelerate Stage 2 to Stage 3 for time-sensitive articles, instruct the webmaster to perform a manual priority crawl request via the Search Console Web UI (paste URL in the inspection bar -> click "Request Indexing" / *Minta Pengindeksan*).
 
-#### Stakeholder Communication Protocol: Web Visibility vs SERP Indexing
-When users or clients ask: *"Apakah halaman sudah terindeks di GSC dan orang bisa melihat?"*:
-1. **Differentiate Public Availability from Search Indexing Immediately**:
-   - **Bisa Dilihat (Public Web Accessibility)**: State unambiguously that if Stage 1 is verified (HTTP 200 OK, navbar link, homepage card), the page is **100% accessible right now**. Any user clicking the URL, accessing the domain, or opening links from social media/chat can see and use the page instantly.
-   - **Terindeks di GSC (Google SERP Indexing)**: Clarify that Google search engine indexing is an asynchronous crawler pipeline. Submitting via Google Indexing API places the URL in the crawler queue; Googlebot smartphone crawler will visit and render the page within hours to 1–2 days.
-2. **Explain `URL is unknown to Google` with Technical Context**:
-   - Never report `verdict: "NEUTRAL"` or `coverageState: "URL is unknown to Google"` as a failure or broken URL.
-   - Explain clearly that for content published within the last few hours, this status confirms the URL is in the standard crawl queue awaiting its initial crawler visit, and compare it against an established URL (which shows `verdict: "PASS"`, `coverageState: "Submitted and indexed"`).
+#### Stakeholder Communication Protocol: Answering "Apakah Sudah Masuk GSC?" & Web Visibility
+When users or clients ask: *"Apakah halaman sudah masuk GSC?"* or *"Apakah sudah terindeks dan orang bisa melihat?"*:
+1. **Resolve the Colloquial Ambiguity Immediately ("Masuk" vs "Terindeks")**:
+   - In Indonesian stakeholder discourse, *"sudah masuk GSC"* is used ambiguously to mean either:
+     - **Arti A — Sudah Didaftarkan / Masuk Antrean (Stage 2)**: URL sudah sukses disubmit via Indexing API (`push_urls`), tercatat di `ALL_PAGES`, dan terdaftar di `sitemap.xml` yang aktif di GSC. Status: **YA, SUDAH MASUK**.
+     - **Arti B — Sudah Selesai Dicrawl & Terindeks di Hasil Pencarian (Stage 3)**: Googlebot sudah selesai merender dan memasukkan URL ke indeks SERP (`verdict: PASS`). Status: **SEDANG PROSES CRAWL / DALAM ANTREAN** (untuk konten baru hitungan jam).
+   - Selalu pisahkan kedua status ini secara eksplisit agar pengguna tidak panik mengira submit gagal atau link rusak saat API mengembalikan `URL is unknown to Google`.
+
+2. **The 4-Point GSC Verification & Reporting Suite**:
+   Jalankan pemeriksaan 4 titik ini sebelum menjawab:
+   - **Titik 1 — URL Inspection API (Target vs Kontrol)**: Periksa URL target DAN periksa satu URL artikel lama/kontrol pada domain yang sama. Tunjukkan bahwa artikel kontrol berstatus `PASS` / `Submitted and indexed` dengan timestamp crawl riil untuk membuktikan seluruh pipeline pengindeksan domain bekerja sehat.
+   - **Titik 2 — Status Sitemap API & Trigger Refresh**: Ambil status sitemap via `GET /sitemaps`. Jika `lastDownloaded` sitemap mendahului tanggal publikasi artikel baru, lakukan re-submit via `PUT .../sitemaps/...` (HTTP 204) untuk memicu Google mengunduh versi sitemap terbaru (`isPending: true`).
+   - **Titik 3 — Simulasi Fetch Googlebot**: Jalankan curl dengan Googlebot User-Agent (`Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)`) untuk memverifikasi halaman membalas HTTP 200, robots.txt mengizinkan crawler, dan meta robots menyajikan `max-image-preview:large`.
+   - **Titik 4 — Status Aksesibilitas Publik (Bisa Dilihat)**: Tegaskan bahwa jika Stage 1 terverifikasi (HTTP 200 OK, muncul di homepage/blog grid), halaman sudah **100% bisa dibaca dan diakses oleh manusia** detik ini juga melalui klik langsung atau tautan media sosial.
+
+3. **Format Pelaporan Status Standar**:
+   Sajikan dalam tabel ringkas:
+   | Artikel / Halaman | Submit GSC (Queue) | Status Indeks (SERP) | Terakhir Dicrawl |
+   | :--- | :--- | :--- | :--- |
+   | [Artikel Baru] | ✅ Sukses (0 failed) | ⏳ Menunggu Crawl (`Unknown`) | Belum pernah |
+   | [Artikel Kontrol] | ✅ Sukses | ✅ **TERINDEKS** (`PASS`) | [Waktu Crawl Riil] |
 
 ### D. Automated 3-Stage Verification Script (Probe + Sitemap + Inspection)
 ```python
@@ -371,8 +384,10 @@ def verify_publication_pipeline(target_url, sitemap_url, gsc_client):
 
 ## 6. Pitfalls & Anti-Patterns
 
+- **Never insert new URLs into automated indexing registries via naive closing bracket string replacement (`replace(']', ...)`)**: When maintaining a static list of tracked URLs in scripts (e.g. `ALL_PAGES = [...]`), matching a bare closing bracket replaces the first bracket encountered in the file—which is often in top-of-file docstrings or usage examples. This silently strands URLs in documentation comments while the executable list remains un-updated, preventing batch priority indexing (dozens of URLs accumulated in docstrings before detection). Always parse the AST or explicitly locate `ALL_PAGES = [` and its matching closing bracket before inserting, and verify membership programmatically afterwards.
 - **Mismatching Property Identifier in URL Inspection API (`siteUrl` Parameter)**: Passing a standard URL prefix (`https://example.com/`) for a domain property registered in GSC as `sc-domain:example.com` triggers HTTP 403 `PERMISSION_DENIED: You do not own this site, or the inspected URL is not part of this property.` Always query `GET /webmasters/v3/sites` first to retrieve the exact registered `siteUrl` string (domain property format `sc-domain:<domain>` vs URL-prefix format `https://<domain>/`) before constructing inspection payloads.
 - **Sequential URL Inspection Timeout on Site Audits**: Inspecting 20+ URLs sequentially via the GSC URL Inspection API will exceed standard script and tool execution timeouts (each inspection takes 2–4 seconds over HTTPS). Always execute inspections concurrently using `ThreadPoolExecutor(max_workers=5)` with per-request timeouts (10–12s), and isolate failed reads for single-URL retries with a generous timeout (25–30s).
+- **Conflating "Sudah Masuk GSC" (Queued/Submitted) with "Terindeks" (Live in SERP)**: Confusing submission with indexing leads to reporting false alarms ("belum masuk GSC") when the URL is actually queued and simply awaiting crawler processing. Differentiate Stage 2 (Submitted/Queued) from Stage 3 (Indexed/PASS), verify sitemap refresh status (`PUT /sitemaps/...`), and provide a comparison against an established indexed article on the same domain as control proof.
 - **Conflating Public Web Accessibility with Search Engine Indexing**: Telling stakeholders a newly launched feature or page "is not yet visible to people" when it is merely awaiting Googlebot's asynchronous crawl queue. The page is immediately accessible to any human visitor while Googlebot processes indexing asynchronously.
 - **Assigning 'Full' Instead of 'Owner' Permissions for Indexing API**: While 'Full' permission in Search Console allows reading analytics and submitting sitemaps, the Web Search Indexing API (`urlNotifications:publish`) strictly enforces verified ownership and fails with HTTP 403 `Permission denied. Failed to verify the URL ownership.` The service account must be designated as 'Owner' (Pemilik) in GSC Users and permissions.
 - **Premature DNS Verification Clicking**: Triggering domain verification in GSC before verifying that Google Public DNS (`8.8.8.8`) has purged negative caches and resolved the new `google-site-verification` TXT record. Always run `dig @8.8.8.8 <domain> TXT +short | grep google-site-verification` first.

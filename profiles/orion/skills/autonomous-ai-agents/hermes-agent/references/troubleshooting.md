@@ -69,13 +69,35 @@ Common gateway problems:
 - **Slack bot only works in DMs**: Must subscribe to `message.channels` event. Without it, the bot ignores public channels.
 - **Windows-specific issues** (`Alt+Enter` newline, WinError 10106, UTF-8 BOM config, line endings): see `references/windows-quirks.md`.
 
-### Auxiliary models not working
+### Auxiliary models not working & Vision timeouts
 If `auxiliary` tasks (vision, compression, session_search) fail silently, the `auto` provider can't find a backend. Either set `OPENROUTER_API_KEY` or `GOOGLE_API_KEY`, or explicitly configure each auxiliary task's provider:
 ```bash
 hermes config set auxiliary.vision.provider <your_provider>
 hermes config set auxiliary.vision.model <model_name>
 ```
 
+**Vision 120s timeout on reasoning models:**
+- **Mechanism:** Gateway image routing defaults to `text (mode=text). Pre-analyzing via vision_analyze` when the main model is uncataloged or lacks explicit vision metadata. The pre-analysis prompt (`"Fully describe and explain everything about this image..."`) triggers massive thinking token burn on reasoning models (e.g. DeepSeek-R1 / V4.1 Flash, burning ~10k+ reasoning tokens, TTFT >90s). This hits the default `auxiliary.vision.timeout: 120` seconds, causing repeating timeouts.
+- **Remedy 1 — Pin dedicated non-reasoning vision model with fallback:**
+  ```bash
+  hermes config set auxiliary.vision.provider custom
+  hermes config set auxiliary.vision.base_url http://localhost:20128/v1
+  hermes config set auxiliary.vision.model prof/step-3.7-flash
+  hermes config set auxiliary.vision.timeout 180
+  hermes config set auxiliary.vision.fallback_chain '[{"provider":"custom","model":"prof/glm-5.3-flash","base_url":"http://localhost:20128/v1","timeout":180}]'
+  ```
+- **Remedy 2 — Force reasoning off on OpenAI-compatible routes:**
+  Task-level `reasoning_effort` may not project to top-level wire properties on custom endpoints. Use `extra_body` to pass wire properties directly:
+  ```bash
+  hermes config set auxiliary.vision.extra_body '{"reasoning_effort": "none"}'
+  ```
+- **Remedy 3 — Bypass auxiliary pre-analysis (native vision mode):**
+  Send the image directly to the primary model without auxiliary text conversion:
+  ```bash
+  hermes config set model.supports_vision true
+  # or
+  hermes config set agent.image_input_mode image
+  ```
+
 ### "Reset permissions" / auto-approving everything
 See `references/security-privacy.md` — wipe the "Always allow" stores, don't touch yolo mode.
-

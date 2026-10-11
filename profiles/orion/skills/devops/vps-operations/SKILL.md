@@ -1,7 +1,7 @@
 ---
 name: vps-operations
 description: Use when managing VPS security, git deploys, or AI apps.
-version: 1.8.0
+version: 1.8.1
 author: Hermes Agent Curator
 license: MIT
 metadata:
@@ -153,27 +153,40 @@ Once password authentication is disabled (`PasswordAuthentication no`), standard
 To safely enroll a new client machine (laptop, desktop, or mobile) into a password-locked VPS:
 1. **Clarify Access vs Authentication:** Confirm that port 22 remains reachable and listening (`ss -tlnp | grep :22`); only password authentication is closed.
 2. **Client-Side Key Generation:**
-   On the new client machine (Linux/macOS terminal or Windows PowerShell/Git Bash):
+   On the new client machine (Linux/macOS terminal, Termius, or Windows PowerShell/Git Bash):
    ```bash
    ssh-keygen -t ed25519 -C "new-device-label"
    cat ~/.ssh/id_ed25519.pub   # Windows: Get-Content ~\.ssh\id_ed25519.pub
    ```
-3. **Enrollment Pathways:**
-   - **In-Band Automation/Agent Relay (Recommended when an active agent/session exists):** Have the user paste the single-line public key (`ssh-ed25519 AAAAC3NzaC1lZDI1NTE5...`) into the active session. Append it directly on the host:
-     ```bash
-     echo "<public_key_string>" >> /home/<username>/.ssh/authorized_keys
-     ```
+3. **Canonical Username Resolution (8-Character Truncation Trap):**
+   Classic `last` and `wtmp` utilities truncate usernames longer than 8 characters to 8 characters (e.g. `indrayuda` displays as `indrayud`). Never derive usernames for SSH configuration or `.ssh/authorized_keys` paths from bare `last` columns.
+   - Always verify the true username via `/etc/passwd` (`getent passwd <user>` or `id -un`) or use `last -w` (`--fullnames`).
+   - Using a truncated username in SSH client settings causes instant authentication failure (`Permission denied (publickey)`), and targeting `/home/<truncated>/.ssh/` fails with nonexistent path errors.
+4. **Enrollment Pathways & Safe In-Band Append:**
+   - **In-Band Automation/Agent Relay:** Have the user provide the single-line public key string (`ssh-ed25519 AAAAC3NzaC1lZDI1NTE5...`).
+     - Always create a timestamped backup before mutation:
+       ```bash
+       cp -a /home/<username>/.ssh/authorized_keys /root/authorized_keys.<username>.$(date +%Y%m%d%H%M%S).bak
+       ```
+     - Ensure a preceding newline before appending:
+       ```bash
+       printf '\n# %s\n%s\n' "new-device-label" "<public_key_string>" >> /home/<username>/.ssh/authorized_keys
+       ```
+     - Enforce permissions: `chmod 700 /home/<username>/.ssh && chmod 600 /home/<username>/.ssh/authorized_keys && chown -R <username>:<username> /home/<username>/.ssh`.
+     - Verify file integrity with `ssh-keygen -lf /home/<username>/.ssh/authorized_keys` to ensure OpenSSH parses all keys cleanly without line concatenation or format errors.
    - **Archive/Key Bundle Upload Triage & OpSec Sanitization:** Users frequently upload entire zipped `.ssh/` directories (e.g. `.ssh.zip`) containing both private keys (`id_ed25519`) and public keys (`id_ed25519.pub`).
      - *OpSec Sanitization:* Never print, echo, or store private keys in chat transcripts, logs, or persistent files. Extract in an isolated scratch path, inspect only the public key (`.pub`), and immediately purge the uploaded archive and private key (`rm -rf <scratch_dir> <uploaded_archive>`).
      - *Key Identification & Fingerprint Validation:* Extract the comment and type from the `.pub` file (`ssh-keygen -l -f id_ed25519.pub`). Compare against existing entries in `/root/.ssh/authorized_keys` and `/home/<username>/.ssh/authorized_keys`.
-     - *Clean Append & Syntax Verification:* Append `# <comment>` followed by the public key string with a terminating newline. Run `ssh-keygen -l -f ~/.ssh/authorized_keys` to verify that OpenSSH parses every line cleanly without syntax corruption.
    - **Bridge via Existing Authorized Device:** If the operator has another device already authorized (e.g. smartphone running Termux or previous workstation), SSH from that device and append the new key string to `.ssh/authorized_keys`.
    - **Encrypted Manager Key Sync:** If using SSH clients with cloud key synchronization (e.g. Termius), logging into the client account automatically synchronizes existing private keys without host-side reconfiguration.
-4. **Dual Privilege-Tier Key Sync Invariant:**
+5. **Dual Privilege-Tier Key Sync Invariant:**
    If both a non-root administrative account (`/home/<username>`) and `root` exist on the host, append the new public key to both locations:
    - `/home/<username>/.ssh/authorized_keys`
    - `/root/.ssh/authorized_keys` (when root key login is permitted via `PermitRootLogin without-password` or `prohibit-password`).
    This prevents administrative lockouts during privilege-specific tasks or emergency recoveries.
+6. **Pre-Handoff Fail2ban Audit & Client Setup Checklist:**
+   - Before handing off connection instructions to the user, run `fail2ban-client status sshd` and check whether the administrator's IP was jailed during earlier connection attempts. Unban if necessary (`fail2ban-client unban <ip>`).
+   - In GUI/mobile clients (Termius, JuiceSSH, PuTTY): explicitly instruct the user to configure the host entry with the full canonical username, public host IP, port 22, and select the enrolled Key from the Keychain rather than username/password authentication.
 
 ### Re-Enabling Password Authentication & Cloud-Init / Locked-Root Traps
 When temporarily or permanently re-enabling password authentication on cloud VPS instances (Azure, AWS, GCP, Ubuntu cloudimg):

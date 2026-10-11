@@ -1,7 +1,7 @@
 ---
 name: whatsapp-platform-operations
 description: Operate WhatsApp bridge, allowlists, and group JIDs.
-version: 1.6.0
+version: 1.8.0
 author: Hermes Agent Curator
 license: MIT
 metadata:
@@ -211,7 +211,7 @@ WHATSAPP_DEBUG=true
           - Once Baileys writes `creds.json`, terminate the standalone bridge process and start the gateway service (`hermes --profile <profile> gateway run`).
        6. **In-Chat QR Code Delivery via Image Rendering (Headless Chat Handshake):**
           When pairing a new WhatsApp profile from within another messaging channel (e.g. Telegram):
-          - Ensure `qrcode` is installed in the venv: `pip install qrcode`.
+          - **Hermes Virtualenv Python Invariant:** Host system Python (`/usr/bin/python3`) often lacks `qrcode`. Always use Hermes venv Python (`/usr/local/lib/hermes-agent/venv/bin/python`) when generating QR PNGs.
           - Capture the raw QR text string emitted by `bridge.js` (via `--pair-json`).
           - **Persistent Tmux Daemon Pattern (Anti-Turn-Termination):** Background python/terminal subshells can terminate when agent turns conclude. To guarantee the pairing bridge stays permanently alive across multi-turn user interactions, spawn it in a detached tmux session:
             `tmux new-session -d -s wa-<profile>-bridge -x 120 -y 40 'node /usr/local/lib/hermes-agent/scripts/whatsapp-bridge/bridge.js --port <port> --session <dir> --mode bot --pair-json'`
@@ -356,42 +356,71 @@ WHATSAPP_DEBUG=true
 - Files located in hidden system folders like `.config` are silently dropped or blocked by gateway path security filters, causing the message to arrive without the attachment.
 - **Rule:** Always copy or save outbound media into the agent profile's designated scratch cache directory (`~/.hermes/profiles/<profile>/cache/scratch/` or `$TMPDIR`), verify file existence and non-zero size, and send the scratch path via `MEDIA:`.
 
-### 13. Headless Gateway Reconnect Timeout Loop & Revoked Session (Code 401) Diagnostics
-- **The Symptom & Asymmetric Outage Mechanism:**
-  When companion device authorization expires or is unlinked from the phone app ("Perangkat Tertaut"), Baileys receives `DisconnectReason.loggedOut (code 401)`.
-  1. On code 401, Baileys deletes or zeroes out `creds.json` (0 bytes).
-  2. The supervised gateway (`hermes --profile <profile> gateway run`) attempts to reconnect by launching `bridge.js`.
-  3. With `creds.json` missing or empty, `bridge.js` enters QR pairing mode and prints a new ASCII/terminal QR code into its log file (`bridge.log`).
-  4. In headless systemd services, nobody is watching `bridge.log` to scan the QR. After 30s, Hermes gateway times out:
-     `WARNING gateway.run: Reconnect whatsapp error: whatsapp connect timed out after 30s, next retry in 300s`
-  5. The gateway kills the bridge and sleeps for 300s, repeating the loop indefinitely. Meanwhile, token-based channels (such as Telegram bots) remain completely healthy, creating an asymmetric outage where Telegram is online but WhatsApp is dead.
+### 13. Headless Gateway Reconnect Loop & Revoked Session (Code 401) Diagnostics
+- **The Symptom & Persistent Dead-Creds Crash Loop:**
+  When companion device authorization is unlinked or revoked on the phone ("Perangkat Tertaut"), WhatsApp returns `DisconnectReason.loggedOut (code 401)`.
+  1. **The Intact-Creds Trap (Creds Are NOT Zeroed Out):** Baileys does NOT automatically delete or zero out `creds.json`. The invalid credentials remain on disk with non-zero size (e.g. 2,767 bytes).
+  2. **Infinite Crash Loop Without QR Generation:** Because `creds.json` still exists, `_preflight()` considers WhatsApp paired and spawns `bridge.js`. When `bridge.js` runs, Baileys attempts to reconnect with the dead credentials. The WhatsApp server rejects it immediately with `DisconnectReason.loggedOut`.
+  3. `bridge.js` logs `❌ Logged out. Delete session and restart to re-authenticate.` and exits with code 1.
+  4. Because stored credentials exist, `bridge.js` **never** enters QR pairing mode. It exits immediately, the gateway supervisor catches exit code 1 (`whatsapp_bridge_exited`), sets `needs_attention: true`, and retries every ~2–3 minutes. This loop repeats indefinitely (e.g. hundreds of times over days) without ever generating a QR code or notifying the user. Meanwhile, Telegram bots remain completely healthy, creating an asymmetric outage.
 - **Triage & Diagnosis Steps:**
-  1. Check `platforms.whatsapp.extra.session_path` in `config.yaml` to locate the exact session directory (never assume default path).
-  2. Check for 0-byte or missing credentials:
-     `find ~/.hermes/profiles/*/whatsapp/session/ ~/.hermes/profiles/*/platforms/whatsapp/session/ ~/.hermes/platforms/whatsapp/session/ -name "creds.json" -size 0`
-  3. Inspect recent gateway logs for the 30s timeout / 300s retry pattern:
-     `journalctl --user -u "hermes-gateway-*" -n 40 --no-pager | grep -i "reconnect whatsapp error"`
-  4. Probe socket state directly with a fast headless Baileys handshake check to distinguish transient network drops from authentic 401 logouts.
-- **Recovery Protocol:**
-  1. Instruct the user to open WhatsApp on their phone -> Linked Devices (Perangkat Tertaut) -> tap stale Linux/Google Chrome session -> Log out ("Keluar") to clear server linkage.
-  2. Delete any 0-byte `creds.json` in the session directory.
-  3. Launch `scripts/pair_whatsapp_bridge.py` or run `bridge.js --pair-json` inside a detached tmux session.
-  4. Render the emitted QR string to a PNG using `qrcode.make()` and deliver it in the active conversation via `MEDIA:<path>`.
-  5. **Mandatory Credential Flush Invariant:** Wait 2-3 seconds after the `connected` event before killing the pairing bridge so Baileys writes non-empty `creds.json`.
-  6. **Credential Backup Invariant:** Immediately make an atomic backup:
-     `cp <session_dir>/creds.json <session_dir>/../creds_backup.json`
-     to preserve valid credentials against accidental 0-byte truncations during crashes.
-  7. **Standalone Bridge Teardown & Port Free Invariant (Anti-`EADDRINUSE` & Anti-Drop):**
-     - **The In-Flight Pairing Bridge Inbound Drop Trap:** Standalone pairing bridges (e.g. run via tmux or python supervisor) usually lack the full gateway environment variables (`WHATSAPP_ALLOWED_USERS`, `WHATSAPP_DM_POLICY`). Any test message sent while the temporary bridge is still holding the port is dropped with `reason: "allowlist_mismatch"` because Baileys cannot match the sender's `@lid` to `WHATSAPP_ALLOWED_USERS`.
-     - **Rule:** Never instruct the user to test chatting while the temporary pairing bridge is active. Immediately upon detecting the `connected` event and credential flush, terminate the temporary pairing bridge (`tmux kill-session` or kill PID) and verify the port (3000/3001) is completely free (`lsof -i :<port>`).
-  8. **Service Restart & Managed Bridge Handover:**
-     Restart the profile gateway service via D-Bus:
-     `busctl --user call org.freedesktop.systemd1 /org/freedesktop/systemd1 org.freedesktop.systemd1.Manager RestartUnit ss "hermes-gateway-<profile>.service" "replace"`
-     This allows the official gateway to spawn its own managed bridge loaded with the full profile `.env`, allowlists, and active `/messages` long-polling loop.
-  9. **Gateway State Verification & Active Outbound Handshake (Anti-False-Positive Test):**
-     - Verify real-time platform status in `/root/.hermes/profiles/<profile>/gateway_state.json` (`platforms.whatsapp.state == "connected"`).
-     - Probe bridge health: `GET http://127.0.0.1:<port>/health` (expect `status: "connected"`).
-     - **Mandatory Outbound Ping Handshake:** Do not wait passively for the user to chat. Proactively send an outbound test ping to the user's phone via `POST http://127.0.0.1:<port>/send` (`{"chatId": "<owner_phone>@s.whatsapp.net", "message": "Pesan tes..."}`), confirm HTTP 200 with `success: true` and `messageId`, and instruct the user to reply to that specific message. This guarantees bi-directional routing (outbound push + inbound long-polling intake) on the new session.
+  1. Check `platforms.whatsapp.extra.session_path` in `config.yaml` to locate the exact session directory.
+  2. Inspect `bridge.log`: `grep "Logged out" <session_path>/../bridge.log` or check `gateway_state.json` (`platforms.whatsapp.error_code == "whatsapp_bridge_exited"`).
+  3. Count logged-out occurrences: `grep -c "Logged out" bridge.log`. A high count with non-zero `creds.json` confirms an unlinked session stuck in the dead-creds loop.
+- **Zero-Downtime Re-Pairing Protocol (Protecting Active Channels like Telegram):**
+  1. **Phone-Side Cleanup First:** Instruct the user to open WhatsApp > Linked Devices (Perangkat Tertaut), tap any stale "Google Chrome / Linux" session, and tap "Keluar" (Log out). If the phone still holds the old linkage, pairing a new session will be rejected by WhatsApp.
+  2. **Run Isolated Pairing Bridge on Ephemeral Port (No Gateway Disruption):**
+     Do NOT kill or restart the main `hermes-gateway` service while communicating with the user on Telegram. In unified host gateway setups (where 10+ profiles share one supervisor daemon), killing the daemon terminates all channels across all profiles.
+     Instead, spin up a dedicated pairing bridge on an ephemeral port (e.g. 3009) with an isolated session directory in scratch:
+     ```bash
+     SCRATCH=/root/.hermes/profiles/<profile>/cache/scratch
+     SESSION="$SCRATCH/wa-pair-session"
+     LOG="$SCRATCH/wa-pair.log"
+     NODE=/root/.hermes/tools/node-26.7.0-linux-x64/bin/node
+     rm -rf "$SESSION" && mkdir -p "$SESSION" && : > "$LOG"
+     tmux kill-session -t wa-pair 2>/dev/null || true
+     tmux new-session -d -s wa-pair "$NODE /usr/local/lib/hermes-agent/scripts/whatsapp-bridge/bridge.js --port 3009 --session $SESSION --mode bot --pair-json >> $LOG 2>&1"
+     ```
+  3. **QR Extraction, Rendering & Rapid Expiry Refresh Protocol (~20s Window):**
+     - Baileys rotates QR codes approximately every 20 seconds.
+     - **Python Virtualenv Invariant:** System Python (`/usr/bin/python3`) often lacks `qrcode`. Always use `/usr/local/lib/hermes-agent/venv/bin/python` to render the QR PNG.
+     - **Handling User Refresh Requests ("coba qr baru"):** Never re-render the existing QR from log if the user took >20s to scan. You MUST poll until a *new* QR event is appended to `$LOG`, then render and deliver immediately:
+       ```bash
+       N0=$(grep -c '"event":"qr"' "$LOG" 2>/dev/null || echo 0)
+       for i in $(seq 1 40); do
+         N1=$(grep -c '"event":"qr"' "$LOG" 2>/dev/null || echo 0)
+         if [ "$N1" -gt "$N0" ]; then break; fi
+         sleep 1
+       done
+       python3 -c "
+       import sys, json, qrcode
+       for line in open('$LOG'):
+           try:
+               d = json.loads(line.strip())
+               if d.get('event') == 'qr' and d.get('qr'): qr = d['qr']
+           except Exception: pass
+       qrcode.make(qr).save('$SCRATCH/wa-qr.png')
+       "
+       ```
+     - Deliver via `MEDIA:$SCRATCH/wa-qr.png` with a reminder to keep the phone scanner open beforehand.
+  4. **Mandatory Credential Flush & Multiplexer Non-Disruptive Handover:**
+     - Wait for `{"event":"connected"}` in `$LOG`. Allow 2–3 seconds for Baileys to write `creds.json`.
+     - Terminate the ephemeral pairing tmux session: `tmux kill-session -t wa-pair`.
+     - Archive dead session: `mv <session_path> <session_path>.dead-$(date +%Y%m%d)`.
+     - Move pairing session into place: `cp -a "$SESSION" <session_path>`.
+     - Create atomic credential backup: `cp -a <session_path>/creds.json <session_path>/../creds_backup.json`.
+     - **Multiplexed Reconnect Handling:** The host gateway daemon reconnects secondary profiles on a scheduled retry timer (e.g. `Secondary whatsapp reconnect retry in 300s (profile: <profile>)`). Once the valid session is in place, the supervisor automatically picks up the fresh credentials on its next retry loop and spawns `bridge.js` on the assigned port (e.g. 3001) without requiring a global gateway restart.
+  5. **Post-Pairing Two-Way Handshake & Owner LID Discovery:**
+     - **Resolving Owner LID from Artifacts:** During initial sync, Baileys creates `lid-mapping-<lid>_reverse.json` or `identity-key-<lid>_1.0.json`. Extract the numeric LID from these files to resolve the owner's WhatsApp LID (`<lid>@lid`).
+     - **Outbound Ping:** Test outbound delivery directly to the owner via HTTP:
+       ```bash
+       curl -s -X POST http://127.0.0.1:<port>/send \
+         -H "Content-Type: application/json" \
+         -d '{"chatId":"<owner_lid>@lid","message":"Orion balik online - coba bales pesan ini bre biar tau jalur dua arahnya sehat."}'
+       ```
+       Confirm response returns `{"success": true, "messageId": "..."}`.
+     - **Inbound Reply Verification:** Ask the owner in chat to reply to the WhatsApp message; check `bridge.log` for inbound events (`"event":"debug","stage":"queued"` or `Bridge-Poll`).
+     - **Gateway State Check:** Confirm `/root/.hermes/gateway_state.json` updates to `platforms.whatsapp.state == "connected"` with `needs_attention: false` and `error: null`.
 
 ### 14. Quoted Media (Images/Docs/Audio) in Replies & Inbound Text-Only Fallback Pitfall
 - **The Symptom & Mechanism:**

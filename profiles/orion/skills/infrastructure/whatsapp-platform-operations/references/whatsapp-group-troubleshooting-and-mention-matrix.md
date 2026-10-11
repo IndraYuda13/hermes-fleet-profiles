@@ -217,19 +217,19 @@ When restarting the gateway via systemd (`systemctl --user restart` or `busctl R
 
 ## 8. Headless Gateway Reconnect Loop & Revoked Session (Code 401) Triage
 
-### 8.1. Failure Mechanism
+### 8.1. Failure Mechanism (Dead-Creds Crash Loop)
 When WhatsApp unlinks or revokes a companion session, Baileys emits `statusCode: 401` (`DisconnectReason.loggedOut`).
-- `creds.json` is wiped to 0 bytes.
-- The headless gateway spawns `bridge.js`, which prints a QR code to `bridge.log` waiting for a scan.
-- Gateway timeout triggers after 30 seconds:
-  `WARNING gateway.run: Reconnect whatsapp error: whatsapp connect timed out after 30s, next retry in 300s`
-- The bridge process is killed and gateway enters a 5-minute cooldown loop.
+- **The Non-Zero Creds Trap:** `creds.json` is NOT wiped to 0 bytes—it remains intact on disk with invalid credentials (e.g. ~2.7 KB).
+- When the headless gateway supervisor launches `bridge.js`, Baileys attempts connection with the stored keys.
+- WhatsApp server rejects it immediately with code 401. `bridge.js` prints `❌ Logged out. Delete session and restart to re-authenticate.` and exits with code 1.
+- Because stored credentials exist, `bridge.js` **never** enters QR pairing mode.
+- The gateway adapter flags `whatsapp_bridge_exited` and retries every ~2–3 minutes, creating an infinite crash loop without user alert.
 - Telegram bots (HTTP token polling) remain completely operational during this failure, creating an asymmetric outage.
 
 ### 8.2. Verification & Rapid Recovery
-1. Identify zero-byte creds:
+1. Identify logged-out loop in bridge log:
    ```bash
-   find ~/.hermes/profiles/*/platforms/whatsapp/session/ ~/.hermes/profiles/*/whatsapp/session/ ~/.hermes/platforms/whatsapp/session/ -name "creds.json" -size 0
+   grep -c "Logged out" ~/.hermes/profiles/<profile>/whatsapp/bridge.log
    ```
 2. Confirm 401 state via quick headless Baileys probe:
    ```bash
@@ -245,5 +245,7 @@ When WhatsApp unlinks or revokes a companion session, Baileys emits `statusCode:
    });
    "
    ```
-3. If 401, instruct user to log out stale device on WhatsApp mobile ("Perangkat Tertaut"), remove 0-byte `creds.json`, generate fresh QR via pairing supervisor script, render PNG, and deliver to user for scanning.
-4. After pairing, ensure Baileys flushes credentials (wait 2-3s) before restarting gateway service via `busctl`.
+3. If 401, instruct user to log out stale device on WhatsApp mobile ("Perangkat Tertaut").
+4. Launch pairing bridge on an ephemeral port (e.g. 3009) with scratch session directory inside detached tmux session.
+5. Render QR code using Hermes venv Python (`/usr/local/lib/hermes-agent/venv/bin/python`) and send image via chat (`MEDIA:<path>`).
+6. After pairing, ensure Baileys flushes credentials (wait 2-3s), terminate pairing bridge, swap session files, and clear port.

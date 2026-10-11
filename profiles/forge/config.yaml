@@ -2,6 +2,7 @@ model:
   context_length: 950000
   default: gpt-terra
   provider: custom:local-(localhost:20128)
+  supports_vision: true
 toolsets:
 - file
 - terminal

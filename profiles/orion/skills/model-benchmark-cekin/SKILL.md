@@ -11,6 +11,8 @@ description: Use when comparing LLM benchmarks or picking 9router models.
 - QUIRK: reasoning models need max_tokens >=1200 for trivial prompts (reasoning tokens eat budget → empty content, finish_reason=length).
 - Route health is per-model: 503 = upstream route down on that provider (retry later ≠ model bad); 410 Gone = removed; empty non-JSON = route broken. Verify a "failed" model by probing another route (e.g. gemini/ prefix) before judging the model.
 - Smoke script (tool-call + tool-loop + instruction test, 4 workers): /root/.hermes/profiles/orion/cache/scratch/agent_smoke.py — reusable, edit MODELS list.
+- QUIRK: reasoning models burn HUGE reasoning tokens on "describe everything" vision prompts. prof/deepseek-v4.1-flash (gpt-terra combo): 4.5s with reasoning_effort=none, but 91-120s / 10.5k reasoning tokens with default effort. For vision pre-analysis (Hermes agent), pin reasoning_effort=none or use non-reasoning vision models (glm-5.3-flash, step-3.7-flash).
+- gpt-terra = 9router COMBO "["prof/deepseek-v4.1-flash"]" (NOT a GPT model; name is a combo alias). Combo definitions in /root/.9router/db/data.sqlite table `combos`.
 
 ## Benchmark workflow
 1. LMArena = arena.ai (heavy CSR). Use browser session isolation (browser_exec session='bench') — shared default tab can be hijacked by other automations. Extract via js('document.body.innerText') after >10s wait; pages: /leaderboard/text, /agent, /webdev, /vision (coding redirects to webdev sub-pages).

@@ -1,6 +1,7 @@
 model:
   provider: via9router
   default: ds
+  supports_vision: true
 providers:
   via9router:
     api: http://127.0.0.1:20128/v1

@@ -7,8 +7,9 @@ Full reference: https://hermes-agent.nousresearch.com/docs/user-guide/configurat
 
 | Section | Key options |
 |---------|-------------|
-| `model` | `default`, `provider`, `base_url`, `api_key`, `context_length`, `aliases` |
-| `agent` | `max_turns` (90), `tool_use_enforcement`, `service_tier`, `verify_on_stop` |
+| `model` | `default`, `provider`, `base_url`, `api_key`, `context_length`, `supports_vision`, `aliases` |
+| `agent` | `max_turns` (90), `image_input_mode` (auto/text/image), `tool_use_enforcement`, `service_tier`, `verify_on_stop` |
+| `auxiliary` | `vision`, `compression`, `session_search`: `provider`, `model`, `base_url`, `api_key`, `timeout`, `fallback_chain`, `extra_body` |
 | `terminal` | `backend` (local/docker/ssh/modal/daytona/singularity), `cwd`, `timeout` (180) |
 | `compression` | `enabled`, `threshold` (0.50), `target_ratio` (0.20) |
 | `display` | `skin`, `interface` (cli/tui), `language`, `show_reasoning`, `show_cost`, `pet` |
@@ -22,6 +23,32 @@ Full reference: https://hermes-agent.nousresearch.com/docs/user-guide/configurat
 | `curator` | `enabled`, `consolidate` (false, opt-in aux-model consolidation), `interval_hours`, `stale_after_days` |
 
 `hermes config check` reports sections missing from an older config.
+
+### Auxiliary Models & Vision Routing
+
+Hermes routes background and auxiliary tasks (`vision`, `compression`, `session_search`, `curator`) independently of the primary conversational model.
+
+#### Vision Routing Modes
+- **Auxiliary Pre-analysis (`agent.image_input_mode: auto` / `text`):** When the primary model lacks vision catalog support, images arriving via messaging gateways are first sent to an auxiliary vision model via `vision_analyze` with a descriptive prompt, and the resulting text description is forwarded to the main model.
+- **Native Direct Vision (`model.supports_vision: true` / `agent.image_input_mode: image`):** Injects image blocks directly into user turns without intermediate aux model translation.
+
+#### Configuring Auxiliary Tasks (`auxiliary.<task>.*`)
+Each task (`vision`, `compression`, `session_search`) supports:
+```yaml
+auxiliary:
+  vision:
+    provider: custom                      # auto | openrouter | openai | custom
+    model: prof/step-3.7-flash            # dedicated model
+    base_url: http://localhost:20128/v1
+    timeout: 180                          # default 120s; raise for complex routes
+    extra_body:                           # raw payload parameters forwarded to completions API
+      reasoning_effort: none              # disable deep reasoning on dual-mode models
+    fallback_chain:                       # ordered candidate list tried on timeout/failure
+      - provider: custom
+        model: prof/glm-5.3-flash
+        base_url: http://localhost:20128/v1
+        timeout: 180
+```
 
 ### Toolsets
 

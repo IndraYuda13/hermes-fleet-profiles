@@ -46,6 +46,16 @@ python3 scripts/recover_page.py "https://example.com/blocked-article" --json
 The script tries each route in order, validates every body (see "Fake
 successes" below), and prints the first genuine hit with its provenance.
 
+## Files, not pages
+
+When the blocked resource is a downloadable **file** (installer, APK, archive),
+the archive routes above do not apply — there is no page copy to recover. Use
+the real browser: point its download directory at a workspace folder, trigger
+the download from the rendered page (click the link), then watch that folder
+for the completed file. A file URL that returns 403 to curl usually downloads
+fine through the browser's own path and cookies (anti-bot CDNs gate on the
+browser context, not just headers).
+
 ## Provenance discipline (non-negotiable)
 
 Every recovered copy carries a provenance you MUST preserve when citing:
