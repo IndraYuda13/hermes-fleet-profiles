@@ -19,13 +19,13 @@ Use for service/container/config/database/network changes that are deployed or r
 2. Define explicit success signals and rollback triggers before mutation. Inspect the actual launcher: startup may apply migrations or seed data, making a restart a database mutation. Require a separate release decision when only preparation or verification is authorized.
 3. Gate the exact candidate before mutation: verify runtime-derived live DB identity against the isolated test cluster, capture each verification phase's raw exit and counts, and bind results to the resulting build identity. A rebuilt artifact invalidates evidence tied to the previous BuildID. See `references/isolated-release-gates.md` for isolation, migration rehearsal, and client compatibility checks.
 4. Separate preparation permission from release permission. Resolve only concrete blockers with bounded probes; defer production-configured builds until source is frozen, and do not repeat a broad suite without a new falsifiable concern. For destructive cleanup, require a frozen reviewed target manifest and transaction-time retained-user exclusions; use the cleanup recipe in `references/isolated-release-gates.md`.
-5. Apply the smallest reversible change.
+5. Stage runtime helpers and service overrides outside production while source owners finish; do not make a moving-source build a prerequisite for reviewable preparation. Verify supervisor lifecycle with process fixtures before real startup, preserve existing supervision/logging, and distinguish fixture-only checks from application boot evidence. Apply the smallest reversible change only after the release gate.
 6. Verify process/container status and dependency connectivity.
 7. Run user-facing smoke checks on critical routes/functions.
 8. Inspect fresh logs/metrics for new errors, crash loops, latency or saturation signals.
 9. If smoke/health fails, execute or recommend the predeclared rollback rather than improvising endless live fixes. Do not restore an old database over newer user writes as routine rollback.
 10. Recheck health after rollback or successful rollout.
-11. Record exact commands, timestamps, artifact identity, and residual risk. Report concise factual outcomes and concrete blockers; runner exit zero is not an all-pass claim. Finish asynchronous verification only after owned jobs and listeners are quiescent.
+11. Record exact commands, timestamps, artifact identity, and residual risk. Return a compact operational checklist with concrete staged paths, executed checks and remaining gates, rather than repeating permission questions already resolved. Runner exit zero is not an all-pass claim. Finish asynchronous verification only after owned jobs and listeners are quiescent.
 
 ## Pitfalls
 - "container is running" treated as application health;
