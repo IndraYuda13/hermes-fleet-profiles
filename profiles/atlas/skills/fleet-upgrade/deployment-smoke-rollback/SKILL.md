@@ -30,7 +30,9 @@ Use for service/container/config/database/network changes that are deployed or r
 - "container is running" treated as application health;
 - deploy success without exercising the user path;
 - rollback plan depends on an artifact that was not preserved;
-- restart clears evidence before logs are captured.
+- restart clears evidence before logs are captured;
+- FK-only deletion ordering misses trigger-created dependent rows: rehearse transactional cleanup on a private restore, inspect delete-trigger side effects, and explicitly sweep generated target-owned tombstones before parent account deletion;
+- an older restore can prove dependency sequencing but cannot certify an exact current deletion manifest: record live-versus-restore drift and require fresh maintenance backup plus count/credential-retention guards before release.
 
 ## Verification
 Deployment is VERIFIED only with post-deploy smoke + health evidence and a known rollback path.
