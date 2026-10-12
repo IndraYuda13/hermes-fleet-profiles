@@ -78,6 +78,14 @@ During shared-checkout work, format/lint and stage explicit owned paths only. Ru
 
 For generated print changes, test saved output rather than only drawing commands, preserve registration geometry, and distinguish synthetic decoding from physical-device evidence. Use the bound-PDF recipe in `references/backend-architecture-audit.md`.
 
+Keep committed diagnostics portable: reuse project port/DB configuration, default evidence output to a repo-relative artifact directory, and require independently verified target identity before mutations. Test the guard's rejection paths and query the actual cluster identity against an independently supplied pin before writes; a test-looking database name or nondefault port alone is not isolation proof. Never replace a host-specific safeguard with acceptance of arbitrary databases. Classify regression failures as fixture/setup, explicitly superseded expectations, or actual defects before editing tests; preserve unrelated safety assertions and never bypass authentication to repair an unseeded fixture. Use `references/pre-commit-review.md` for the bounded regression sequence.
+
+## Authentication changes and legacy identity
+
+Before implementing signup/login changes, inspect the provider actually used by the deployed launcher, not only the advertised SDK. Freeze registration/session/confirmation responses and UI ownership first. Treat email verification, account creation, authentication, and password enrollment as separate claims; a provider without outbound verification cannot claim verified email.
+
+Never let unauthenticated registration assign a password to an existing email-only owner. Preserve owner UUID and data through authenticated enrollment or trusted recovery. Identify memory-only legacy sessions before planning a provider restart: adding durable sessions does not migrate tokens that existed only in the old process. Test actual restart, duplicate signup, wrong/unregistered credentials, logout/refresh revocation, and legacy takeover denial before handing auth changes to security review. Use the authentication migration procedure in `references/backend-architecture-audit.md`.
+
 ## Review and cleanup
 
 Review the real diff before changing it. Separate findings into blocking correctness/security defects, safe cleanup, and risky design changes. For cleanup, search the surrounding codebase for an existing helper or contract before removing or consolidating anything. Apply only safe or clearly verified changes; leave public-contract and behavioral rewrites for explicit review. Run the narrowest relevant test/lint command after each meaningful change. See `references/pre-commit-review.md` and `references/cleanup-review.md`.

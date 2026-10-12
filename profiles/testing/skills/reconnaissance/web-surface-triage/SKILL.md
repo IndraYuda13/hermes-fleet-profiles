@@ -21,7 +21,7 @@ Discovery (see `asset-discovery`) produces hundreds of hosts and thousands of sc
 - Any time a scanner or wordlist reports an "exposure" you have not personally confirmed.
 - Before reporting: every finding must survive this triage.
 - A single target URL handed to you with no scanner output — treat the page itself as the discovery pass: fingerprint, extract nav/version/asset intel from the HTML, then run the platform baseline (WordPress: `references/wordpress-surface-baseline.md`).
-- A target that times out from every sandbox tool while DNS still resolves — the host filters datacenter IP ranges. Re-route the whole test through the cloud browser's separate egress (`references/datacenter-blocked-targets.md`).
+- A target that times out — or answers `403`/a challenge — for every sandbox request while DNS still resolves: the host filters datacenter IP ranges. Re-route the whole test: cloud-browser egress, or this host's local residential proxy pool (Surfshark Proxy Studio, nodes `127.0.0.1:31001–31005`, node list at `127.0.0.1:8808/proxies`) — see `references/datacenter-blocked-targets.md` §5 for the sticky-IP rules.
 - A host behind an interactive anti-bot challenge (Cloudflare "Just a moment...") that still needs recon — keep testing it instead of parking it, via `references/browser-grade-fetching.md` (local FlareSolverr + pacing).
 
 ## Procedure

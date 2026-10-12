@@ -69,6 +69,24 @@ header shows the `go:buildid` string; the bundle then calls a global like
   the global) — do NOT re-implement the crypto from minified JS.
 - Report the mechanism (client-side obfuscation of an API call, not server-side auth), with
   the wasm's size/magic, not a claim of "encryption".
+- The same wasm can be driven headlessly from Node when scripting the chain: eval the
+  glue text so it attaches to `globalThis`, `WebAssembly.instantiate(buf, inst.importObject)`,
+  `inst.run(mod)`. Trap: a Go wasm global returns `null` for every input until its
+  dependency globals exist — one needed `globalThis.sodium` (from `libsodium-wrappers-sumo`,
+  `await sodium.ready`) before `getAdv(id)` produced anything. `null` from a wasm global
+  means missing dependency, not bad input.
+- Tiny decryptor wasms (a few KB, exports `memory`/`alloc`/`decrypt`, no imports) share one
+  shape: `alloc(len)` → copy ciphertext to `ptr` → `decrypt(ptr,len)` returns the output
+  length → plaintext starts at `ptr + 12`. Run straight from Node:
+
+```js
+const { instance } = await WebAssembly.instantiate(buf, {});
+const ex = instance.exports, bin = Buffer.from(encB64, 'base64');
+const ptr = ex.alloc(bin.length);
+new Uint8Array(ex.memory.buffer, ptr, bin.length).set(bin);
+const n = ex.decrypt(ptr, bin.length);
+console.log(new TextDecoder().decode(new Uint8Array(ex.memory.buffer, ptr + 12, n)));
+```
 
 ## 6. Extractor chains and their verification recipe
 
@@ -86,6 +104,41 @@ another source before drawing conclusions.
 
 Availability endpoints (`/api/stream/check?provider=…`) expose the server's own try-order and
 per-provider failure reasons — cheaper than trial calls and good evidence.
+
+### Signed handoff chains (embed → player → API → per-host token)
+
+Later-generation players resolve in hops, each hop embedding the next URL:
+
+    embed page (`data-api="/vs_src.php?…"`) → GET it → {"src": "<signed embed url>"}
+      → next embed page contains `playerUrl` → player page carries `window.CONFIG = {apiToken, api|streamBase, …}`
+      → stream API with the token exactly as the client sends it → encrypted `stream_urls`
+        + `{"vs":{"w":<id>,"wasm_url":"…/wasm.php?w=…"}}` → tiny-wasm decrypt (above) → master playlists
+      → per-stream-host token: GET `https://<stream-origin>/generate.php` (fresh, one-time)
+      → `?token=` on the master only; sub-playlist and segments often need nothing.
+
+Rules that cost time when missed:
+
+- Extract each hop from the fetched HTML by regex (`"playerUrl":"([^"]+)"`, `data-api="…"`,
+  `window.CONFIG = {…}`) and carry the previous hop's Referer — hops accept only their
+  predecessor's referer set.
+- Copy the client's token placement EXACTLY — grep the player JS for `api_token=`,
+  `withApiToken`, `Bearer`. One chain accepts `&api_token=<jwt>` as a QUERY param and answers
+  `403 invalid api token` for the identical token in an Authorization header; wrong placement
+  looks exactly like a rejected credential.
+- Decode token payloads: claims like `ip_cidr` plus a short `exp` declare the binding — the
+  whole chain must run from one sticky IP within the TTL. A previously valid URL answering
+  `404`/`Session expired` from a different IP is session invalidation, not a dead host
+  (sticky-IP rules: `web-surface-triage` → `references/datacenter-blocked-targets.md` §5).
+- Tokens are minted per fresh GET of the mint endpoint and consumed per use: fetch a fresh one
+  immediately before each new path level; reusing an old token on a new path yields `403`.
+- Test auth per path level (master / sub-playlist / segment) instead of assuming the whole
+  tree is gated identically.
+- If the front-end's own bootstrap is an opaque challenge loader (constant `// mt`, an
+  `accept-ch` client-hints handshake), don't fight it — find the embed component the
+  front-end delegates to (its page/API is usually the less-protected route to the same
+  stream) and chain from there.
+- A working end-to-end extractor for this chain shape is packaged at
+  `scripts/mover_chain_extract.py` (film + TV, proxy via env var).
 
 ## 7. What the deliverable looks like
 

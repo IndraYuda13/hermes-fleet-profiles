@@ -121,10 +121,12 @@ Grep the app files (exclude `node_modules`) for:
 - **A tunnel URL or key in the bundle is not automatically live.** Test it, then report what you observed: a `404` from the tunnel edge means the pointer is stale but still shipped (a reconnect-window finding), not that auth is currently intercepted. State the mechanics and the residual risk, not a false "live" claim.
 - **A key surrounded by referer/origin restrictions is not exploitable from your position** — record it as hygiene plus a rotation recommendation. Resist upgrading it because the session needs a critical; an honest Medium-low is worth more than an inflated High.
 - **Bundles vendor third-party libraries**, so an archived library version inside a bundle is not a reachable CVE — rate it only with a demonstrated chain.
+- **An odd-looking constant in grep output (`265****5769`) is viewer-side masking, not file corruption.** Dump the raw bytes (`node -e` with `charCodeAt` hex) and read the true literal before building around a phantom.
 
 ## Tooling
 
 - `curl -s -D -` for headers; `-k` only when the certificate is genuinely self-signed (and say so)
 - Python `json` to explode source maps and parse JSON API responses
 - Keep all evidence under a per-target directory and dedupe before writing the report
-- A real browser session (CDP `evaluate`) for runtime-only routes and WASM-obfuscated IDs — reproduce what the bundle does at runtime instead of re-implementing minified crypto by hand
+- A real browser session (CDP `evaluate`) for runtime-only routes and WASM-obfuscated IDs — reproduce what the bundle does at runtime instead of re-implementing minified crypto by hand. Node can host the same wasm when the glue allows (instantiate `*_exec.js` + `.wasm`, call the exported global), but supply the module's dependency globals first — a libsodium-based one silently returned `null` until `globalThis.sodium` was set from `libsodium-wrappers-sumo` after `await sodium.ready`.
+- `scripts/mover_chain_extract.py` — packaged end-to-end extractor for the signed handoff chain shape (embed → player → stream API → tiny-wasm decrypt → per-host token → media), film + TV, proxy via `VENUS_PROXY`.

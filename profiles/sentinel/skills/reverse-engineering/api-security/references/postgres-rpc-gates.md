@@ -29,11 +29,13 @@ Compare the result with the authorized isolation receipt. Stop on mismatch. Crea
 
 - Inspect API auth/body parsing and direct RPC grants separately; HTTP validation does not protect independently callable SQL functions.
 - Use distinct owner, other-owner, paired anonymous and unpaired anonymous test actors. Superuser may install synthetic fixtures, but switch to the runtime role and JWT claims before testing access decisions.
-- Query private helper execution privileges and attempt intended-denied calls under runtime roles. Source REVOKE statements alone are not runtime permission proof.
+- Query private helper execution privileges and attempt intended-denied calls under runtime roles. Source REVOKE statements alone are not runtime permission proof. If qualified-name lookup itself is blocked by private-schema USAGE, perform catalog inspection as the fixture administrator with an explicit target role, e.g. `has_function_privilege('authenticated', 'private_schema.helper(jsonb)', 'EXECUTE')`; keep hostile RPC calls under the runtime role and report schema denial separately. Do not grant extra schema access merely to make the probe run.
 - Reuse fixture construction if useful, but author independent assertions for cross-owner reads, private fields, binding mismatch, revoked grants, stale epochs, replay mismatch and competing CAS requests.
 - For history/checker probes, record the answer call, check call and persisted progress. A stored hostile model is not a correctness bypass unless actual feedback or protected state demonstrates the impact.
 - When a synthetic immutable version is modified by fixture setup, disclose that setup and roll it back; do not claim the probe proves unauthorized version mutation.
 - Run legacy and new writers against the same protected state to detect downgrade paths. Verify response history and grades after rejection, duplicates and corrections.
+- Test one rejection condition at a time when claiming branch coverage. An oversized payload with an unknown field proves rejection but cannot establish that the size limiter, rather than strict-schema validation, caused it. Likewise sequential stale-CAS tests do not prove concurrent serialization.
+- Separate fixture checks from independently authored attack assertions and count labels programmatically. End authority matrices with persisted revision, receipt count and grade/history readback so harmless-looking errors cannot hide partial mutation.
 
 ## 4. Close accurately
 

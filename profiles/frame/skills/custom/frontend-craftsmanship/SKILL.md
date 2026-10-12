@@ -24,3 +24,16 @@ metadata:
 10. After the final material change, rerun functional, build, and visual gates.
 
 Do not reuse an older PASS after code changes.
+
+## Static editorial surfaces and publishing handoff
+
+- Inspect the actual publisher signature and all side effects before calling it; generation helpers may also deploy, mutate registries, or submit URLs.
+- When ownership is mechanics-only, keep sanitization in generated artifacts and preserve shared templates, unrelated pages, and existing sidebar policy. Hold publication until the editorial artifact and required independent review are approved.
+- Compare local and live membership pages and sitemap by byte hashes, and back up both before changes. Recheck drift immediately before deployment so a stale mirror cannot overwrite newer content.
+- Validate one exact article-title H1, required numbered section headings, body-plus-FAQ word count, metadata length, approved outbound links, current live CSS versions, and parseable JSON-LD before rendering. Remove fabricated counters from newly injected listing cards as well as article chrome, without rewriting unrelated historical cards.
+- Exercise lazy-loaded editorial images by scrolling them into view before checking decode/load success. Capture and visually inspect both required mobile and desktop renders; screenshot capture alone is not visual verification.
+- Verify licensed assets through their source pages and actual pixels, not search snippets alone. Publish linked author/source/license credits and adaptation disclosures; retain share-alike licensing on derivatives when required.
+- Do not use Google's Indexing API for ordinary news articles. Keep Search Console sitemap submission and URL inspection separate from indexing claims, and use the exact approved property identifier.
+- Report preparation, deployment, and live verification as distinct states; successful preparation is not publication.
+
+For the staged workflow and asset handling recipe, read `references/static-editorial-publishing.md`.

@@ -54,6 +54,12 @@ attributable instead of anonymous.
   *authorization* control. A solved challenge yields the same unauth surface
   any visitor sees; anything beyond that stays scoped to the engagement's
   written authorization.
+- **A solved render does not carry clearance for the page's own follow-up API
+  calls.** When the app gates its API behind its own exchange (an invisible
+  Turnstile solved in-page plus a short-lived minted token), FlareSolverr gets
+  you the HTML but not that token — reproduce the app's own token flow (or drive
+  a full browser through the proxy pool, §5 of `datacenter-blocked-targets.md`)
+  before concluding the API is unreachable.
 
 ## Anti-patterns
 
@@ -64,3 +70,8 @@ attributable instead of anonymous.
   tool was throttled. Re-test once, paced, then downgrade that host's coverage.
 - Don't attribute the challenge to the target as a finding by itself — an edge
   in front of a host is infrastructure context, not a vulnerability.
+- Don't rotate IPs at a loader that returns a constant placeholder (`// mt`, an
+  empty `<html></html>`) from every node and UA — that is a browser-side
+  challenge handshake (note `accept-ch: sec-ch-ua-*` response headers), not an
+  IP block. Use a full browser, or pivot to the downstream component the page
+  delegates to; its endpoints are usually the less-protected path.

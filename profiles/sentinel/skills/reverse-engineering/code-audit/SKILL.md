@@ -31,6 +31,8 @@ description: Use for authorized source-code security review and SAST workflows i
 
 ### 2. 自动扫描
 
+Choose checks from the threat model. For a bounded auth change, inspect and exercise the credential/session trust boundaries first; broad SAST is supplementary, not a substitute for HTTP/SQL reproduction.
+
 ```bash
 semgrep --config auto .
 # 或项目规则包
@@ -46,7 +48,14 @@ semgrep --config p/owasp-top-ten .
 □ 加密：硬编码密钥、ECB、自定义 crypto
 ```
 
-### 4. 产出
+### 4. Independent gate and evidence
+
+- Read the auth contract/handoff, pin HEAD and dirty paths, and define acceptance/failure cases before execution. Keep independent reviewer probes and reports outside Git; do not edit application or existing test source during a review gate.
+- Re-run the supplied targeted checks, then add a deliberate independent bypass round; creator tests alone do not falsify the creator's assumptions. For persistent auth, follow `references/persistent-auth-gates.md`.
+- Bind conclusions to reviewed source SHA256 digests and exact commands. Report unit tests, SQL assertions and HTTP assertions separately; distinguish mocked SDK behavior, local provider behavior and real hosted-provider evidence.
+- Return a compact verdict with artifact path, material findings and rollout residuals. A bounded auth verdict must not imply production release, SMTP verification or integrated UI certification.
+
+### 5. 产出
 
 ```text
 Finding：位置 + 数据流 + PoC + 修复建议

@@ -302,6 +302,7 @@ See complete procedural guide and invariant rules:
   2. *Surgical Per-Profile Update:* Use `hermes -p <profile> config set model.default <model_id>` to ensure atomic YAML updates without formatting corruption.
   3. *Audit State Before Restart:* Run `hermes profile list` to verify that each profile's model column matches the intended role-model topology.
   4. *Gateway Restart Guard:* Never attempt `hermes gateway restart --all` or restart the executing profile from within an active session—it is blocked fail-closed by Hermes terminal guards. Either delegate the restart to the human operator outside the gateway or restart sibling profiles individually via `hermes -p <sibling> gateway restart`.
+  5. *Flag Audit:* Rewrites drop `supports_vision`/`context_length`; check after every re-route (`references/model-reroute-flag-audit.md`).
 - **Multi-Surface Profile Capability Expansion & Platform Boundary Invariant:**
   - When the operator expands a profile's toolset (e.g. granting `terminal`, `file`, `browser`, `code_execution`, `web`, `delegation` across all execution contexts):
     1. *Apply Across All Callable Surfaces:* Use official Hermes CLI commands (`hermes --profile <name> config set ...`) to configure the exact authorized list across global `toolsets`, `platform_toolsets.cli`, `platform_toolsets.telegram`, and `platform_toolsets.a2a`. Never edit YAML files directly.

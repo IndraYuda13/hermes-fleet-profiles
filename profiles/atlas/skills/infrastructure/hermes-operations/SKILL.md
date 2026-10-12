@@ -58,6 +58,15 @@ Run a dashboard as a supervised service with a deliberate bind address and authe
 
 Declarative memory is an index for durable, concise facts—not a document vault. Keep long documents in files and read them on demand; maintain a compact index in memory that points to those files. Do not change an internal storage limit through broad source edits or config guessing. See `references/hermes-memory-limits.md`.
 
+## Kanban dispatch-metadata repair
+
+1. Pin the existing board and card explicitly. Read `kanban_show(task_id=..., board=...)` and, when dispatch fields are omitted, `hermes kanban --board <slug> show <task_id> --json`; retain the original body, assignee, completion contract, forced skills, status, and latest failure evidence for comparison.
+2. Inspect the installed command's help and official Kanban documentation before choosing a mutation interface. Check the exact update schema when needed: a field accepted at creation is not necessarily editable, and an unknown PATCH field may be ignored rather than changed. Treat supported fields as version-dependent, not permanent product limitations.
+3. Keep repair scope separate from execution scope. For metadata-only repair, preserve the existing card and mission; do not create a replacement, change another profile's skills, patch Hermes source, or unblock a publication/deployment card merely to test startup. Unblocking can immediately dispatch side effects.
+4. Distinguish forced skill loading from reading a skill file. When the intended guidance is supplied through an explicit file path, append that path to the card's comment thread for the worker; a comment does not remove the startup-time forced-skill argument.
+5. Apply only an authorized supported mutation. If the inspected interfaces cannot express it, retain the blocked state and report the smallest authorization or capability needed; do not silently substitute raw database writes for a supported-interface request.
+6. Read back the exact card and comment after mutation. Compare protected fields with the original snapshot and verify dispatch metadata itself, not only the successful write response or historical creation event. Report separately whether metadata changed, whether startup was exercised, and whether unblocking is safe.
+
 ## Recovery checklist
 
 - [ ] Identify the actual `$HERMES_HOME` and service/profile scope.

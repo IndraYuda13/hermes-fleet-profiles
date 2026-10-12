@@ -45,6 +45,8 @@ When running the declarative fleet sync script (`sync.sh`):
    - Resolve `$HERMES_ROOT` dynamically: `$HERMES_HOME` -> `/root/.hermes` -> `$HOME/.hermes`.
 4. **Governance & Role-Separation Checks:**
    - Enforce profile role boundaries before running test suites. Non-design profiles (e.g. `orion`) must have UI-only toolsets like `ui-ux-pro-max` explicitly disabled (`enabled: false`) to pass `validate_fleet.py`.
+   - When `validate_fleet.py` reports `model differs from role manifest` across profiles, a live model re-route has occurred; align `governance/roles.yaml` to the current live `model.default` values before staging. Audit that same re-route for dropped capability flags (`model.supports_vision`, `context_length`): a full model-block rewrite silently strips them and native image routing degrades to text.
+   - `checksum drift between global and <profile>` (or `checksum drift in profile <name>`) from the canonical-skill parity checks means one copy was updated without fan-out; copy the newest copy byte-for-byte to every location `validate_fleet.py` checks, then re-stage.
 5. **Secret Sanitization Audit:**
    - Run `python3 scripts/sanitize_config.py --check profiles/*/config.yaml` before staging or committing. Ensure raw API keys and tokens are never staged.
 6. **Verification Gates Before Git Push:**

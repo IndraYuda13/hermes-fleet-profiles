@@ -12,7 +12,7 @@ metadata:
 # Evidence Adversary
 
 ## When to Use
-Use for independent review of important implementation, QA, deployment, benchmark, or final ORION PASS claims.
+Use for independent review of important implementation, QA, deployment, benchmark, pre-publication artifacts, or final ORION PASS claims. For article and licensed-media review, follow `references/publication-review.md`.
 
 ## Procedure
 1. Assume the claim may be wrong until evidence survives challenge.
@@ -23,10 +23,10 @@ Use for independent review of important implementation, QA, deployment, benchmar
    - **Verdict:** `REJECT`
    - **Finding:** `[P0] QA_SELF_REVIEW_CONTAMINATION` (Reviewer repaired implementation and self-certified own changes).
 6. Look for stale tests, cherry-picked subsets, skipped controls, impossible counts, untested negative paths, and self-review masquerading as independence.
-6. Reproduce at least one high-risk assertion independently when practical.
-7. For UI, audit interaction coverage arithmetic and sample critical controls.
-8. For security/infra, check failure modes and rollback/containment, not only happy-path success.
-9. Return APPROVE, REJECT, or APPROVE-WITH-RESIDUAL-RISK with blocking findings separated from recommendations.
+7. Reproduce at least one high-risk assertion independently when practical.
+8. For UI, audit interaction coverage arithmetic and sample critical controls. Separate browser DOM/layout evidence from screenshot pixel inspection; claim visual review only when the image was actually inspected. Exercise lazy-loaded content before treating an initial unloaded state as a defect.
+9. For security/infra, check failure modes and rollback/containment, not only happy-path success.
+10. Return APPROVE, REJECT, or APPROVE-WITH-RESIDUAL-RISK with blocking findings separated from recommendations. Scope artifact approval separately from staging and publication approval; a valid source artifact does not prove its template preserves required content, credits, or links.
 
 ## Verification
 An approval must state what evidence was independently sampled and the exact revision/artifact reviewed.
