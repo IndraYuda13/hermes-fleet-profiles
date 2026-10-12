@@ -13,6 +13,7 @@ description: Use when comparing LLM benchmarks or picking 9router models.
 - Smoke script (tool-call + tool-loop + instruction test, 4 workers): /root/.hermes/profiles/orion/cache/scratch/agent_smoke.py — reusable, edit MODELS list.
 - QUIRK: reasoning models burn HUGE reasoning tokens on "describe everything" vision prompts. prof/deepseek-v4.1-flash (gpt-terra combo): 4.5s with reasoning_effort=none, but 91-120s / 10.5k reasoning tokens with default effort. For vision pre-analysis (Hermes agent), pin reasoning_effort=none or use non-reasoning vision models (glm-5.3-flash, step-3.7-flash).
 - gpt-terra = 9router COMBO "["prof/deepseek-v4.1-flash"]" (NOT a GPT model; name is a combo alias). Combo definitions in /root/.9router/db/data.sqlite table `combos`.
+- Fleet native vision (2026-10-11): ALL Hermes profiles `model.supports_vision=true` → inbound images attach natively (no aux pre-analysis / 120s wall). 9router custom endpoint accepts image parts in tool-role messages (gpt-terra OK, 1.4-36s). CAVEAT: ag-opus-pool flaky on tool-role images (2/3 timeouts in tests); plain user images fine (~5.7s).
 
 ## Benchmark workflow
 1. LMArena = arena.ai (heavy CSR). Use browser session isolation (browser_exec session='bench') — shared default tab can be hijacked by other automations. Extract via js('document.body.innerText') after >10s wait; pages: /leaderboard/text, /agent, /webdev, /vision (coding redirects to webdev sub-pages).

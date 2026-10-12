@@ -335,22 +335,68 @@ When demonstrating, verifying, or handing off newly deployed features on a live 
 
 Long-lived production VPS servers running background workers, headless browsers, and containerized schedulers accumulate hidden disk hogs and process table leaks.
 
+### Non-Overlapping Filesystem Probes & Inode Audit Protocol
+When checking storage conditions or profiling disk consumption:
+1. **Never Run Unbounded `du` across Root:**
+   - *The Trap:* Running bare `du -d1 -h /` traverses across mount boundaries into `/mnt` (often 50–100+ GB secondary drives), Docker overlayfs points, and pseudo-filesystems (`/proc`, `/sys`). This produces distorted results, hangs on virtual mounts, and double-counts storage.
+   - *The Rule:* Always use `du -x` (`--one-file-system`) to strictly bound disk usage calculations to the targeted partition:
+     ```bash
+     # Top consumers strictly on the root partition
+     du -x -d1 -h / 2>/dev/null | sort -rh | head -15
+
+     # Top consumers on secondary persistent mounts
+     du -x -d1 -h /mnt 2>/dev/null | sort -rh | head -15
+     ```
+   - **Quick Storage Check (fast path for "cek storage" requests):** run the partition check first, then bounded top-level sizes. Include hidden dot-directories with `/root/.[!.]*`, because `/root/.[a-z]*` silently skips dot-dirs whose names start with a digit or capital. Always pass `-x` to `du`, even on simple `du -sh` variants.
+     ```bash
+     df -h /root /mnt
+     du -xsh /root/* /root/.[!.]* 2>/dev/null | sort -rh | head -12
+     du -xsh /mnt/* 2>/dev/null | sort -rh | head -12
+     ```
+     Run `df` again immediately before reporting, since shared hosts change during the scan.
+2. **Dual Block & Inode Audit (`df -hT` + `df -ih`):**
+   - Disk full errors (`No space left on device`) can be caused by block exhaustion OR inode exhaustion.
+   - Always run both checks simultaneously:
+     ```bash
+     df -hT | grep -v tmpfs
+     df -ih | grep -v tmpfs
+     ```
+   - If blocks show free space but writes fail, check `IUse%`. Millions of tiny files (session files, lockfiles, temporary scraping chunks) exhaust the inode table.
+
+3. **Multi-Agent Profile Cache Triage (`~/.hermes/profiles/` & `~/.openclaw/`):**
+   - In autonomous fleet environments with multiple agent profiles (e.g. Orion, Forge, Frame, Prism), each profile maintains independent scratch directories and browser profiles:
+     ```bash
+     du -x -d0 -h ~/.hermes/profiles/*/cache/scratch ~/.hermes/profiles/*/browser-profile 2>/dev/null | sort -rh
+     ```
+   - Scratch directories (`.../cache/scratch`) are safe Tier 1 garbage to prune, whereas browser profiles require targeted pruning of cache subfolders only (`Default/Cache/*`), preserving session cookies and credentials.
+
+### Storage Reporting Presentation Standard
+- **Quick-request format:** when the operator asks for a fast check ("cek cepat", "cek storage sekarang"), reply with a short summary: one line per partition (used / total / free / percent), then the top 5 consumers per partition. Put the deeper breakdown and cleanup options behind an offer, not in the first reply. Match the operator's language and casual register.
+- **Full reviews** (only when asked) use the rules below.
+- **Partition Separation:** Clearly distinguish root `/` (system) from secondary mount `/mnt` (data). Never lump them together into a single ambiguous percentage.
+- **Threshold Warning:** Explicitly call out when a partition crosses the critical 90% threshold (e.g. `/` at 91%, remaining 6.1 GB).
+- **Categorized Breakdown:** Group usage by top consumers (e.g. `/root/.hermes`, `/root/projects`, Docker, container runtimes).
+- **Tiered Action Plan:** Present immediate, zero-risk cleanup targets (scratch caches, dangling Docker images) alongside items requiring caution/confirmation. Execute zero destructive commands without explicit operator approval.
+
 ### Two-Tier Disk Rescue Protocol (Spikes Near 100% / <1 GB Free)
 When emergency disk reclamation is required, categorize targets strictly into two tiers before taking action:
 
 #### Tier 1: 100% Regenerable Garbage (Safe for Immediate Purge)
 1. **Chrome BrowserMetrics Dump Accumulation (`.pma` files):**
-   Headless Chrome/Chromium sessions (scrapers, solvers, auth probes, backup scripts) write a ~4MB `.pma` diagnostic dump on every launch. In environments with frequent runs, these accumulate hundreds of MBs per day and easily grow to 5–10+ GB across root and per-profile directories.
+   Headless Chrome/Chromium sessions (scrapers, solvers, auth probes, backup scripts) write a ~4MB `.pma` diagnostic dump on every launch. These accumulate across root and per-profile directories.
    ```bash
-   # Scan and purge metrics dumps across known browser homes
+   # Scope each delete to one named browser home; never a wide find over /root
    find /root/.config/google-chrome -maxdepth 2 -name 'BrowserMetrics*.pma' -delete 2>/dev/null || true
-   find ~/.hermes/browser-profile -maxdepth 3 -name 'BrowserMetrics*.pma' -delete 2>/dev/null || true
-   find ~/.openclaw/browser -maxdepth 4 -name 'BrowserMetrics*.pma' -delete 2>/dev/null || true
+   find /root/.hermes/profiles -maxdepth 6 -name 'BrowserMetrics*.pma' -delete 2>/dev/null || true
+   find /root/.openclaw/browser -maxdepth 5 -name 'BrowserMetrics*.pma' -delete 2>/dev/null || true
    ```
+   - **Scope rule:** keep each delete command bound to one named path. A broad recursive delete spanning `/root` or the interpreter/runtime tree is refused by the runtime guard, and it is unsafe even when allowed. Run one command per target class so a refusal does not hide the others.
+   - Hermes profile browser homes live under `~/.hermes/profiles/<profile>/browser-profile/chrome/`, not `~/.hermes/browser-profile`.
    - **Automated Watchdog Invariant:** A one-time purge is insufficient because background automation will regenerate files. Always embed `.pma` cleanup rules into the host's recurring maintenance script (`disk_watchdog.sh` or cron) so they are cleared automatically every hour.
 2. **Selective Browser Profile Cache Pruning (Cache vs Session Invariant):**
    - Safe to delete: `Default/Cache/*`, `Default/Code Cache/*`, and `component_crx_cache/*`.
-   - **Never delete:** `Cookies`, `Login Data`, `Web Data`, `Local Storage/`, or `Preferences`. Purging the entire profile destroys live authenticated sessions (SSO, LMS, reseller auth, CDP bridges).
+   - **Never delete:** `Cookies`, `Login Data`, `Web Data`, `Local Storage/`, `Session Storage/`, `WebStorage/`, `IndexedDB/`, `Service Worker/`, `History`, or `Preferences`. Several of these are session or offline-app data that a cache purge does not regenerate; `Service Worker/` often holds the largest share of a profile and is still session-bound. Purging the entire profile destroys live authenticated sessions (SSO, LMS, reseller auth, CDP bridges).
+- Inspect the profile before pruning: `du -sh <profile>/Default/*` shows which subfolders are large; only `Cache`, `Code Cache`, and top-level `component_crx_cache` are in the safe set above.
 3. **Stale Upgrade Snapshots & Build Caches:**
    - Framework pre-update state snapshots (e.g. `~/.hermes/state-snapshots/`) after verifying the running version is active and healthy.
    - Package manager download caches that do not affect runtime dependencies:
@@ -362,6 +408,10 @@ When emergency disk reclamation is required, categorize targets strictly into tw
 4. **Dangling Container Images & Orphaned Worktrees:**
    - `docker image prune -f` reclaims unreferenced build layers without touching active containers.
    - Stale git worktrees (`git worktree remove <path>` or `git worktree prune`) reclaim working copy disk while preserving all branches and commits in the primary git object database.
+5. **Oversized Container JSON Logs (`/var/lib/docker` or `<docker-data>/containers/*/*-json.log`):**
+   - Find them with `find <docker-data>/containers -name '*-json.log' -size +20M`, map each to its container name with `docker inspect <id> --format '{{.Name}}'`.
+   - Truncate in place (`truncate -s 0 <file>`), not delete: the container keeps running and its open file descriptor stays valid. Only the historical log lines are lost.
+   - This is history loss, not regenerable cache. Run it only after per-target approval. Prevent regrowth with `log-opts` (`max-size`, `max-file`) in the container's compose file, which is a config change the owner must approve.
 
 #### Tier 2: Ambiguous / Legacy Artifacts (Reversible Staged Recycling)
 Never run irreversible `rm -rf` on deprecated tools, old project clones, or unknown virtual environments when executing an emergency disk cleanup:
@@ -405,6 +455,14 @@ When `ps aux` reveals hundreds or thousands of zombie processes (e.g. `[git] <de
      docker restart <container_name>
      ```
    Restarting the container destroys its isolated PID namespace and reaps all thousands of orphaned defunct processes instantly, restoring a clean host process table (`ps aux | grep -i defunct | grep -v grep | wc -l` drops to `0`).
+
+### Report-Only Storage Reviews (Default) & Protected Work Areas
+When the operator asks to "check storage conditions" on a shared production host:
+- Run READ-ONLY diagnostics only (`df`, `du`, `find -printf`, `docker system df`, `docker inspect`). Present findings with reclaimable estimates; execute zero deletions during a review. The operator may be actively using directories that look like garbage (live capture sessions, model workspaces, container runtime storage).
+- Deletions require explicit, per-target operator approval in the same session. A general request to clean up ("bersih-bersih", "clean up the VPS") authorizes the audit only, not any deletion: present the candidate list with sizes and paths, then wait for approval before running any `rm`, `truncate`, `find -delete`, or prune. "Don't delete that" (or any similar nudge) is a hard stop for the entire cleanup class, not just the named item.
+- After any approved cleanup, verify before reporting: listeners on known service ports (`ss -tlnp`, e.g. the AI gateway port), `docker ps` status for every container, and `df` for both partitions. State explicitly which live services were checked and confirmed untouched.
+- Treat as protected unless told otherwise: `/mnt/8ballpool-mod` (live adb/logcat capture work), `/mnt/laya-test` (models), `/mnt/docker-data` + `/mnt/containerd` (live container runtime), active project work dirs under `/mnt` and `/root/projects`.
+- Shared hosts change underneath you mid-review (parallel automation, capture loops, cron). Re-run `df` right before reporting numbers so the report is current.
 
 ---
 

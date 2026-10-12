@@ -369,6 +369,7 @@ When automating hosting, DNS, or server infrastructure from remote agents or CI/
 - **Endpoint & Standards:** Hostinger provides an OpenAPI-compliant REST API hosted centrally at `https://developers.hostinger.com` (base path `/api/`).
 - **Authentication:** Uses standard Bearer token authorization:
   `Authorization: Bearer <HOSTINGER_API_TOKEN>`
+- **Token Storage:** Read the Bearer token from an environment variable or a `0600` file at call time. Never inline it in helper scripts that get copied, committed, or shown in chat; an inlined token in a shared helper module is a rotation risk the moment the module is shared.
 - **Token Generation (hPanel):**
   1. Navigate to hPanel -> `Profile -> API` or in the left sidebar under `Dev Tools -> API` (or `Developer -> Generate Token`).
   2. Enter a descriptive token name and select an expiration period.
@@ -456,6 +457,18 @@ Once the archive is verified locally (testing search and attachment integrity on
    - In Gmail App -> `Add Account` -> `Other` -> Select **IMAP** -> Server `imap.hostinger.com` (port 993 SSL) -> SMTP `smtp.hostinger.com` (port 465/587).
 3. **Gmail Web "Send Mail As" Integration:**
    - In Gmail Settings -> `Accounts and Import` -> `Send mail as` -> Add Hostinger custom address -> SMTP `smtp.hostinger.com:465` SSL. Verify via confirmation token delivered to `mail.hostinger.com`.
+
+### Client "Outgoing Server Error" Triage (Inbox loads, sending fails)
+When a mobile or desktop mail app shows an outgoing-server / SMTP error dialog while the inbox still syncs, treat it as a client SMTP credential or config problem until the server proves otherwise. Do not start with unsuspend or support tickets.
+1. Query the mailbox payload via the hosting API: `status` must be `active` and `protocols.is_smtp_out_enabled` must be `true`. If either fails, switch to the suspension variants in section 1.
+2. Query the outbound log for that exact account. Recent `Sent` / `250 OK` entries from the same mailbox prove the server still accepts its mail, so the mailbox is not suspended.
+3. Only then instruct the user to re-enter outgoing settings: SMTP host from section 14, port 465 SSL/TLS (or 587 STARTTLS), username = full email address, password = current mailbox password. If the password was changed recently, the stale saved password is the usual cause.
+4. The agent never requests, receives, or repeats the mailbox password; the person holding the device types it in.
+- **Single-action relay to the device holder:** when the fix is one field (password re-entry), give that one action first, in the exact field names the app shows. Add alternatives (webmail, re-adding the account) only after that step fails. Long multi-option menus to a non-technical user get skipped, and the error persists.
+- **Webmail and app signatures are separate stores:** a signature saved in the mail app does not appear in webmail, and the reverse is also true. When a user asks why webmail mail lacks the signature, the fix is to set it under the webmail identity settings, not to reconfigure SMTP.
+- **Logo signatures need a public URL:** an HTML signature that embeds a local file or attachment will not render for recipients. Host the logo on the domain first, then reference it by `https://` URL.
+- **Timezone rule:** API timestamps carry a `Z` (UTC) suffix. Convert to the local zone before comparing a log entry with a screenshot clock time.
+- **Scan pages, not just page 1:** a single page can look clean while later pages hold failures. Iterate `page=` until empty and count `dsn`/non-`Sent` statuses.
 
 ### Disaster Recovery: Deleted Mailbox Recovery SLA
 When an email account is accidentally deleted from hPanel:

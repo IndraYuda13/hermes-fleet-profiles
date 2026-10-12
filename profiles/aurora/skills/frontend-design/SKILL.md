@@ -36,6 +36,15 @@ Distinctiveness should come from deliberate typography roles, composition, conte
 
 ## Scale-aware design gate
 - **Major new UI / redesign:** AURORA produces a full implementation-ready design spec.
-- **Small patch in an established system:** use a concise delta spec; do not force a giant design document.
+- **Small patch in an established system:** use a concise delta spec; do not force a giant design document. For explicitly bounded, fast/low-cost Depth 1 requests, follow the delta workflow below rather than adding candidate, research, rendered-spike or peer-call ceremony.
 - FRAME follows the accepted design intent, but may flag technical/accessibility constraints and propose the smallest coherent adjustment.
 - LENS judges the actual rendering; a design spec is not visual QA evidence.
+
+## Bounded delta workflow
+1. Read the approved brief and newest product decisions, then inspect only the relevant entry surface, form, result view, shared components and design guidance. Resolve stale design-doc behavior against newer approved requirements; historical timers, navigation or labels must not leak into a new flow by reuse alone.
+2. Name one product-specific direction and the existing component grammar to retain. Preserve shell, logo, type, tokens and unrelated copy; use current labels, fields, rows, disclosures and buttons before proposing new containers or assets.
+3. Specify the entry point, ordered decisions and one primary action per active phase. When an inline editor is active, its save action must not compete with the page's main submission. Reveal details at the decision that needs them rather than front-loading every field.
+4. Write exact user-language copy for fields, actions and empty/loading/error/unknown/partial states. Separate missing evidence from failure or low performance, and separate activity completion from result-processing completion; otherwise UI wording invents certainty the data does not support.
+5. Define mobile reflow and the integration boundaries that can break the task: persistence after reload, compatibility checks, stale versions, dependent downloads, public/private content and independent completion. If a downloaded artifact depends on a frozen assignment, invalidate readiness after its inputs change; downloading alone does not prove printing or preparation.
+6. Self-challenge with a short edge-case checklist, then save the compact delta at the requested location. Mark new behavior/render as proposal or unverified unless exercised. Do not present source inspection or a supplied baseline SHA as runtime evidence or an independently checked revision.
+7. Return the artifact path and only critical usability constraints when a concise handoff is requested. Defer cosmetic residuals explicitly; do not inflate the document with a redesign rationale, generic design-system sections or a production-verification claim.

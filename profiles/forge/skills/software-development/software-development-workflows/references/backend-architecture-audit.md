@@ -83,7 +83,34 @@ Use this checklist and reference guide when conducting architectural audits, cod
 
 ---
 
-## 7. External AI & Cloud API Resilience
+## 7. Contract Freeze: Compatibility, Lifecycle, and Evidence Boundaries
+
+Use this sequence before dividing backend and frontend implementation work. It is a design checklist, not proof that a proposed implementation works.
+
+1. **Trace both validators.** Read the client schema and server SQL/RPC validator together, including schema registries and positional union consumers. Export named action schemas instead of indexing a discriminated union by array position, because adding actions can silently change the queue's accepted shape.
+2. **Preserve strict legacy shapes.** If old clients reject unknown fields, negotiate a protocol version or use a separately versioned DTO; keep metadata in sidecars where immutable legacy documents must remain valid. Define omitted-field semantics for legacy saves so an old editor cannot erase new metadata. Test old client payloads against the upgraded backend and old cache/pending records against the new client.
+3. **Freeze source snapshots.** Bind rendering, printing, grading, and capture to one immutable form/version/item order. Strip private keys and identities before passing print inputs to a renderer, because hiding them visually does not remove them from PDF metadata or embedded objects. Reuse scanner geometry only after verifying the binding still identifies the intended assignment and roster.
+4. **Separate lifecycle axes.** Model assignment completion, parent activity closure, and assessment finalization independently. Allow authorized late evidence/corrections through the response path without reopening presentation grants; otherwise a late submission can accidentally resurrect a board. Exclude child runs from the parent results index to avoid duplicate activity rows.
+5. **Preserve correction provenance.** Keep response revisions and distinguish assessment time from correction-recorded time, because a rescan is not a new assessment. Import only history that exists; do not invent previous revisions when the predecessor database stored only the current answer.
+6. **Represent uncertainty explicitly.** Keep blank, unreadable, pending review, absence, explicit unknown answers, and observed incorrect answers distinct. Do not coerce missing evidence into a non-null level to satisfy an older domain type. Require explicit comparability rules before ranking results from different forms or versions; matching topic labels alone does not establish equivalent difficulty. Keep group activity outcomes out of individual assessment evidence unless a separately valid individual observation exists.
+7. **Protect check/commit boundaries.** If deterministic checking runs outside the database, authorize the exact saved input, compute server-side, then commit under revision/input CAS. Never let a directly callable RPC accept client-supplied correctness. Check current grant/epoch authorization before returning idempotency receipts, because a retry must not recover revoked access.
+8. **Challenge simultaneous state.** Test duplicate advance, teacher/board races, reconnect with rotated grants, corrected evidence for the next activity, and unchanged membership/evidence snapshots for active and historical activities. A contract inspection cannot substitute for these runtime gates.
+
+---
+
+## 8. Bound PDF and Scan-Surface Remediation
+
+Use this sequence for a small readable-label/binding repair without redesigning a scan-compatible document.
+
+1. **Trace the binding source.** Inspect the question-sheet helper, answer-card drawing, QR serializer, layout, font, and saved-PDF tests. Derive the human-readable code/version from the same frozen form as the QR; a layout version is not the assignment version, and a machine-readable QR alone does not help match mixed paper piles.
+2. **Write a saved-output red assertion.** Generate real PDF bytes, save them in the managed scratch directory, and extract text with `pdftotext file.pdf -`. Assert the exact code/version and expected repeated-card count. Do not treat intercepted renderer calls as proof that the saved PDF contains the text.
+3. **Reuse the existing header slot.** Replace a generic subheading when sufficient, preserving coordinates/font size and all marker, bubble, QR, and layout commands. Measure `x + font.widthOfTextAtSize(label, size)` against the QR's left edge in consistent units, including the largest supported version label, because normal short labels can hide an overlap at the boundary. Keep unbound/legacy branches unchanged.
+4. **Decode the saved QR, not its input.** For pdf-lib vector QRs, load the saved document, decode its content streams, recover black filled rectangles inside each known QR bounding box, rasterize those rectangles into RGBA, and pass the pixels to jsQR. Assert every printed cell decodes to the frozen form/version/page/row payload. This detects serialization/rendering defects that checking the original payload string misses.
+5. **Exercise affected scan paths.** Run saved-PDF, legacy-card, synthetic OMR, and capture regression suites after changing drawing output. Preserve the distinction between an explicit unknown answer and blank/unreadable states. Do not weaken geometry or decoder assertions to accommodate a text-only change.
+6. **Produce the matching pair.** Generate question and answer sheets with the same synthetic immutable binding; run `pdftoppm -png -r 120 -singlefile file.pdf output-prefix` for each single-page sheet, or render every page for multi-page output. Record PDF/image paths, source revision, and hashes. Rasterization is not independent visual clearance, and synthetic OMR is not physical printer/camera certification.
+7. **Close the bounded slice.** Commit only the drawing and narrow regression test, report actual counts/exits and artifact paths, and hand final pair rendering/build integration to its owner. Do not mutate already-frozen backend/migrations merely because a print issue is discovered late.
+
+## 9. External AI & Cloud API Resilience
 
 ### LLM & Cloud Service Integration Checklist
 - **Model Version Pinning**: Pin AI models to official production versions (e.g. `gemini-1.5-flash`, `gemini-2.0-flash`), avoiding undocumented or experimental tags that may be decommissioned without warning.

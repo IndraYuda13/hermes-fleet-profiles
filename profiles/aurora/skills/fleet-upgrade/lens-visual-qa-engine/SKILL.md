@@ -170,6 +170,38 @@ Before LENS audits a production build, the harness runs a calibration test in an
 **Invariant:** $\text{Mutation Score} = \frac{\text{Mutants Detected}}{\text{Total Mutants}} = 100\%$.
 If Mutation Score $< 100\%$, LENS harness is declared **DEFECTIVE / UNCALIBRATED** and cannot issue a production verdict.
 
+### Assert-health audit (apply to any harness you are asked to trust)
+
+A green assertion count is not evidence until each assertion is shown to be capable of failing. Audit
+the assert set itself before crediting its result:
+
+- **Structurally unsatisfiable asserts.** An assert can be impossible to satisfy because of the
+  population it reads, not because of the artifact. The tell is a check that fails on *every* run of
+  *every* revision. Ask which frames/contexts it ranges over and whether the spec itself mandates a
+  member the assert rejects — if a mandated pre-state frame (a transition's starting frame, an
+  insertion frame before a class is added) is counted as a violation, the assert is penalising
+  compliance. Fix the predicate's population; do not accept a "known failure".
+- **True-everywhere asserts.** The mirror case: a predicate that returns the same value in contexts
+  where the property genuinely differs proves nothing. Find the contexts where it should return the
+  opposite value and confirm it does. This is the acceptance test for any corrected predicate.
+- **Dead / N-A-by-construction asserts.** A check reported as passing while exercising nothing is a
+  hidden coverage hole, not a pass. Symptoms: a sampling window that can never contain a frame; an
+  assert applied in a mode where its subject cannot occur. Report it as a coverage hole and require
+  the *replacement* assertion, not merely a note — a silently-omitted mid-flight check under reduced
+  motion is exactly this shape.
+- **Unbounded or timed sampling.** An in-transition assertion built on a fixed sleep is
+  probabilistic, not deterministic. Require the frame-series form (record every frame, then assert on
+  the interior frame, with a minimum-density guard) and treat a flaky gate as a harness defect that
+  blocks a verdict — an intermittent pass is not evidence and an intermittent failure wastes a
+  rectification cycle.
+- **Re-derive claimed aggregates.** Count assertion keys in the report payload rather than reading its
+  summary line; a summary and its payload can disagree, and a stale report file can carry a previous
+  run's summary.
+
+**Rule:** before crediting a harness verdict, sample its asserts for the two degenerate shapes above.
+An assertion that cannot fail and one that cannot pass are the same defect wearing different masks,
+and neither is evidence about the artifact.
+
 ---
 
 ## Reference Files

@@ -1,7 +1,7 @@
 ---
 name: anti-ai-slop-web-design
 description: "Eliminate generic AI slop and enforce world-class UI craft."
-version: 2.0.0
+version: 2.1.0
 author: Hermes
 license: MIT
 metadata:
@@ -22,9 +22,9 @@ This skill provides supporting design references to eliminate generic AI slop.
 - When consulting specific reference modules for anti-slop quality gates, lens review contract schemas, or macro-diversity rules.
 - For primary upstream design workflow (discovery, candidate hypotheses, spikes, contract authoring), use canonical `visual-authoring-core`.
 
-## The 8 Non-Negotiable Hard Checks (Lens Review Contract)
+## The 10 Non-Negotiable Hard Checks (Lens Review Contract)
 
-Before any UI build can receive a PASS verdict, all 8 hard checks must be verified as TRUE:
+Before any UI build can receive a PASS verdict, all 10 hard checks must be verified as TRUE:
 
 1. **`no_emoji_ui_icons`**: Unicode emoji are strictly forbidden as UI navigation, action, button, card header, or decorative icons. A single, coherent SVG family (e.g. Lucide/custom) or text labels must be used.
 2. **`stable_status_not_animated`**: Stable states (`Active`, `Online`, `Available`, `Connected`, `Operational`) must NEVER pulse, ping, blink, breathe, or animate continuously. Use a calm text label with an optional static dot.
@@ -34,6 +34,8 @@ Before any UI build can receive a PASS verdict, all 8 hard checks must be verifi
 6. **`reduced_motion_reviewed`**: All motion must respect `@media (prefers-reduced-motion: reduce)` and gracefully stop or dampen for users sensitive to vestibular motion.
 7. **`fonts_and_assets_loaded`**: Zero broken images (`naturalWidth > 0`), zero 4xx/5xx network asset failures, and clean web font readiness before capture.
 8. **`claims_and_data_are_grounded`**: Strictly zero generic marketing hallucinations: no fake testimonials ("John Doe, CEO at Acme"), fake metrics ("10,000+ Happy Customers"), or fake media badges ("As featured on Forbes/TechCrunch").
+9. **`authentic_brand_assets_preserved`**: Never substitute established product identity, emblems, or brand SVG assets (`brand.tsx`, custom SVG marks) with generic geometric placeholders (e.g. colored circular dots or abstract shapes) in prototypes or redesigns. Preserve authentic branding across all artifacts.
+10. **`self_explaining_screens_and_jargon_free`**: Every screen and interactive state must be immediately self-explaining (clear orientation, context, and immediate next step). Never render unguided group cards or orphan states without instructions, and eliminate internal/obscure jargon.
 
 ## The 6-Dimension Heuristic Scoring Rubric (`CALIBRATION_V0`)
 
@@ -52,7 +54,7 @@ Load the relevant reference module on demand using `skill_view`:
 - `skill_view("anti-ai-slop-web-design", "references/lens-review-contract.md")`: The complete Lens review instructions, rubric anchors, and JSON report schema.
 - `skill_view("anti-ai-slop-web-design", "references/hermes-orchestrator-protocol.md")`: The 12-stage anti-slop pipeline and worker handoff contract template.
 - `skill_view("anti-ai-slop-web-design", "references/hermes-design-research.md")`: Root-cause diagnosis of AI slop, OFF+BRAND study, and operational design rules.
-- `skill_view("anti-ai-slop-web-design", "references/anti-ai-slop-universal-principles.md")`: Complete 7 universal anti-slop laws, 8 hard checks, and scoring rubric.
+- `skill_view("anti-ai-slop-web-design", "references/anti-ai-slop-universal-principles.md")`: Complete 7 universal anti-slop laws, 10 hard checks, and scoring rubric.
 - `skill_view("anti-ai-slop-web-design", "references/macro-compositional-diversity-gate.md")`: 12-dimension macro fingerprinting and anti-token-gaming rules.
 - `skill_view("anti-ai-slop-web-design", "references/design-tokens-glass-recipes.md")`: Build-time 3-layer token architecture, fluid clamp type scale, and refined glassmorphism recipe.
 - `skill_view("anti-ai-slop-web-design", "references/archetypes-reference.md")`: Retrieval vocabulary for spatial/aesthetic qualities. It is not a menu for choosing a finished style.
@@ -64,5 +66,5 @@ Load the relevant reference module on demand using `skill_view`:
 To verify that an interface adheres to this skill:
 1. Bind the review to the exact `BUILD_SHA` and inspect rendered evidence at every canonical viewport required by the active workflow.
 2. Produce `LENS_REVIEW_REPORT.json` using the current fleet contract; do not depend on a hard-coded legacy runtime path.
-3. Confirm all applicable hard checks are true, weighted score $\ge 85$, every applicable dimension $\ge 8$, zero blocking findings, and `GENERIC RISK != HIGH`.
+3. Confirm all applicable hard checks are true (all 10 verified), weighted score $\ge 85$, every applicable dimension $\ge 8$, zero blocking findings, and `GENERIC RISK != HIGH`.
 4. Treat the numeric result as a heuristic gate only. Rendered evidence and blocking verifier findings remain authoritative.

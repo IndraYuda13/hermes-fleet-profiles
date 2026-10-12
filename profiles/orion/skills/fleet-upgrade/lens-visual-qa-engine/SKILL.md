@@ -1,7 +1,7 @@
 ---
 name: lens-visual-qa-engine
 description: Use when auditing web UI visual quality, layout, or art.
-version: 1.0.0
+version: 1.1.0
 author: Fleet Architecture & Orion Lead
 license: MIT
 metadata:
@@ -26,6 +26,7 @@ Deterministic, multi-stage visual verification standard for LENS and the fleet. 
 2. **Fail-Fast:** Gate N+1 is forbidden from executing if Gate N fails. Zero token waste on broken builds.
 3. **Who Watches the Watcher:** LENS must prove its own audit harness is calibrated via Synthetic Mutation Testing before issuing a production verdict.
 4. **Design Intent is Explicit:** Contracts are expressed as runtime schemas (`data-ui-*`), eliminating guesswork.
+5. **Negative Control Verification:** Before accepting an audit harness, prove the harness detects and flags known baseline defects. A harness that passes an un-remediated baseline is a false-positive pass.
 
 ---
 
@@ -33,10 +34,11 @@ Deterministic, multi-stage visual verification standard for LENS and the fleet. 
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│ Gate 0: Runtime Health & Network Telemetry (< 50ms)                   │
+│ Gate 0: Runtime Health, Telemetry & Lifecycle Settle (< 50ms)          │
 │ ├─ 0 console.error / uncaught exceptions                              │
 │ ├─ 0 HTTP 4xx/5xx on static assets (fonts, SVGs, images, chunks)      │
 │ ├─ document.fonts.ready === true & network idle                       │
+│ ├─ Transition Settle Barrier (opacity/transform transitions settled)  │
 │ └─ DOM MutationObserver stabilized for >= 200ms                       │
 └───────────────────────────────────┬────────────────────────────────────┘
                                     │ (PASS)
@@ -109,6 +111,18 @@ Executed via Playwright / CDP event listeners.
   - Every `<img>`: `naturalWidth > 0 && naturalHeight > 0`.
   - Every `<svg>` / icon container: `getBoundingClientRect().width > 0 && height > 0` AND must contain at least 1 visible renderable child (`path`, `circle`, `rect`, `polygon`) with non-empty attributes.
   - Zero tofu characters (`\uFFFD`).
+- **Icon Fallback Masking Detector (`G1_FALLBACK_ICON_MASK`):**
+  Merely asserting an `<svg>` has non-empty paths is insufficient when icon helper functions silently fall back to a default glyph (such as `info`, `help-circle`, or placeholder) on missing or case-mismatched keys.
+  - For all elements declaring `[data-icon]` or interactive buttons (pagination first/prev/next/last, close, search, copy):
+  - Assert that the rendered SVG path data does NOT match the known fallback icon fingerprint (`SVG_ICONS.info`).
+  - Flag casing discrepancies: icon keys normalized with `.toLowerCase()` when registry keys use camelCase (`chevronsLeft` -> `chevronsleft`) cause 100% of directional controls to render as informational `ⓘ` circles while passing naive SVG dimension checks.
+  - **Oracle Calibration Pitfall (Geometric AST over Path Counts):** Never use naive path count heuristics (e.g. asserting `path_count >= 2` for chevrons). Single directional chevrons (`chevronLeft`, `chevronRight`) legitimately contain exactly 1 `<path>` element (`d="M15 18l-6-6 6-6"`), while double chevrons contain 2. An invalid path count threshold produces false negatives that block correct implementer code. Always compare parsed geometry/AST (matching normalized `d` coordinates) and assert negative glyph signatures (`svg.querySelectorAll('circle').length === 0` for chevrons).
+  - **DOM Serialization Normalization Pitfall:** Never compare rendered SVG `outerHTML` strings directly against reference templates. Browsers normalize SVG markup (reordering attributes, formatting whitespace, self-closing vs explicit closing tags). Compare parsed attribute sets or geometry trees.
+- **Hidden Element Leak Guard (`G1_HIDDEN_LEAK`):**
+  Never assume HTML `hidden` attribute or `.slot[hidden]` hides an element from layout.
+  - Query all elements with `[hidden]`, `[aria-hidden="true"]`, or `.hidden`.
+  - Assert `getComputedStyle(el).display === 'none'` AND `el.getBoundingClientRect().height === 0`.
+  - ID specificity trap: Rules like `#gridSkeleton { display: grid; }` or `#panel { display: flex; }` (specificity 1,0,0) override user-agent and class-level `[hidden] { display: none; }` (specificity 0,1,0), causing empty skeleton placeholders or hidden panels to leak 200px+ empty gray blocks into live views even in empty search states.
 - **CDP Accessibility (AXTree) Proxy:**
   Fetch `Accessibility.getFullAXTree`. Assert 0 interactive elements (buttons, inputs, links) with empty accessible names.
 
@@ -138,6 +152,12 @@ Executed via Playwright / CDP event listeners.
   - Number `0`, `999999999999`, and negative values -> assert layout stability.
 - **Interactive State Walk:**
   Simulate tab traversal through all focusable elements. Assert `:focus-visible` outline is present and element is within visible viewport bounds (not hidden under sticky headers).
+- **Cumulative Layout Shift (CLS):** Assert `CLS < 0.05` via `PerformanceObserver`.
+- **Scroll-Reveal & Motion Invariant Gate:**
+  - *Above-the-Fold First-Paint Invariant:* Assert all hero and above-the-fold content has computed `opacity === '1'` immediately after initial DOM settlement. Elements in the initial viewport must never be hidden at `opacity: 0` waiting for scroll intersection observers.
+  - *Observer Lifecycle & Re-Animation Guard:* IntersectionObserver callbacks must unobserve elements once triggered (`observer.unobserve(entry.target)`). Scroll the document down and back up; assert zero re-triggering of entrance animations or layout reflows.
+  - *Reduced-Motion Strict Fallback:* Execute with `page.emulate_media(reduced_motion='reduce')`. Assert all transition/animation durations are $\le 1\text{ms}$ or compute to `none`, and all content is immediately legible with zero hidden or mispositioned elements.
+  - *Zero Infinite Keyframe Loops:* Grep active stylesheets and computed styles on interactive/informational components for `animation-iteration-count: infinite`. Infinite loops are strictly forbidden outside explicit, isolated ambient loading indicators.
 
 ---
 

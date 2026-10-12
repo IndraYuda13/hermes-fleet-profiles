@@ -18,7 +18,7 @@
 
 ### Changes not taking effect
 - **Tools/skills:** `/reset` starts a new session with updated toolset
-- **Config changes:** In gateway: `/restart`. In CLI: exit and relaunch.
+- **Config changes:** `config.yaml` is hot-reloaded dynamically per-turn (mtime check in `load_config()`). You do NOT need to restart the gateway for config updates (e.g. `model.supports_vision`, `auxiliary.*`). In CLI: exit and relaunch.
 - **Code changes:** Restart the CLI or gateway process
 
 ### web_extract shows a stale page (result caching)
@@ -63,6 +63,7 @@ Common gateway problems:
 - **Gateway dies on SSH logout**: Enable linger: `sudo loginctl enable-linger $USER`
 - **Gateway dies on WSL2 close**: WSL2 requires `systemd=true` in `/etc/wsl.conf` for systemd services to work. Without it, gateway falls back to `nohup` (dies when session closes).
 - **Gateway crash loop**: Reset the failed state: `systemctl --user reset-failed hermes-gateway`
+- **Disambiguate active vs systemd gateway instances**: Never assume `systemctl status hermes-gateway` represents the running instance without inspecting the process tree (`ps -ef | grep gateway`). On systems with multi-user or root setups, a secondary systemd unit (e.g. `user@1000`) may be in an unmaintained restart loop while an active supervisor or root instance handles live traffic normally. Verify the PID handling the listening port before issuing restart or kill commands.
 
 ### Platform-specific issues
 - **Discord bot silent**: Must enable **Message Content Intent** in Bot → Privileged Gateway Intents.
@@ -98,6 +99,12 @@ hermes config set auxiliary.vision.model <model_name>
   # or
   hermes config set agent.image_input_mode image
   ```
+  Verify end-to-end via CLI without an interactive PTY:
+  ```bash
+  hermes chat --oneshot -q "What is in this image?" --image /path/to/test.jpg
+  ```
+- **Tool-result media vs user-message media on custom proxies:**
+  When native vision is enabled on custom OpenAI-compatible proxies (e.g. 9router / LiteLLM), direct user messages with image parts (`role: "user"`) typically succeed. However, tool-result messages (`role: "tool"` carrying `content: [...]` with image blocks from `vision_analyze` or browser screenshots) may stall or timeout on specific upstream models/adapters (e.g. Claude/Opus pools). If tool-result calls hang while native vision is enabled, configure `supports_vision_tool_messages: false` under `model:` in `config.yaml` to enforce textual summaries for tool outputs while preserving native user image inputs.
 
 ### "Reset permissions" / auto-approving everything
 See `references/security-privacy.md` — wipe the "Always allow" stores, don't touch yolo mode.

@@ -28,6 +28,8 @@ Always perform real visual inspection & manual browser testing:
 2. **Modern CSS Framework Pitfalls (e.g. Tailwind CSS v4)**:
    - In Tailwind CSS v4, class-based dark mode (`.dark`) is not enabled by default; it requires explicit declaration `@custom-variant dark (&:where(.dark, .dark *));` in the root CSS file.
    - Always verify that the rendered DOM and computed styles respond to class additions/removals rather than assuming framework legacy behavior.
+   - **Comma selectors split scope silently:** in `A B h1, h2 { ... }` the second selector loses the ancestor scope, so a rule written for one dark section recolors every `h2` on the site. When text is present in the DOM but invisible, read the element's computed `color` and `background-color` plus each ancestor's background, then search all loaded stylesheets (including late-loaded custom overrides) for the selector. Fix the selector at its source, not with a per-page override.
+   - **Bulk-deploy coverage:** a file filter keyed on a substring of one asset variant (`theme.css?v=` vs `theme.min.css`) silently skips files that reference the other variant. After any multi-file deploy, fetch every live page and grep for the new marker and the absence of the old one.
 3. **Anti-AI-Slop & Design Directives**:
    - Avoid generic AI SaaS aesthetics (blurry glassmorphism, muddy purple neon gradients, uniform rounded bubble cards, raw unstyled OS emojis).
    - In production client interfaces, prefer bespoke dual-tone SVG vector icons, curated token palettes (e.g. Cyber-Citrus, Midnight Titanium), and high-contrast WCAG AAA typography.
@@ -58,3 +60,5 @@ Always perform real visual inspection & manual browser testing:
 - [ ] **Header / Navigation**: Ensure no duplicate action buttons exist across topbar and view body.
 - [ ] **Multi-Viewport Visual Matrix**: Capture and verify at Desktop (1920x1080, 1440x900), Tablet (768x1024), and Mobile (390x844, 360x800).
 - [ ] **Exhaustive Control Mutation**: Exercise every button, tab, and toggle in default, hover, active, and error states. Verify compute styles and layout resilience.
+- [ ] **Invisible-Text Sweep**: For every section heading, check computed `color` against the computed background of its nearest painted ancestor. White-on-white or equal-contrast headings pass a DOM text check but fail visually.
+- [ ] **Bulk-Deploy Coverage**: After a multi-file deploy, live-fetch every touched page and confirm the new asset version and zero old-version references.

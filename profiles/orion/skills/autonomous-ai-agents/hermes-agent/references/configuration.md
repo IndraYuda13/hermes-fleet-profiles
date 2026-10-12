@@ -7,7 +7,7 @@ Full reference: https://hermes-agent.nousresearch.com/docs/user-guide/configurat
 
 | Section | Key options |
 |---------|-------------|
-| `model` | `default`, `provider`, `base_url`, `api_key`, `context_length`, `supports_vision`, `aliases` |
+| `model` | `default`, `provider`, `base_url`, `api_key`, `context_length`, `supports_vision`, `supports_vision_tool_messages`, `aliases` |
 | `agent` | `max_turns` (90), `image_input_mode` (auto/text/image), `tool_use_enforcement`, `service_tier`, `verify_on_stop` |
 | `auxiliary` | `vision`, `compression`, `session_search`: `provider`, `model`, `base_url`, `api_key`, `timeout`, `fallback_chain`, `extra_body` |
 | `terminal` | `backend` (local/docker/ssh/modal/daytona/singularity), `cwd`, `timeout` (180) |
@@ -26,11 +26,11 @@ Full reference: https://hermes-agent.nousresearch.com/docs/user-guide/configurat
 
 ### Auxiliary Models & Vision Routing
 
-Hermes routes background and auxiliary tasks (`vision`, `compression`, `session_search`, `curator`) independently of the primary conversational model.
+Hermes routes background and auxiliary tasks (`vision`, `compression`, `session_search`, `curator`) independently of the primary conversational model. Note: `config.yaml` is checked dynamically via file mtime on every turn (`load_config()`), meaning changes to model vision flags and auxiliary blocks take effect on the next incoming message without requiring a gateway restart.
 
 #### Vision Routing Modes
 - **Auxiliary Pre-analysis (`agent.image_input_mode: auto` / `text`):** When the primary model lacks vision catalog support, images arriving via messaging gateways are first sent to an auxiliary vision model via `vision_analyze` with a descriptive prompt, and the resulting text description is forwarded to the main model.
-- **Native Direct Vision (`model.supports_vision: true` / `agent.image_input_mode: image`):** Injects image blocks directly into user turns without intermediate aux model translation.
+- **Native Direct Vision (`model.supports_vision: true` / `agent.image_input_mode: image`):** Injects image blocks directly into user turns without intermediate aux model translation. If custom endpoints accept image parts on user turns but timeout on tool-role results, set `model.supports_vision_tool_messages: false` to keep native user images while falling back to text summaries for tool results.
 
 #### Configuring Auxiliary Tasks (`auxiliary.<task>.*`)
 Each task (`vision`, `compression`, `session_search`) supports:

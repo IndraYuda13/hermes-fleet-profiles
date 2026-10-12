@@ -24,6 +24,9 @@ A structured playbook for hackathons, innovation challenges, and agentic/softwar
 Extract and record hard constraints before any technical development:
 - **Scope & Grand Theme:** Target problem space, industry focus, and sub-themes.
 - **Team Eligibility & Composition:** Permitted team sizes, multi-campus allowances, and required role competencies.
+- **Scoring Rubric vs. Domain Methodology:**
+  - Disentangle **Formal Rubric Criteria** (the explicit scoring dimensions like Innovation & Relevance 30%, Impact 20%, Sustainability 15%) from **Domain Solution Methodologies** (pedagogical, operational, or algorithmic frameworks used to solve the problem, e.g., TaRL, BKT, TRIZ).
+  - Explicitly map each solution pillar into its corresponding scored rubric dimension so the pitch and concept paper directly maximize rubric points.
 - **Deliverables Matrix:**
   - Live public demo URL (e.g. Vercel, VPS, Streamlit)
   - Public code repository or workflow export
@@ -49,6 +52,7 @@ Establish an isolated, versioned project directory:
 
 ### 3. Establish Team Role Alignment (The 3H Model)
 Map responsibilities across the three classic hackathon pillars:
+- **Roster & Context Isolation:** Never project or assume rosters from academic coursework, university capstone/Tugas Akhir, or commercial projects. Confirm team members and handles strictly from competition registration documents, project README, or recent git commit logs (`git log --format='%an <%ae>'`).
 - **Hacker (The Builder / Tech):**
   - Architecture, AI/LLM integration, tool calling, RAG pipelines, API keys.
   - Deployment, database, and backend reliability.
@@ -65,6 +69,11 @@ Map responsibilities across the three classic hackathon pillars:
 ### 4. Divergent Raw Ideation Intake (Zero-Judgement Pool)
 When collecting ideas from team members prior to a sync meeting:
 - **Zero-Critique Rule:** Record every proposal without debating, filtering, or forcing premature design specs during intake.
+- **Read the whole ledger before numbering.** Read the full `ide/raw-ideas.md` (or grep `^### `) to find the highest existing ID. A partial read produces duplicate IDs, and IDs are the reference used at the meeting.
+- **Dedupe by problem and solution, not by wording.** Members often rename the same option (for example a generic label like "Opsi 1" versus a plain-language description of the same thing). Before adding an item, search the ledger for the synonyms and the option label, and search the chat history if the user points to an earlier option. A re-mention becomes a dated annotation on the existing entry, not a new ID. Why: a second ID splits one decision across two entries at triage.
+- **Keep the proposer's words.** Store the exact quote of the idea next to the structured fields, so the later triage can re-read the original intent.
+- **Flag ambiguous terms instead of resolving them.** Record the literal reading in the Catatan field and list the open question for the meeting. Do not present a guessed meaning as fact.
+- **Keep raw items unscored.** No verdicts, rankings, or "not final" disclaimers on new entries. Scoring belongs to the triage step below.
 - **Two-Tier Idea Logging:**
   1. *Structured Ledger (`ide/raw-ideas.md`):* Log each entry with standard schema:
      - `ID & Title`
@@ -101,10 +110,16 @@ During the team review meeting, filter raw ideas using a 5-dimension score (1-5 
 
 ## Pitfalls
 
+- **Conflating competition rosters with academic or capstone teams:** Assuming the user's academic capstone or course group members are on the hackathon team leads to incorrect role delegation, misattributed authors in proposals, and flawed presentation assignments. Verify the team roster directly from project git history or competition registration docs.
+- **Conflating domain solution methodologies with formal scoring rubrics:** Mistaking a core methodology (e.g., TaRL, TRIZ, Lean Canvas) for a standalone grading category—or vice versa—obscures where points are actually won or lost. Map each domain pillar to its corresponding weighted rubric aspect (e.g. Innovation vs Impact) and verify against the official guidebook criteria before drafting pitch decks or papers.
 - **Truncating detailed specs into lossy summaries during intake:** Summarizing multi-page member proposals into a few bullet points loses critical boundary definitions, configuration rules, and edge-case policies. Always copy the full text into `ide/detail/<id>-<slug>.md`.
 - **Blurring deterministic code and LLM reasoning in agentic proposals:** Treating agent systems as purely prompt-driven invites severe safety and hallucination penalties from judges. Clearly delineate deterministic controls (threshold calculation, budget caps, approval locks, deduplication) from probabilistic LLM roles (parsing, dialogue, negotiation).
 - **Critiquing during raw intake:** Debating feasibility while logging ideas suppresses participation and causes team members to withhold unconventional high-potential concepts.
+- **Appending a duplicate when a member re-mentions an idea under a new name:** Two IDs for one idea split the triage decision and waste meeting time. Search for the synonym first and annotate the existing entry (see step 4).
+- **Numbering from a partial read of the ledger:** Duplicate or skipped IDs break cross-references in the meeting notes. Read or grep the whole file before writing a new ID.
+- **Updating a summary count by memory:** Documents that state an ID range (for example "Ide 001-010") go stale when items are added. Grep the docs folder for the old range after every append and update it.
 - **Relying on ephemeral screenshot caches:** Guidebook screenshots and temporary image URLs expire; transcribe competition rules and grading rubrics into persistent Markdown files immediately.
+- **Trusting a claimed rubric item without checking the source:** a teammate (or the user) may believe a scoring criterion exists (e.g. 'TaRL is scored') when the guidebook contains no such line. Extract the real scoring table from the original PDF — OCR image-based pages too — and verify every claimed criterion against it before designing deliverables around it.
 - **Submitting conversational chatbots for agentic prompts:** Building a generic chat interface fails when competitions ask for Agentic AI; always implement explicit tool calling, external API integrations, or multi-step execution.
 - **Postponing deployment until deadline day:** SSL certificate issuance, CORS configuration, and public DNS propagation routinely fail under last-minute pressure; deploy a hello-world container on day one.
 - **Ignoring layout and formatting requirements:** Submitting proposals that exceed page caps or omit required cover logos results in administrative disqualification before technical judging starts.

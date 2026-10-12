@@ -195,6 +195,7 @@ A skill exists to make the agent's process more predictable — the agent reliab
 8. **Skipping the docs generator or pushing its unrelated drift.** Both directions are wrong: no regen = orphan skill with no docs page; blind regen = a ballooned diff full of other skills' drift.
 9. **Expecting the current session to see the new skill.** The loader is initialized at session start.
 10. **Letting skills accumulate sediment.** When adding a rule, remove the old wording it replaces.
+11. **User-local `skill_manage` quirks:** `action='create'` hard-enforces the 60-char description limit itself (tool error, not just review) — long descriptions abort the whole batch. Each op's text slot differs: `create` uses `content`, `write_file` uses `file_content`, `patch` uses `old_string`/`new_string`; putting e.g. `file_content` on a `create` op fails atomically and rolls back every op in the batch (re-check the tree before retrying).
 
 ## Verification Checklist
 

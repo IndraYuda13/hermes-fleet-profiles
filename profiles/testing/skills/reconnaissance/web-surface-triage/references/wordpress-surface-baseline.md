@@ -6,6 +6,9 @@ Ordered check list for triaging one WordPress host without credentials. Every ch
 - `GET /wp-json/` → the `routes[].namespace` map names plugins that register REST APIs (security, snippets, file-manager, rollback, builder plugins) even when the HTML shows zero plugin asset paths.
 - Version each plugin read-only: `GET /wp-content/plugins/<slug>/readme.txt` → `Stable tag:` line. Most plugins expose it; no version.php needed.
 - User enumeration: `GET /wp-json/wp/v2/users`, `GET /?author=1..7` (via REST and sitemap both). 401/404 across the board = closed; any username leak = finding.
+- **Classify the leaked fields before counting.** `context=edit` (and `/wp/v2/settings`) staying 401 means only `name`/`slug` leak — check it, don't assume the worst. An email inside `display_name` is an **account-structure leak** (real username + mailbox for phishing/spraying). The same address appearing on a public "Kontak"/"Dosen" page is **intentional publication** — verify by fetching the page and reading the surrounding markup before inflating the finding. Report the two sets separately.
+- **A fleet shares the misconfiguration.** When one host answers the users endpoint, sweep every live WordPress host in one bounded pass before writing up; campus/school networks routinely yield 20+ hosts and 100+ accounts. Keep it read-only and ≤8 workers.
+- Directory listing: a hosting-panel autoindex (`<title>Index of …</title>` + `/_autoindex/assets/…`) can leave `/wp-content/uploads/` browsable even when the site is otherwise hardened — also try `/wp-content/upgrade/` and `/wp-content/` itself. Crawl the year/month tree if exposed, then report the **non-image** files (pdf/doc/xls/zip/sql) as the exposure and count images only as context.
 - XML-RPC: POST `system.listMethods`. A full method list including `wp.getUsersBlogs` and `system.multicall` is a brute-force channel — login-page-hiding plugins do not cover xmlrpc.php, so hidden login + open xmlrpc = the hardening is bypassable.
 - Auth oracle in one request: `wp.getUsersBlogs` with bogus credentials → a fault (403 'Incorrect username or password') proves credential validation is reachable without the login form. Never iterate past one bogus probe in triage.
 
@@ -32,7 +35,7 @@ Ordered check list for triaging one WordPress host without credentials. Every ch
 ## 5. Hardening checks that should be closed (record each verdict)
 - `/wp-admin/install.php` must show 'Already Installed' with NO form; `setup-config.php` must refuse (wp-config exists); `upgrade.php` must not offer a form. A visible form on any of these is critical.
 - `wp-login.php?action=register|lostpassword` — open registration on a gov/org site is a finding; note the hidden-login redirect (302→404) pattern as context, it does not affect xmlrpc.
-- `/wp-content/uploads/<year>/<month>/` must 403 on listing; individual files returning 200 is normal, not a finding.
+- `/wp-content/uploads/<year>/<month>/` must 403 on listing; individual files returning 200 is normal, not a finding. If a listing IS open, crawl it but stop at the file list — download only the specific proof artifact, never the whole tree (bandwidth + containment).
 - `/wp-content/debug.log`, `wp-config.bak`, `.env`, `.git/HEAD`, `backup.zip`, `dump.sql` → expect 404 (or a WAF page).
 - `wp-cron.php` POSTs return a blind 200 regardless of payload — do not interpret the 200 as anything.
 - `?s=<svg/onload=alert(1)>probe` reflected XSS check: count every occurrence of the probe token and verify EACH one is entity/URL-encoded; one raw hit = reflected XSS, all-encoded = closed. Check title tag, JSON-LD blocks, breadcrumb markup, and the `<h1>` — different template layers encode differently.

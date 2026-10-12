@@ -16,6 +16,12 @@ The harness injects 5 distinct synthetic visual defects into a temporary sandbox
 | **M3** | `BlindContrast` | Sets text color equal to background color (`rgba(255,255,255,0.99)` on white). | Gate 2 | `G2_CONTRAST_FAIL` |
 | **M4** | `ForceTextClipping` | Sets container style `height: 12px; overflow: hidden; white-space: normal;` on a 3-line paragraph. | Gate 2 | `G2_SILENT_CLIPPING` |
 | **M5** | `EmptySVGContent` | Removes all child nodes from a navigation icon `<svg></svg>`. | Gate 1 | `G1_EMPTY_SVG` |
+| **M6** | `PresentButUnrendered` | Keeps the element in the DOM but sets `display:none` / `visibility:hidden` / `opacity:0` on it (and separately, on a required child label). | Gate 2 | `G2_ZERO_AREA` |
+| **M7** | `ForceOcclusion` | Positions one element over a region it must never cover (inline `bottom`/`left` override that straddles the rail onto the label band). | Gate 2 | `G2_OVERLAP` |
+
+**M6 and M7 exist because M1–M5 do not reach the geometry predicates.** M1–M4 target text/contrast/clipping and M5 targets an empty graphic; none of them exercises a check of the form "element E does not cover element F". A presence-only predicate (`querySelector(sel) !== null`) survives M2 and M5 untouched, and the deletion form of a geometry mutant only proves the null branch — it never proves the overlap branch fires. Any audit that asserts non-overlap MUST run M6 (kills `!== null` and unguarded child-count checks) and M7 (kills an overlap metric that never crosses zero).
+
+**Each mutant must be scored on the evidence value, not the boolean.** Record what the assertion measured for each mutant — `null` probe, `area_px2 == 0`, `max_overlap_px2 == <blocked px²>` — so a FAIL that happens for the wrong reason is visible. A mutant that fails because the selector vanished is not proof that the overlap predicate works.
 
 ---
 

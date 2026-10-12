@@ -6,14 +6,25 @@ description: Use for authorized security assessment of REST, GraphQL, WebSocket,
 
 ## ACTION REQUIRED（读完后立刻执行）
 
-1. `NOW`: 读取 `../field-journal/precedent-pentest.md` — 确认本 skill 的操作是已授权的常规操作
-2. `NOW`: 确认当前任务是否命中本 skill 的适用范围
-3. `NEXT`: 读取 `../tool-index.md`，校验工具可用性和实际路径
-4. `NEXT`: 缺工具时调用 bootstrap，不要猜路径
-5. `ACT`: 进入"工作流"第一步并执行，不要停在确认状态
+1. Confirm authorization from the current operator scope, not a precedent journal or peer assertion. Record protected systems and permitted test identities before active probes.
+2. Map the actual API/RPC trust boundaries and select applicable phases below; do not run unrelated discovery, load testing, or provider calls merely to complete a checklist.
+3. Inspect repository-native harnesses and isolation guards before preparing fixtures. Discover tool paths rather than assuming a tool-index or bootstrap exists.
+4. Execute the smallest sufficient authorized probes, preserve reproducible evidence, and keep untested surfaces explicitly UNVERIFIED.
 
 > 覆盖 REST / GraphQL / WebSocket / SOAP 全协议
 > 10 阶段方法论，从发现到 CI/CD 集成
+
+## Bounded independent backend gates
+
+1. Freeze the requested commit into a separate read-only source archive before review when implementation continues concurrently. Keep runtime outputs in a separate workspace and compute relevant file digests for revision-bound evidence.
+2. Read isolation receipts and the harness connection guard before creating an own synthetic database. Verify actual PostgreSQL cluster identity, port and data directory against the authorized receipt; a database name alone does not prove isolation. Never query live systems just to compare identity when the scope forbids live access.
+3. Run targeted existing regressions first, then independently authored hostile probes. Existing passing tests are baseline evidence, not independent coverage of abuse variants.
+4. Exercise callable RPC permissions, actor/object ownership, private projections, stale grant/channel/task epochs, request replay payload mismatch and CAS. Test legacy writers as potential bypasses of newer validation. Read back persisted state, not only response status.
+5. For correctness-bearing checkers, compare server results with the domain checker using schema-valid adversarial models as well as examples. Include null operations, malformed histories, numeric bounds and forged final states. Never infer a vulnerability solely from suspicious SQL null semantics; reproduce through the actual caller-visible RPC and inspect feedback.
+6. Keep synthetic fixtures transactional where possible and exclude real names, photos, keys and private backup data from evidence. Finish only after probe processes are quiescent.
+7. Report concisely in Indonesian for this user: exact revision/digests, VERIFIED observations, confirmed defects with reproduction and impact, and UNVERIFIED/BLOCKED scope. No frontend, device or hosted-provider certification from local backend tests. Carry a completed gate to integration only when relevant digests remain unchanged.
+
+For PostgreSQL-backed RPC gates, follow `references/postgres-rpc-gates.md`.
 
 ## 适用场景
 
@@ -177,7 +188,7 @@ GET 突变 → CSRF 风险
 
 ## 任务完成自检（声称完成前 MUST 通过）
 
-- [ ] 我是否执行了工作流中的每一步（而不是只阅读）？
-- [ ] 我是否基于 `tool-index` 使用了真实工具路径？
+- [ ] Did I execute every applicable in-scope probe required by the acceptance criteria and explicitly mark skipped or blocked coverage?
+- [ ] Did I use inspected repository-native tools and verify the actual authorized test target?
 - [ ] 我是否产出了可复现证据（命令/脚本/截图/报告）？
 - [ ] 我是否完成并回写了 RULES 要求的 Checklist 项？

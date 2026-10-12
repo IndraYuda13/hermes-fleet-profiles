@@ -1,7 +1,8 @@
 model:
-  provider: via9router
-  default: ds
-  supports_vision: true
+  default: "ds"
+  provider: "custom"
+  base_url: "http://127.0.0.1:20128/v1"
+  api_key: REDACTED
 providers:
   via9router:
     api: http://127.0.0.1:20128/v1
@@ -38,6 +39,48 @@ approvals:
   denial_breaker_threshold: 2
   mcp_reload_confirm: false
   destructive_slash_confirm: false
+  deny:
+    - pkill *
+    - killall *
+    - killall5 *
+    - '*$(pkill*'
+    - '*$(killall*'
+    - '*`pkill*'
+    - '*`killall*'
+    - '*kill*$(pgrep*'
+    - '*$(pgrep*kill*'
+    - '*kill*`pgrep*'
+    - '*`pgrep*kill*'
+    - '*kill*$(pidof*'
+    - '*$(pidof*kill*'
+    - '*kill*`pidof*'
+    - '*`pidof*kill*'
+    - '*pgrep*|*xargs*kill*'
+    - '*pidof*|*xargs*kill*'
+    - '*grep*|*xargs*kill*'
+    - xargs pkill*
+    - xargs -* pkill*
+    - xargs killall*
+    - xargs -* killall*
+    - '*| xargs pkill*'
+    - '*| xargs killall*'
+    - '*pgrep*|*while*kill*'
+    - '*pidof*|*while*kill*'
+    - '*grep*|*while*kill*'
+    - '*busybox*pkill*'
+    - '*busybox*killall*'
+    - '*eval *pkill*'
+    - '*eval *killall*'
+    - '*watch pkill*'
+    - '*watch killall*'
+    - '*su *pkill*'
+    - '*su *killall*'
+    - '*doas*pkill*'
+    - '*doas*killall*'
+    - '*kill*< <(pgrep*'
+    - '*<(pgrep*kill*'
+    - '*kill*< <(pidof*'
+    - '*<(pidof*kill*'
 plugins:
   enabled:
     - platforms/a2a
@@ -145,10 +188,7 @@ platforms:
     allow_from:
       - 696907598
       - 1834772281
-    allowed_chats:
-      - __dm_only__
     guest_mode: false
-    require_mention: true
     home_channel:
       platform: telegram
       chat_id: '696907598'
@@ -167,6 +207,13 @@ mcp_servers:
   rea:
     command: /usr/local/bin/rea-mcp
     connect_timeout: 60
+    timeout: 300
+  burp:
+    url: http://127.0.0.1:9876/
+    transport: sse
+    headers:
+      Authorization: "Bearer ${BURP_MCP_TOKEN}"
+    connect_timeout: 30
     timeout: 300
 agent:
   reasoning_effort: max

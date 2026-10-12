@@ -157,6 +157,23 @@ mcp_servers:
 
 If HTTP support is not available in your installed `mcp` version, the server will fail with an ImportError and other servers will continue normally.
 
+### SSE Transport (`transport: sse`)
+
+SSE-only servers (common for servers hosted inside another application) reject the Streamable HTTP chunked `initialize` POST. Set `transport: sse` explicitly for servers you know are SSE-only — the client does retry over SSE on the *initial* connect when Streamable HTTP is rejected, but relying on that fallback is slower and confusing to debug.
+
+```yaml
+mcp_servers:
+  burp:
+    url: "http://127.0.0.1:9876/"      # on such servers the SSE endpoint is the root path, not /sse
+    transport: sse
+    headers:
+      Authorization: "Bearer <token>"   # some servers also accept the token in the URL path
+    connect_timeout: 30
+    timeout: 300
+```
+
+SSE specifics: the client holds a 300 s inter-event read timeout regardless of `timeout` (SSE servers idle between events — using the tool timeout drops the connection), and `strict_redirect_headers` is refused on this transport because SSE cannot enforce the redirect boundary. Manual `headers` are forwarded to `sse_client`, so bearer tokens work; a successful handshake emits `event: endpoint` with `data: ?sessionId=…`.
+
 ## Security
 
 ### Environment Variable Filtering
@@ -223,6 +240,8 @@ hermes pm repair
 - Ensure the YAML indentation is correct
 - Look at Hermes Agent startup logs for connection messages
 - Tool names are prefixed with `mcp_{server}_{tool}` -- look for that pattern
+- For HTTP/SSE servers, probe the endpoint directly before touching config: the `mcp-server-integration` skill ships `scripts/mcp_sse_probe.py`, which performs the real handshake and tool list (running it once without the token also proves the auth layer is alive via a 401). A healthy endpoint plus zero registered tools points at the registration/reload step, not the server.
+- `hermes mcp list` only shows inventory (configured/enabled) — it never proves a live connection. Only a real tool call does.
 
 ### Connection keeps dropping
 
@@ -340,4 +359,4 @@ Disable sampling for untrusted servers with `sampling: { enabled: false }`.
 - Tool results are returned as JSON with either `{"result": "..."}` or `{"error": "..."}`
 - The native MCP client is independent of `mcporter` -- you can use both simultaneously
 - Server connections are persistent and shared across all conversations in the same agent process
-- Adding or removing servers requires restarting the agent (no hot-reload currently)
+- Adding or removing servers does NOT require a full restart: a new CLI session loads `mcp_servers` automatically (config-change auto-reload, `mcp.auto_reload_on_config_change: true` by default), and a session that is already running applies it with `/reload-mcp`, which reconnects servers and rebuilds the tool surface (it invalidates that session's provider prompt cache). On a multiplexed host, bounce only the affected profile — never restart the shared gateway, which drops every served profile's in-flight turns.

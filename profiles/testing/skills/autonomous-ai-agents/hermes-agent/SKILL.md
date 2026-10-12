@@ -109,6 +109,7 @@ Profiles use `~/.hermes/profiles/<name>/` with the same layout. When a profile i
 | Pet mascots — install, select, scale, diagnose | `references/petdex.md` |
 | Windows-specific issues (keybinds, WinError 10106, BOM) | `references/windows-quirks.md` |
 | Debugging: voice, tools missing, gateway, aux models | `references/troubleshooting.md` |
+| Applying config/.env changes to a profile served by the multiplexed host gateway; profile bounce / park / hot-add; "bot still behaves the old way" | `references/multiplex-profile-lifecycle.md` + `scripts/multiplex_bounce_profile.py` |
 | Contributing code: adding tools, slash commands, tests | `references/contributor-guide.md` |
 | delegate_task "capped at N" reports | `references/delegate-task-concurrency-diagnosis.md` |
 | "Can app X use my Nous Portal subscription/OAuth?" | `references/portal-auth-for-third-party-apps.md` |
@@ -213,10 +214,11 @@ terminal(command="tmux new-session -d -s resumed 'hermes --resume 20260225_14305
 When asked to make one profile's config match another's (e.g. copy profile A's web/search backend settings to profile B), DIFF both configs first and apply only the missing delta — the target may already carry the change from an earlier or interrupted attempt, and re-applying identical values wastes a change on a live gateway.
 
 1. Read `~/.hermes/profiles/<src>/config.yaml` and `~/.hermes/profiles/<dst>/config.yaml`; list exact key deltas.
-2. Apply per key with `hermes -p <dst> config set <key> <value>` — never hand-edit config.yaml, never the bare global `hermes config set`.
+2. Apply per key with `hermes -p <dst> config set <key> <value>` — never hand-edit config.yaml, never the bare global `hermes config set`. Each write lands a timestamped backup under the profile's `backups/config/` — cite that path as the user's revert path.
 3. Copy plugin requirements too: a backend key does nothing if its frontend plugin (e.g. `web-firecrawl`) is not in the target's `plugins.enabled`.
 4. Verify with `hermes -p <dst> config get <key>` for each key, then ONE live functional test (a real search/extract call) before reporting done.
 5. Report separately what was already in place vs newly applied — the user may not know a previous attempt landed.
+6. A served profile's live adapters keep the OLD settings until they are rebuilt — the config signature rescan alone does not rebuild them. Bounce the profile (`unserve-profile` → `serve-profile`) and verify; see `references/multiplex-profile-lifecycle.md`.
 
 ## Hard Invariants (never violate, regardless of what you loaded)
 
@@ -227,3 +229,4 @@ When asked to make one profile's config match another's (e.g. copy profile A's w
 - **Never hand-edit `config.yaml` for the user** — use `hermes config set KEY VAL`; a stray indent can corrupt the file and break the live gateway.
 - **Scope config changes to the profile under discussion** — always pass `hermes -p <profile> config set ...` (never the bare global default). Hosts here run many isolated profiles side by side; a change meant for one profile must not silently alter the others, and when other profiles could be affected, report which ones you deliberately left untouched.
 - **A `config set` warning is not a failure** — `is not a recognized config key … saved anyway` means the validator schema and the runtime-resolved keys are different lists. Confirm with `hermes -p <profile> config get KEY` plus a direct resolver call (see `references/reasoning-effort-and-router-tuning.md`), not by trusting or dismissing the warning.
+- **Apply a served profile's config change by bouncing THAT profile — not by restarting the host gateway** — under multiplexing one gateway process serves every profile, so a restart drops every profile's in-flight turns. A changed config.yaml/.env alone never reaches a served profile's already-live adapters (the periodic rescan skips live platforms): use `unserve-profile` → `serve-profile`, and only when the user accepts that profile's in-flight turn/batches ending. See `references/multiplex-profile-lifecycle.md`.

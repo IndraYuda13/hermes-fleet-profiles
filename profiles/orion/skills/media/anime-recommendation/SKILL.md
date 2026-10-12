@@ -62,3 +62,9 @@ Gunakan format berikut saat menyajikan rekomendasi kepada Boskuu:
 Tanyakan ke Boskuu keputusannya.
 - Jika ingin ditonton sekarang: Tambahkan judul ke `OnProgressAnime.txt`.
 - Jika ingin disimpan: Tambahkan judul ke `WishlistAnime.txt`.
+
+## 8. Mode "Catat Judul" (user kasih screenshot/artikel, bukan minta rekomendasi)
+1. Tentukan target dari kalimat user: "akan ditonton" -> `WishlistAnime.txt`; "sedang ditonton" -> `OnProgressAnime.txt`.
+2. WAJIB dedup terhadap ketiga file list sebelum menulis. Cocokkan varian judul, termasuk teks di dalam tanda kurung entri lama (contoh: "Mizu Zokusei no Mahoutsukai (The Water Magician)" = "The Water Magician").
+3. Judul yang sudah ada di `WatchedAnime.txt`: jangan ditambahkan, lapor ke user dan tawarkan opsi.
+4. Tulis judul apa adanya + anotasi (tahun, jumlah eps) bila user menyertakannya; verifikasi dengan baca ulang file.

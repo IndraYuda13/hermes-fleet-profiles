@@ -102,6 +102,26 @@ await page.evaluate(() => {
 
 **When it happens:** Typically after testing service dropdowns, command palettes, or declare-incident modals -- the overlay stays open and blocks clicks on elements underneath.
 
+## Forcing :hover / :active -- synthetic mouse is unreliable
+
+`page.mouse.move(x, y)` establishes `:hover` only if the point lands on the target and nothing overlays it. Two failure modes produce a phantom "the CSS hover is broken" report:
+
+- **Off-screen target.** After `scrollTo()`, the element whose centre you computed may be outside the viewport; `elementFromPoint` returns `null` and no hover is set. Re-measure `getBoundingClientRect()` after every scroll and pick a target your test asserts is fully visible.
+- **Overlay steals the hit-test.** A sticky/fixed bar (sticky header, tab strip, action panel) can sit over the element's screen point, so the pointer hovers the overlay instead. Confirm with `document.elementFromPoint(cx, cy)` and walk the ancestor chain before trusting the coordinates.
+
+When the goal is to test the hover/press *style*, force the pseudo-state through CDP instead of moving a mouse:
+```python
+cdp = ctx.new_cdp_session(page)
+cdp.send("DOM.enable"); cdp.send("CSS.enable")
+doc = cdp.send("DOM.getDocument", {"depth": -1})
+n = cdp.send("DOM.querySelector", {"nodeId": doc["root"]["nodeId"], "selector": ".tile"})
+cdp.send("CSS.forcePseudoState", {"nodeId": n["nodeId"], "forcedPseudoClasses": ["hover"]})
+# computed transform/transition now reflect :hover; use ["active"] for press
+```
+This is also the only race-free way to read the `transition-duration` / `transition-delay` a hover *will* use, rather than sampling mid-transition.
+
+**Mid-animation capture:** slow all animations deterministically with `cdp.send("Animation.enable")` then `cdp.send("Animation.setPlaybackRate", {"playbackRate": 0.1})` before triggering the transition, then restore rate 1. Samples taken this way prove a real interpolation, not a parked pose.
+
 ## File URL Testing
 
 For static prototypes served from filesystem:

@@ -15,7 +15,7 @@ metadata:
 
 Auditing, installing, and verifying a third-party MCP server for a Hermes
 profile, and answering "is it already installed?" correctly. The order matters:
-**audit → probe → register → restart → verify**. Skipping the probe produces a
+**audit → probe → register → apply → verify**. Skipping the probe produces a
 config entry that looks right and never connects.
 
 ## When to Use
@@ -50,13 +50,21 @@ binary name resolves without exporting PATH.
 
 ## Step 2 — Prove the server speaks MCP before writing config
 
-Run `scripts/mcp_stdio_probe.py` with the server's launch command. It performs
-the real JSON-RPC handshake over stdin/stdout and prints server name, version,
-protocol version, and tool count.
+- **stdio server** → `scripts/mcp_stdio_probe.py <command> [args...]`. Real
+  JSON-RPC handshake over stdin/stdout; prints server name, version, protocol
+  version, tool count.
+- **SSE / HTTP server** → `scripts/mcp_sse_probe.py <url> [bearer-token|-] [tool|json-args ...]`.
+  Handshake + `tools/list`, then optional benign calls. Run it once WITHOUT the
+  token too: a `401` proves the auth layer is alive, a full tool list proves the
+  token. SSE servers must emit `event: endpoint` + `data: ?sessionId=…` within
+  seconds — if they do not, the transport is wrong, not the config.
 
 If the probe fails, fix the server — do not register a broken entry and debug it
 through the agent's logs. A successful probe is also what lets you tell the user
-"the server itself is healthy" independently of any registration state.
+"the server itself is healthy" — and nothing stronger: a raw probe handshakes
+against the server URL directly, so it never exercises Hermes' own config path
+(env/secret rendering, transport selection, tool registration). Proving THAT
+path is step 5's job.
 
 ## Step 3 — Register in the profile's config.yaml
 
@@ -72,6 +80,22 @@ mcp_servers:
     connect_timeout: 60
     timeout: 300
 ```
+
+Remote / SSE entry (no `command` — the transport is the URL):
+
+```yaml
+mcp_servers:
+  <name>:
+    url: http://127.0.0.1:9876/
+    transport: sse            # SSE-only servers need this explicit; streamable-HTTP has an automatic initial-connect SSE fallback
+    headers:
+      Authorization: "Bearer <token>"
+    connect_timeout: 30
+    timeout: 300
+```
+
+Pass a multi-key entry to `hermes config set` as ONE JSON argument (nested
+maps survive), then re-read `hermes config get mcp_servers` after every write.
 
 Apply it through `hermes config set` (or the dashboard's MCP page), never by
 hand-editing `config.yaml` — a stray indent corrupts the live gateway. Check
@@ -92,15 +116,57 @@ Many agent tools install their companion skill into `~/.agents/skills/<name>`
 `skills.external_dirs`, so that skill stays invisible until the path is added
 there. Installing the companion skill is not the same as loading it.
 
-## Step 5 — Restart, then verify by calling a tool
+## Step 5 — Apply, then verify by calling a tool
 
-`mcp_servers` has **no hot-reload**: the change lands only after the profile's
-agent/gateway restarts. After restart, tools appear as `mcp_<server>_<tool>`.
-Verify by calling one trivial tool and checking the real result — startup logs
-saying "connected" are not proof that the tool set is usable.
+A running session does NOT pick up the new entry by itself. Apply it with
+`/reload-mcp` (reconnects servers and rebuilds the tool surface; it invalidates
+that session's provider prompt cache, and the confirm modal's "always" opt-out
+persists as `approvals.mcp_reload_confirm: false`). The next CLI session loads
+it automatically — CLI sessions watch `mcp_servers` and auto-reload on change
+(unless `mcp.auto_reload_on_config_change: false`). On a multiplexed host,
+bounce only the affected profile; a gateway restart drops every served
+profile's in-flight turns.
+
+Tools appear as `mcp_<server>_<tool>` (some surfaces render
+`mcp__<server>__<tool>`). Finish with TWO checks — neither substitutes for the
+other:
+
+1. `hermes -p <profile> mcp list` — inventory only: shows transport and
+   enabled state, never proves a live connection.
+2. ONE real tool call from a fresh session, e.g.
+   `hermes -p <profile> chat -q "call <tool> with <benign args> and report the raw result"`.
+   Startup logs saying "connected" are not proof either.
+
+When the client path itself is in doubt, connect through Hermes' own code —
+`/usr/local/lib/hermes-agent/venv/bin/python` plus
+`tools.mcp_tool_discovery._connect_server(name, config)` — which follows the
+exact config-rendering and transport-selection path the agent uses, and is the
+cheapest way to isolate "server broken" from "Hermes-side wiring broken".
 
 ## Pitfalls
 
+- **A tool name that resolves to an unrelated same-name binary.** `httpx` may be
+  the Python HTTP client CLI while the intended tool is ProjectDiscovery's Go
+  httpx — every wrapper built on the bare name silently runs the wrong program.
+  `head -1 $(which <name>)` (shebang), `file`, and a `-version` probe separate
+  them; put the real binary on PATH under a distinct name (`<name>-pd`) and
+  reference that name everywhere (skills, wrappers, configs).
+- **"Config looks right, tools never appear" — diagnose in this order:** server
+  process running → listening on the expected port → unauthenticated request
+  returns `401` (auth layer alive) → transport handshake (SSE `event: endpoint`)
+  → Hermes' own connect path handshakes (step 5). Each failure has a different
+  fix; jumping straight to re-registering the config wastes the whole cycle.
+- **`loaded: true` in a GUI app's extension config is not "running".** If the
+  app's own startup is blocked (a first-run/modal dialog waits for a click),
+  extensions never initialize and their ports stay closed even though the
+  persisted config says loaded. Screenshot the display before concluding the
+  extension is broken — the fix may be one click at the dialog, not a
+  reinstall.
+- **Config-dump commands mask secrets, so a masked value is not proof about
+  what the server received.** `hermes config get mcp_servers` / `mcp list`
+  redact anything key- or bearer-shaped. Verify the write by function (a
+  token-protected endpoint answering 200 through the configured flow, one live
+  tool call); read raw `config.yaml` only for shape/structure.
 - **One malformed client config blocks an installer's whole write transaction.**
   When a tool's setup wizard manages several agents' config files, a single file
   in a bad state (`invalid`, truncated JSON) aborts every write, including the
@@ -126,5 +192,7 @@ saying "connected" are not proof that the tool set is usable.
 ## Support files
 
 - `scripts/mcp_stdio_probe.py` — standalone JSON-RPC handshake/tool-list probe.
+- `scripts/mcp_sse_probe.py` — SSE probe: handshake, tool list, and optional
+  tool calls against a bearer-token SSE endpoint.
 - `references/rea-agents.md` — REA (`rea-agents`) specifics: client registry,
   engine providers, companion-skill location, install/pinning notes.

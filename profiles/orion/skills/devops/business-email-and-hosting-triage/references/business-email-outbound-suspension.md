@@ -1,5 +1,11 @@
 # Business Email Outbound Suspension & hPanel Troubleshooting (Hostinger / cPanel)
 
+## 0. Hostinger API Helper Pattern
+- Mail API paths take the order ID, e.g. `/api/mail/v1/orders/{order_id}/mailboxes`, `/logs/outbound?per_page=50&page=N`, `/forwarders`. The order ID is per-client, so look it up with `GET /api/mail/v1/orders` before assuming one.
+- Page through outbound logs until an empty page. A clean first page can hide failures on later pages.
+- A mailbox with `status=active`, `is_smtp_out_enabled=true`, and recent `250` log entries is not suspended. Check this before any unsuspend or support step.
+- Keep the API token in an env var or a `0600` file. Do not paste it into chat or copy it into other helper modules.
+
 Operational reference for diagnosing and resolving outgoing email blockages (`554 5.7.1 Outbound sending is disabled for this account`) across hosted domains (e.g. `bg-maritim.com`).
 
 ---

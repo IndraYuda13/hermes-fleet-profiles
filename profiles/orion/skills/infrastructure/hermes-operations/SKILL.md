@@ -43,8 +43,6 @@ Run a dashboard as a supervised service with a deliberate bind address and authe
 - **Cloudflare Tunnel Routing:** Ensure the tunnel config maps `hostname` directly to `http://127.0.0.1:9119` with `httpHostHeader: 127.0.0.1` and `noTLSVerify: true`. When using Vite preview/dev proxies, also ensure `preview.allowedHosts: true` or explicitly allow the public tunnel domain.
 - When using a tunnel, verify local HTTP, DNS routing, public HTTP, and WebSocket/PTY behavior separately; host-header rewriting that enables a loopback HTTP origin may not satisfy a public-origin WebSocket. The tunnel umbrella and dashboard references contain the deployment-specific details.
 
-- **Systemd Service Setup:** When running the dashboard 24/7 on a Linux host behind a Cloudflare Tunnel or reverse proxy, supervise it via a dedicated systemd unit (`/etc/systemd/system/hermes-dashboard.service`) using `/usr/local/bin/hermes dashboard --host 127.0.0.1 --port 9119 --skip-build --no-open` with `Restart=always` so the dashboard stays up after reboots or process exits.
-
 - **Persistent Service Setup:** Run the dashboard continuously behind a tunnel via systemd service (`/etc/systemd/system/hermes-dashboard.service`):
   ```ini
   [Unit]
@@ -85,6 +83,12 @@ When orchestrating multi-agent Hermes profile fleets (`ORION`, `RADAR`, `FORGE`,
 - **Pruning Fleet Backups & Profile Caches:**
   1. Inspect `~/.hermes/backups/` and remove obsolete full pre-upgrade snapshot tarballs once the upgrade is confirmed stable.
   2. Each active fleet profile maintains independent caches under `~/.hermes/profiles/<profile>/home/.cache/` (such as `huggingface/`, `uv/`, `ms-playwright/`, and `.npm/_cacache`). Prune these across worker profiles when reclaiming space.
+- **Fleet-Wide Configuration Synchronization & Git Tracking:**
+  When deploying configuration settings across all multi-agent profiles (such as enabling native vision via `model.supports_vision: true` or routing auxiliary vision):
+  1. Inspect the profile inventory under `~/.hermes/profiles/` and the tracked git repository (`~/projects/hermes-fleet-profiles/`).
+  2. Apply changes per-profile using `hermes -p <profile> config set <key> <val>` or targeted YAML updates with an immediate backup.
+  3. Validate YAML syntax and assert that runtime config readers evaluate the desired setting. Profile configs reload dynamically per turn (`load_config()` hot-reloads on file modification) without requiring gateway restarts.
+  4. Sync changes to the version control repository, review git diff for accidental secret exposure, and commit with an explicit audit log.
 ## Safe Profile Export & Archiving
 
 When bundling profile configs, prompts (`SOUL.md`, `config.yaml`, `profile.yaml`, `memories/`), and installed skills for external delivery or backup:
@@ -95,6 +99,45 @@ When bundling profile configs, prompts (`SOUL.md`, `config.yaml`, `profile.yaml`
    - Databases & ephemeral logs: `*.db`, `*.db-wal`, `*.db-shm`, `*.db-journal`, `*.log`, `models_dev_cache.json`.
 2. **Size Optimization:** Unfiltered profiles easily exceed 150MB+ due to browser binaries (`ms-playwright`), SQLite WAL journals, and index caches. Applying strict filtering compresses the entire multi-agent fleet configuration down to ~45MB (with full skills) or <1MB (specs/configs only), enabling instant delivery via messaging platforms like Telegram (MEDIA: path).
 3. **Automated Sanitization Pass:** Redact sensitive credentials (`api_key`, `password`, `password_hash`, `secret`, `PMAK-*`, `sk-*`, custom auth tokens) before public or third-party distribution. See `references/profile-export-sanitization.md`.
+
+## Obsolete gateway unit triage (system-scope vs user-scope)
+
+When a host shows a `hermes-gateway` crash-loop (rising `NRestarts`) yet messaging still works, suspect TWO units with the same name in different systemd scopes:
+
+- `systemctl cat hermes-gateway` — system scope (`/etc/systemd/system/`). Check `User=` and `Environment=HERMES_HOME=` for an abandoned account or outdated install.
+- `systemctl --user cat hermes-gateway` — user scope (e.g. root with linger enabled), which serves live traffic when profiles run from a user session.
+
+### Verification Procedure
+1. Compare `tr '\n' ' ' < /proc/self/cgroup` with `systemctl show hermes-gateway -p ControlGroup` to prove which unit hosts the current process.
+2. Verify production status: `XDG_RUNTIME_DIR=/run/user/<uid> systemctl --user show hermes-gateway.service -p MainPID -p ActiveState`.
+3. Confirm abandonment of the system unit: inspect whether its configured `$HERMES_HOME` lacks `config.yaml` or messaging configurations, and whether its logs show stagnant start records.
+
+### Safe Decommissioning Procedure
+Do not issue bare `systemctl stop` or `restart` commands: the in-gateway lifecycle guard blocks literal `systemctl stop|restart|start ... hermes-gateway` invocations issued from inside a supervised gateway to prevent self-termination.
+
+1. Back up the obsolete unit file:
+   ```bash
+   mkdir -p ~/.hermes/backups/gateway-units
+   cp -a /etc/systemd/system/hermes-gateway.service ~/.hermes/backups/gateway-units/hermes-gateway.service.bak
+   ```
+2. Stop and disable autostart atomically:
+   ```bash
+   systemctl disable --now hermes-gateway.service
+   ```
+3. Remove the dead unit file and reload systemd manager:
+   ```bash
+   rm /etc/systemd/system/hermes-gateway.service
+   systemctl daemon-reload
+   ```
+4. Confirm production gateway remains untouched:
+   ```bash
+   XDG_RUNTIME_DIR=/run/user/<uid> systemctl --user is-active hermes-gateway.service
+   ```
+   Assert that the production PID and listening sockets did not change.
+
+### Pitfalls
+- **Interpreter and Dependency Drift on Stale Units:** An abandoned unit pointing to an older Python runtime or venv can fail on newer codebase imports and trigger rapid respawn loops (`Restart=always`), filling systemd journals and hiding active operational logs. Decommission the unmaintained unit rather than altering current code to accommodate obsolete environments.
+- **Never Target the Live Manager:** Only run systemctl commands against system scope after verifying the active agent process is hosted in user scope (`/user.slice/`), not system scope (`/system.slice/`).
 
 ## Recovery checklist
 

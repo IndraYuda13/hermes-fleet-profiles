@@ -16,6 +16,17 @@ Use this skill when designing or running automated functional QA suites for web 
 
 See `references/puppeteer-ui-qa-patterns.md` for Puppeteer-specific patterns including IIFE closure workarounds, transient state capture, overlay click-through fixes, and anti-slop scanning.
 See `references/functional-qa-manifest-structure.md` for the standard PRISM QA manifest format (10-category test matrix, JSON schema, file layout).
+See `references/motion-and-scroll-reveal-verification.md` for verifying scroll-reveal, mid-animation, reduced-motion, and idle-animation claims.
+See `references/runtime-data-integrity.md` for immutable backend SQL gates and standalone IndexedDB upgrade probes.
+
+## Bounded functional/data gate rules
+
+- Choose the minimum probes that can falsify the requested invariants, plus relevant existing regressions; do not duplicate another verifier's full security or visual suite. Report concise results, exact commands/exits, critical repros, and explicit residual gates.
+- Separate backend, storage, and integrated UI evidence. When the shared frontend is changing, execute backend probes from an immutable revision outside the shared checkout; do not certify the moving UI from those results. Carry evidence forward only after comparing the relevant file digests. Read the actual build identifier separately from Git HEAD: unchanged source does not establish the claimed build or running artifact. On a mismatch, retain verified source-bound results but leave build/runtime certification UNVERIFIED until the runtime owner reconciles identity.
+- Exercise persisted SQL/RPC behavior when server algorithms own the result; TypeScript unit tests or parity of unrelated checkers cannot certify a different server generator.
+- Bind each probe log to the exact probe bytes as well as product revision. If assertions are added after a successful run, rerun that probe or mark the additions UNVERIFIED; an earlier log does not cover the edited script.
+- Verify summary truth, not only numerical correctness: distinguish absent evidence, unavailable loading, insufficient evidence, and existing-but-not-comparable results. A fallback that labels an excluded valid result as “no result” is a functional data-truth defect, not harmless cosmetic copy.
+- Inspect creator test assertions and raw current-revision logs before deciding to rerun them. Reuse coverage that answers the criterion, but reject empty-state assertions that also accept an error screen as proof of genuine emptiness; keep independent UI and backend certification separate.
 
 ## 1. Headless Browser Setup in Linux Containers
 
@@ -192,7 +203,28 @@ Never use raw substring matches like `text.includes("undefined")` or `text.inclu
 - Store objects (`Alpine.store(...)`) do not inherit component lifecycle methods such as `this.$nextTick`.
 - Inside store methods, trigger DOM re-scans or icon updates with `setTimeout(() => { ... }, 50)` rather than calling `this.$nextTick()`.
 
-## 8. Fleet Parallel Verification (Functional + Perceptual QA)
+## 8. Verifying Peer-Supplied Probes & Reported Failures
+
+When you are asked to execute someone else's probe script, or to review its reported failures, you are the independent verifier. Do not accept its verdict, and do not "fix" the product to make the probe green.
+
+1. **Read the script before running it.** Confirm it is read-only with respect to protected paths, that it writes only where it claims, and that it needs no network or server. Snapshot the artifacts it will overwrite plus the hash of any file it claims not to touch.
+2. **Capture evidence verbatim, into your own scratch.** Redirect stdout and stderr separately, record the exit code separately, and re-hash the protected paths (working file, `git status`, HEAD) after the run. A probe's own summary line is not your evidence trail, and stale builds or truncated child output are incomplete evidence, not a soft pass.
+3. **Classify every failed assertion before reporting it.** Never conflate the three classes:
+   - **product defect** — the app really misbehaves;
+   - **probe defect** — the assertion string, the targeting, or the timing is wrong so it can never pass;
+   - **environment defect** — the harness/browser/setup differs from what the probe assumed.
+   A peer report listing N failures is a claim about the app only if each failure survives classification.
+4. **Reproduce each failure with your own probe**, in your own file, and try to *falsify* it: vary the reproduction path (instant jump vs incremental scroll vs keyboard vs smooth), vary the viewport, and test whether the failure is reachable through a real in-product action rather than only the probe's synthetic sequence. A defect reachable only by the probe's exact synthetic steps is usually a probe defect.
+5. **Do not edit the probe or the artifact to make it pass.** Report the classification plus the corrected assertion/targeting, routed to the probe's owner.
+
+**Computed-value assertions are the most common probe defect.** Browsers reserialize computed values, so literal-string comparison silently can never match:
+- `transition-duration: 0.001ms` computes to `"1e-06s"`, not `"0.001s"`.
+- `transform` rests as `"none"` on one element and `"matrix(1, 0, 0, 1, 0, 0)"` on another; `translate` as `"0px"` vs `"none"`.
+Print the real computed value first, then assert on what the engine actually reports (or normalize/parse numerically) instead of hardcoding a human-readable literal.
+
+**Shared evidence directories have concurrent writers.** Other agents may overwrite the same artifacts mid-run. Keep your captured output outside the shared dir and attribute every artifact to your run by mtime window; never present whatever is currently on disk as your run's evidence without checking its timestamp.
+
+## 9. Fleet Parallel Verification (Functional + Perceptual QA)
 
 When deterministic functional QA runs in parallel with a perceptual/visual QA agent:
 
