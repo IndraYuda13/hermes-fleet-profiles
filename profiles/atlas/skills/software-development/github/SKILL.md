@@ -48,6 +48,8 @@ Supporting assets: `scripts/gh-env.sh` + `scripts/git-credential-token.py`
   `gh pr view --comments` — decisions live in threads, not titles.
 - Sweep for duplicates before creating anything:
   `gh pr list --search` / `gh issue list --search`.
+- For repository cleanup, preserve local bytes with explicit `git rm --cached -- <approved-paths>` and verify hashes, ignore status and the exact staged whitelist before committing. Never stage concurrent owners' work with `git add -A`; retain genuine source, tests, migrations, project docs, design assets and licenses. Follow the local-only cleanup procedure in `references/repo-management.md`.
+- Keep commit, push and deployment authorization separate. A judged/public repository should contain useful product documentation, not unsolicited quality-promotional reports; keep private/generated verification evidence local when requested.
 
 ## Verification
 

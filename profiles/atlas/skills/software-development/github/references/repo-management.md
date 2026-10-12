@@ -453,6 +453,16 @@ curl -s -X POST \
   -d '{"ref": "main", "inputs": {"environment": "staging"}}'
 ```
 
+## Local-only instructions and generated evidence cleanup
+
+1. Inspect current HEAD, `git status --short`, `git diff --cached --name-only`, and `git ls-files` before selecting removals. In a shared checkout, stop if another owner's paths are staged rather than unstaging or committing their work.
+2. Read local agent instructions before untracking them; they still govern the current workspace. Search README, scripts and tests for each proposed path. Distinguish generated outputs from required inputs, and preserve real project docs, design originals, provenance and licenses.
+3. Record existence and SHA256 for the explicit removal list outside the repository. Simplify ignore rules for the approved generated directory and local instruction/state filenames; preserve safe example-env exceptions. Do not blanket-ignore docs/design or remove tests to improve judging appearance.
+4. Run `git rm --cached -- <explicit-paths>` without filesystem removal, then `git add -- .gitignore`. Assert `git diff --cached --name-only` equals only the approved removal list plus .gitignore; run `git diff --cached --check` before committing. Avoid `git add -A`, reset, force or index-wide cleanup because concurrent source changes must remain owned by their creators.
+5. Verify every removed file still exists with the same hash, `git ls-files` no longer lists it, and `git check-ignore -q <path>` succeeds. Check no live env, dump or private archive became tracked. Report exact commit and path list in a local handoff, not a public promotional document.
+6. Assess fresh-clone consequences: ignored artifacts are absent on a new checkout. Build/test writers must create parent directories before writing; historical manifest readers need explicit local prerequisites, and README artifact links may become broken. Repair only within ownership or report the precise consumer/path to its owner. Keeping current local bytes is not evidence that a fresh clone is self-sufficient.
+7. Treat untracking as removal from the current tree, not erasure from Git history. Do not rewrite history or push until separately authorized; after an authorized push read back the exact remote commit.
+
 ## 10. Gists
 
 **With gh:**

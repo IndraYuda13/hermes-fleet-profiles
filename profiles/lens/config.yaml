@@ -3,6 +3,7 @@ model:
   provider: "custom"
   base_url: "http://127.0.0.1:20128/v1"
   api_key: REDACTED
+  supports_vision: true
 toolsets:
 - browser
 - vision

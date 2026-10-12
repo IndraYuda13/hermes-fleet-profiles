@@ -20,8 +20,8 @@ Use for non-trivial code changes, bug fixes, shared utilities, API/schema change
 3. Classify risk: behavior, data/schema, API contract, concurrency, auth/security, performance, UI interaction, deployment.
 4. Choose tests for the changed path plus the highest-risk neighboring paths. Include negative/edge cases where the bug class suggests them.
 5. For bug fixes, create a regression test that would fail before the fix whenever feasible.
-6. Run focused tests first; then the appropriate nearby/regression suite.
-7. Inspect diff after tests to catch accidental changes.
+6. Run focused tests first; then the appropriate nearby/regression suite. For artifact-producing runners, test from an artifact-free source copy against an explicitly identified, already-prepared isolated test database; see [Runner filesystem and database isolation](references/runner-isolation.md).
+7. Inspect diff after tests to catch accidental changes. In shared working trees, stage only owned files and confirm the commit file list; preserve concurrent work and keep generated evidence local unless requested.
 8. Record exact commands, results, changed files, and residual untested surface.
 
 ## Pitfalls
