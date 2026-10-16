@@ -19,7 +19,7 @@ quality_governance:
 profiles:
   orion:
     role_class: orchestrator
-    model: gpt-sol
+    model: ag-opus-pool
     a2a_port: 9901
     production_write: false
     allowed_write_scopes: [mission-ledger, decision-ledger, closure-report, release-decision-record]
