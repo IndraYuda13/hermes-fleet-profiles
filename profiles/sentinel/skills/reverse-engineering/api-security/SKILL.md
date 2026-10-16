@@ -24,8 +24,18 @@ description: Use for authorized security assessment of REST, GraphQL, WebSocket,
 6. Keep synthetic fixtures transactional where possible and exclude real names, photos, keys and private backup data from evidence. Finish only after probe processes are quiescent.
 7. Track approval blockers per action and claim, not as a blanket failure of unrelated coverage. Respect the tool's exact stop scope; never retry, rephrase or replace a denied probe without renewed authorization and normal approval. If an authorized operator later executes the unchanged reviewer-authored probe, inspect its script, target identity, actual output and generated artifact before closing that slice; preserve execution provenance rather than treating a peer's success summary as evidence.
 8. Report concisely in Indonesian for this user: exact revision/digests, VERIFIED observations, confirmed defects with reproduction and impact, and UNVERIFIED/BLOCKED scope. No frontend, device or hosted-provider certification from local backend tests. Carry a completed gate to integration only after comparing actual relevant tracked-file digests against the exact final Git revision, recording the compared count and changed paths. Bind source-only security evidence to source, not a changing build ID; changed deployment configuration or dependencies require their own affected recheck.
+9. A failing self-authored assertion is not a finding. Before reporting BLOCKED, inspect the real response metadata and the source contract; suspect your assertion shape first (provider error schemas, header contracts). Relax only the reviewer's assertion, never the security check, then rerun the whole probe so the passing evidence comes from the fixed script. Report the correction and both exit codes.
 
 For PostgreSQL-backed RPC gates, follow `references/postgres-rpc-gates.md`.
+
+For gates where the code is already deployed and the open question is whether the
+REAL public runtime enforces origin/CSRF, cookie attributes, session-class isolation
+and refresh/logout, follow `references/runtime-origin-cookie-gates.md`; start from
+`templates/runtime-auth-probe.py` rather than hand-typing the probe. Two always-on
+rules from it: a status code is not proof of no mutation (read the collection back and
+require exact equality after every rejected write), and Cookie Path is not a
+server-side authorization control (prove the role check with a forced Cookie header,
+not by trusting browser scoping).
 
 ## 适用场景
 
@@ -185,6 +195,9 @@ GET 突变 → CSRF 风险
 
 - `references/rest-graphql-testing.md` — REST + GraphQL 深度测试
 - `references/jwt-oauth-testing.md` — JWT + OAuth 安全测试
+- `references/runtime-origin-cookie-gates.md` — 已部署 runtime 的 origin/CSRF/cookie/session 隔离与 refresh/logout 门禁
+- `references/postgres-rpc-gates.md` — PostgreSQL RPC 门禁
+- `templates/runtime-auth-probe.py` — 可复用 live runtime auth probe 模板（复制后改路径/端点）
 
 
 ## 任务完成自检（声称完成前 MUST 通过）

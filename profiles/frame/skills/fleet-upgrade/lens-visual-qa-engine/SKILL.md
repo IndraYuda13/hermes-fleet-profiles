@@ -124,6 +124,8 @@ Executed via Playwright / CDP event listeners.
   Calculate relative luminance $L = 0.2126R + 0.7152G + 0.0722B$ on computed colors. Assert contrast ratio $\ge 4.5:1$ for normal text, $\ge 3.0:1$ for large text/icons (WCAG AA).
 - **Silent Clipping Detection:**
   Scan all containers: if `el.scrollWidth > el.clientWidth` and `getComputedStyle(el).overflowX === 'hidden'` and `textOverflow !== 'ellipsis'`, flag as `DEFECT_SILENT_CLIPPING`.
+- **Collapsed-Track Detector (extend the clipping scan):** a flex/grid child auto-placed into a track that resolved to `0` overflows its parent with `overflow: visible` on itself, so the container-clipping rule above never fires. For every element with children, read `getComputedStyle(parent).gridTemplateColumns` / computed width and flag any rendered child whose own rect width is `0` while it contains non-whitespace text — `DEFECT_COLLAPSED_TRACK`. Measure its glyphs with `document.createRange()` + `selectNodeContents()` rather than the element box, and compare the glyph right edge to the parent's, so the verdict does not depend on how the box was clipped.
+- **Gate-visibility Assertion (state-aware surfaces only):** on any surface whose primary action is disabled, assert the reason is rendered as visible text, and that the state clearing it is in the same view. Report a disabled primary control with no accessible explanation as `DEFECT_UNEXPLAINED_GATE`; it is indistinguishable from a broken control to the user even when every gate above passes.
 
 ---
 

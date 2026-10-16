@@ -1,17 +1,17 @@
 ---
 name: vps-operations
 description: Use when managing VPS security, git deploys, or AI apps.
-version: 1.8.1
+version: 1.10.0
 author: Hermes Agent Curator
 license: MIT
 metadata:
   hermes:
-    tags: [vps, ssh, fail2ban, git, deployment, reverse-proxy, security, fail-closed, devops, storage, maintenance, telemetry, speedtest, benchmarking]
+    tags: [vps, ssh, fail2ban, git, deployment, reverse-proxy, security, fail-closed, devops, storage, maintenance, telemetry, speedtest, benchmarking, directory-conventions, scratch-hygiene]
 ---
 
 # VPS Operations & Host Hardening Standard
 
-Consolidated operational runbook for Linux VPS administration: automated attack triage, Fail2ban hardening, SSH key cutover, Git deployment hygiene, reverse-proxy ingress, fail-closed application architectures, host storage/process hygiene, and telemetry/network benchmarking.
+Consolidated operational runbook for Linux VPS administration: automated attack triage, Fail2ban hardening, SSH key cutover, Git deployment hygiene, reverse-proxy ingress, fail-closed AI application architectures, host storage/process hygiene, directory placement standards, and telemetry/network benchmarking.
 
 ## When to Use
 - Diagnosing authentication brute-force attacks, high `rsyslogd` CPU spikes, or configuring Fail2ban on public cloud servers.
@@ -19,6 +19,7 @@ Consolidated operational runbook for Linux VPS administration: automated attack 
 - Deploying, pulling, and rebuilding Git repositories on live production VPS serving environments.
 - Troubleshooting multi-tier ingress routing (Cloudflare Tunnel -> Nginx -> application daemons) and fail-closed AI application backends.
 - Performing emergency disk rescue, purging hidden browser/package caches, and reaping container-orphaned zombie process storms.
+- Establishing host directory placement standards, ephemeral scratch pruning (`TMPDIR`), and clutter audit protocols.
 - Collecting synchronized host telemetry (CPU/RAM/Disk) or executing network speed benchmarks without CLI argument pitfalls.
 
 ## 1. Cloud Exposure & Automated Attack Triage
@@ -299,6 +300,11 @@ For web applications running AI models or reverse proxies across multi-tier boun
 3. Check application daemon: `curl -s -I http://127.0.0.1:<app_port>`
 4. Inspect unit journal: `journalctl -u <service> -n 30 --no-pager`
 
+### Ingress & Tunnel Diagnostic Traps
+- **Custom Cloudflare Tunnel Service Naming Trap:** Never assume the tunnel daemon runs under `cloudflared.service`. On customized hosts, it often runs under specific instance names like `cloudflared-vps-baru.service`. Verify active tunnel services with `systemctl list-units --type=service --state=running | grep -iE "cloudfl|tunnel"` or `pgrep -af cloudflared`.
+- **502 Bad Gateway vs Parked/Disabled Unit Triage:** When probing multiple ingress hostnames and receiving 502 Bad Gateway (port connection refused), check whether the origin units are status `disabled` in systemd (`systemctl list-unit-files --state=disabled`). Distinguish intentionally parked/disabled services from crashed or failed active units before declaring an incident.
+- **Canonical Ingress Hostname Extraction:** Do not guess domain extensions or hostnames (e.g. testing `papannalar.my.id` which fails with NXDOMAIN). Extract authoritative hostnames directly from the active tunnel config: `grep -E '^\s*-\s*hostname:' /etc/cloudflared/config*.yml`.
+
 ### Fail-Closed AI Architectural Guardrails
 1. **Silent AI Failure Triage ("Button Clicked but Nothing Happens"):** When an interactive AI generation flow appears unresponsive without surfacing UI errors:
    - *Client Abort vs Model Generation Latency:* Check if the frontend instantiates an `AbortController` with a tight timeout (e.g. 5000ms). LLMs with reasoning/thinking phases or external gateway hops often require 6–12s. The client aborts silently before the response arrives. Ensure frontend timeouts (e.g. 15000ms) align with backend deadlines.
@@ -396,15 +402,21 @@ When emergency disk reclamation is required, categorize targets strictly into tw
 2. **Selective Browser Profile Cache Pruning (Cache vs Session Invariant):**
    - Safe to delete: `Default/Cache/*`, `Default/Code Cache/*`, and `component_crx_cache/*`.
    - **Never delete:** `Cookies`, `Login Data`, `Web Data`, `Local Storage/`, `Session Storage/`, `WebStorage/`, `IndexedDB/`, `Service Worker/`, `History`, or `Preferences`. Several of these are session or offline-app data that a cache purge does not regenerate; `Service Worker/` often holds the largest share of a profile and is still session-bound. Purging the entire profile destroys live authenticated sessions (SSO, LMS, reseller auth, CDP bridges).
-- Inspect the profile before pruning: `du -sh <profile>/Default/*` shows which subfolders are large; only `Cache`, `Code Cache`, and top-level `component_crx_cache` are in the safe set above.
-3. **Stale Upgrade Snapshots & Build Caches:**
-   - Framework pre-update state snapshots (e.g. `~/.hermes/state-snapshots/`) after verifying the running version is active and healthy.
-   - Package manager download caches that do not affect runtime dependencies:
+   - Inspect the profile before pruning: `du -sh <profile>/Default/*` shows which subfolders are large; only `Cache`, `Code Cache`, and top-level `component_crx_cache` are in the safe set above.
+3. **Stale Upgrade Snapshots, Multi-Profile State Snapshots & Build Caches:**
+   - Framework and profile pre-update state snapshots: In multi-agent fleets, each profile creates full database and config snapshots under `~/.hermes/profiles/*/state-snapshots/` (e.g. `20261016-...-pre-update`). Across a fleet of 10+ profiles, these silently consume 2.5GB+ of root partition space. Once the running framework version and active services are verified healthy, prune snapshot contents across all profiles while preserving directory structure:
      ```bash
-     rm -rf ~/.cache/uv ~/.npm ~/.npx ~/.cache/pip
-     pnpm store prune 2>/dev/null || true
-     journalctl --vacuum-time=3d
+     rm -rf /root/.hermes/profiles/*/state-snapshots/* /root/.hermes/state-snapshots/*
      ```
+   - Package manager and tool caches: Hermes-managed tools and package managers store large download caches on root:
+     ```bash
+     # Hermes uv cache can consume >1GB alone; npm _npx caches add 300MB+
+     rm -rf /root/.hermes/cache/uv ~/.cache/uv /root/.npm/_npx ~/.npm ~/.npx ~/.cache/pip
+     pnpm store prune 2>/dev/null || true
+     apt-get clean 2>/dev/null && rm -f /var/cache/apt/*.bin
+     journalctl --vacuum-size=20M
+     ```
+   - Rotated agent logs & runaway streams: Remove numbered historical logs (`rm -f ~/.hermes/logs/*.log.[0-9]` and `rm -f ~/.hermes/logs/errors.log.[0-9]`) and truncate active runaway log streams in place (`truncate -s 0 ~/.hermes/logs/mcp-stderr.log`) without destroying open file descriptors held by running services.
 4. **Dangling Container Images & Orphaned Worktrees:**
    - `docker image prune -f` reclaims unreferenced build layers without touching active containers.
    - Stale git worktrees (`git worktree remove <path>` or `git worktree prune`) reclaim working copy disk while preserving all branches and commits in the primary git object database.
@@ -412,6 +424,13 @@ When emergency disk reclamation is required, categorize targets strictly into tw
    - Find them with `find <docker-data>/containers -name '*-json.log' -size +20M`, map each to its container name with `docker inspect <id> --format '{{.Name}}'`.
    - Truncate in place (`truncate -s 0 <file>`), not delete: the container keeps running and its open file descriptor stays valid. Only the historical log lines are lost.
    - This is history loss, not regenerable cache. Run it only after per-target approval. Prevent regrowth with `log-opts` (`max-size`, `max-file`) in the container's compose file, which is a config change the owner must approve.
+6. **Ephemeral `/tmp` Directory Clutter & Process Binding Verification:**
+   Extracted repository archives, test deployment instances (e.g. unzipped web roots), and compiler scratch trees accumulate in `/tmp` and persist across reboots on cloud VPS.
+   - *Verification before deletion:* Check whether any active daemon or subshell has its working directory inside the targeted `/tmp` path:
+     ```bash
+     ls -l /proc/*/cwd 2>/dev/null | grep -E "/tmp/(target1|target2)"
+     ```
+   - If unreferenced, safely purge the directories and their archive tarballs (`rm -rf /tmp/<dir> /tmp/<dir>.tar.gz`).
 
 #### Tier 2: Ambiguous / Legacy Artifacts (Reversible Staged Recycling)
 Never run irreversible `rm -rf` on deprecated tools, old project clones, or unknown virtual environments when executing an emergency disk cleanup:
@@ -422,6 +441,10 @@ Never run irreversible `rm -rf` on deprecated tools, old project clones, or unkn
    ```
 2. **Immediate Health Check:** Immediately verify all systemd units and port listeners (`systemctl is-active`, `curl -s -I http://127.0.0.1:<port>`) to prove zero live services depended on the moved paths.
 3. **Inventory Hand-off:** Present the moved inventory to the operator with sizes and paths, allowing them to permanently purge (`rm -rf`) or restore with zero data loss risk.
+4. **Active Project & Mission Audit Evidence Offload (Compress-and-Verify Invariant):**
+   When cleaning audit artifacts (e.g. `/root/fleet-evidence/*`), never delete evidence directories for projects or competitions currently within their active submission or operational window.
+   - Instead of deleting, offload to secondary storage (`/mnt/.../archive/...tar.gz`).
+   - *Integrity & Count Verification Invariant:* Before removing the source directory on the root partition, verify archive extraction readability (`tar tzf <archive>.tar.gz > /dev/null`) AND confirm the archive file count matches the source file count (`[ $(find <source> | wc -l) -le $(tar tzf <archive>.tar.gz | wc -l) ]`). Only delete source after validation passes.
 
 ### Process Termination Discipline (`pkill -f` Self-Termination Trap)
 When terminating background watchers, test servers, or orphan processes from inside automation scripts or agent sessions:
@@ -435,18 +458,28 @@ When terminating background watchers, test servers, or orphan processes from ins
   ```
 
 ### Diagnosing and Reaping Zombie Process Storms (`<defunct>`)
-When `ps aux` reveals hundreds or thousands of zombie processes (e.g. `[git] <defunct>`):
-1. **Identify the Defunct Parent (PPID):**
+When `ps aux` reveals zombie processes (e.g. `[git] <defunct>`):
+1. **Find Top Leaky Parent (PPID) & Zombie Count:**
    ```bash
-   # Find PPID of the first few defunct processes
-   ps -eo pid,ppid,stat,cmd | grep ' Z' | head -n 5
-   # Inspect the parent process
-   ps -fp <PPID>
+   # Total zombie count
+   ps -eo stat | awk '$1 ~ /Z/ {c++} END {print c+0}'
+
+   # Rank parent PIDs spawning unreaped zombies
+   ps -eo ppid,stat | awk '$2 ~ /Z/ {print $1}' | sort | uniq -c | sort -rn | head -5
    ```
-2. **Container Namespace Isolation Trap:**
-   If the parent process is a script inside a Docker container (e.g. a Python scheduler spawning subcommands like `git` or `curl` without calling `wait()` / `waitpid()`), its PPID on the host points to `containerd-shim-runc-v2 -id <container_hash>`.
-   - Do NOT kill host processes blindly or reboot the VPS host.
-   - Map the container hash to the container name:
+2. **Two-Hop Container Tracing Trap:**
+   When inspecting the parent (`ps -fp <PPID>`), the command often appears as a standard command (e.g. `python -m app.scheduler.jobs`) because container processes share the host kernel and are visible from the root PID namespace. The process itself is running inside a Docker container, not on bare metal.
+   - **Trace container ownership via grandparent shim or cgroup:**
+     ```bash
+     # Inspect the parent's parent (grandparent)
+     ps -fp $(ps -o ppid= -p <PPID>)
+     # Grandparent CMD displays: /usr/bin/containerd-shim-runc-v2 -namespace moby -id <container_hash>
+
+     # Or inspect the process cgroup directly:
+     cat /proc/<PPID>/cgroup 2>/dev/null
+     ```
+   - Do NOT attempt to kill the parent process blindly from the host.
+   - Map the container hash to its container name:
      ```bash
      docker ps --filter "id=<container_hash_first_12>" --format "{{.ID}} | {{.Names}}"
      ```
@@ -454,15 +487,43 @@ When `ps aux` reveals hundreds or thousands of zombie processes (e.g. `[git] <de
      ```bash
      docker restart <container_name>
      ```
-   Restarting the container destroys its isolated PID namespace and reaps all thousands of orphaned defunct processes instantly, restoring a clean host process table (`ps aux | grep -i defunct | grep -v grep | wc -l` drops to `0`).
+   Restarting the container destroys its isolated PID namespace and reaps all orphaned defunct processes instantly, restoring a clean host process table (`ps aux | grep -i defunct | grep -v grep | wc -l` drops to `0`).
+3. **A restart clears the backlog, never the cause:** reaping is done by the parent (`subprocess`/`Popen().wait()`, `child.on('exit')`, `SIGCHLD` handler) inside the app. If that code never waits, the count climbs again within hours. Re-count on a later probe before calling the issue closed, and when it recurs, name the defect as an application-code fix in that repo (spawn path must `wait()`/reap) rather than reporting a repeat `docker restart` as remediation.
 
 ### Report-Only Storage Reviews (Default) & Protected Work Areas
 When the operator asks to "check storage conditions" on a shared production host:
 - Run READ-ONLY diagnostics only (`df`, `du`, `find -printf`, `docker system df`, `docker inspect`). Present findings with reclaimable estimates; execute zero deletions during a review. The operator may be actively using directories that look like garbage (live capture sessions, model workspaces, container runtime storage).
 - Deletions require explicit, per-target operator approval in the same session. A general request to clean up ("bersih-bersih", "clean up the VPS") authorizes the audit only, not any deletion: present the candidate list with sizes and paths, then wait for approval before running any `rm`, `truncate`, `find -delete`, or prune. "Don't delete that" (or any similar nudge) is a hard stop for the entire cleanup class, not just the named item.
 - After any approved cleanup, verify before reporting: listeners on known service ports (`ss -tlnp`, e.g. the AI gateway port), `docker ps` status for every container, and `df` for both partitions. State explicitly which live services were checked and confirmed untouched.
-- Treat as protected unless told otherwise: `/mnt/8ballpool-mod` (live adb/logcat capture work), `/mnt/laya-test` (models), `/mnt/docker-data` + `/mnt/containerd` (live container runtime), active project work dirs under `/mnt` and `/root/projects`.
+- Treat as protected unless told otherwise: `/mnt/8ballpool-mod` (live adb/logcat capture work), `/mnt/laya-test` (models), `/mnt/docker-data` + `/mnt/containerd` (live container runtime), in-flight project evidence (`/root/fleet-evidence/<active-project>`) during active competition/deployment periods, active project work dirs under `/mnt` and `/root/projects`.
 - Shared hosts change underneath you mid-review (parallel automation, capture loops, cron). Re-run `df` right before reporting numbers so the report is current.
+
+### Host Directory Placement Conventions & Ephemeral Scratch Hygiene
+To prevent `/root` clutter and avoid emergency storage rescue operations:
+1. **Root-Level Cleanliness Mandate (No Bare Writes):**
+   - Never write loose output files (`*.jpg`, `*.webp`, `*.html`, `*.json`, `*.zip`, `*.md`) directly to the root home directory (`/root`).
+   - Every write, scrape download, image transformation, or probe output must target an explicit subdirectory according to its lifecycle.
+2. **Directory Taxonomy & Placement Standards:**
+   - **Active Projects (`/root/projects/<name>/`):** Active repositories, long-term application code, and production services.
+   - **Historical Archives (`/root/archive/`):** Inactive legacy code, obsolete clones, past review docs, and retired bundles.
+   - **Operational Scripts & Tools (`/root/scripts/`, `/root/tools/`):** System maintenance, backup hooks, and custom binaries.
+   - **Ephemeral Scratch (`/root/tmp/` or `$TMPDIR`):** One-off scraping dumps, temporary crops/resizes, ephemeral logs, and transient test payloads.
+3. **Environment Variable Enforcement (`TMPDIR`):**
+   - Export `TMPDIR=/root/tmp` in `/root/.bashrc` and daemon environment files so tools, standard library modules (e.g. Python `tempfile`), and headless browsers default to scratch storage rather than polluting the home directory.
+   - Ensure the directory exists with proper permissions: `mkdir -p /root/tmp && chmod 700 /root/tmp`.
+4. **Automated Scratch Pruning (Cron TTL Guard):**
+   - Ephemeral directories will grow silently unless guarded by automated TTL pruning.
+   - Maintain a daily cronjob that prunes unaccessed items older than 3 days:
+     ```bash
+     17 4 * * * find /root/tmp -mindepth 1 -depth -mtime +3 -delete >> /var/log/tmp-purge.log 2>&1
+     ```
+5. **Audited Cleanup Manifest & Non-Destructive Archival Protocol:**
+   - When cleaning or reorganizing cluttered directories, record every deletion (`DEL`) and relocation (`MOVE`) in a timestamped audit manifest: `/root/archive/cleanup-manifest-<timestamp>.txt`.
+   - Never delete ambiguous or non-trivial directories outright; move them into `/root/archive/` or a structured project subfolder.
+   - Explicitly verify and preserve operator-protected assets (such as SSH key backups, specialized toolchain upgrades, or live configuration files).
+6. **Root Item Count Metric as Clutter Alarm:**
+   - Track total entries at root level: `ls -1A /root | wc -l`.
+   - On a clean production server, root entries should remain bounded (typically 70–85 items including dotfiles). A sudden jump indicates an unconstrained script or background worker dumping files outside designated directories.
 
 ---
 

@@ -25,6 +25,12 @@ metadata:
 
 Do not reuse an older PASS after code changes.
 
+## Evidence-gated repair
+
+- When a reported cosmetic defect names a cause, measure that cause before fixing it. Append an empty peer element to the same parent and diff the parent's height: a delta of zero means the parent's own gap or a sibling margin already governs the spacing and the suspect element is not the cause. Report the ruled-out cause with its measurement and the specific evidence still needed, rather than shipping a plausible-looking change that adds risk to a pre-release diff.
+- Revert a speculative cosmetic hunk that no measurement supports, and keep the commit limited to changes you can justify. An unverified "tidy" edit in a release-bound diff costs review time and can regress a surface nobody re-checked.
+- Verify a claimed off-surface defect only against the surface itself: an assertion that passes because the element was never rendered is not evidence. Reach the state that renders it, or label the gap explicitly in the handoff.
+
 ## Static editorial surfaces and publishing handoff
 
 - Inspect the actual publisher signature and all side effects before calling it; generation helpers may also deploy, mutate registries, or submit URLs.

@@ -145,6 +145,12 @@ cheapest way to isolate "server broken" from "Hermes-side wiring broken".
 
 ## Pitfalls
 
+- **`hermes mcp add` ends in an interactive "Enable all N tools?" prompt** — with
+  no TTY (agent shell, piped run) it auto-cancels AFTER saving nothing, and the
+  server simply doesn't appear in `mcp list`. Pipe the answer:
+  `printf 'y\n' | hermes -p <profile> mcp add <name> --command ... --env ... --args ...`.
+  Use `--args` as the LAST flag (its value swallows trailing words).
+
 - **A tool name that resolves to an unrelated same-name binary.** `httpx` may be
   the Python HTTP client CLI while the intended tool is ProjectDiscovery's Go
   httpx — every wrapper built on the bare name silently runs the wrong program.

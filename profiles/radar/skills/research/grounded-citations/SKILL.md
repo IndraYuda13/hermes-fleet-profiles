@@ -7,7 +7,7 @@ license: MIT
 platforms: [linux, macos, windows]
 metadata:
   hermes:
-    tags: [Research, Citations, Grounding, Sources, Web, Reports]
+    tags: [Research, Citations, Grounding, Sources, Web, Reports, Reference-Audit, DOI]
     category: research
     related_skills: [arxiv, pdf, reddit-reading, rss-feeds, youtube-content]
 ---
@@ -213,6 +213,25 @@ Provenance is declared by either a `[n]` citation or an `[unverified]` marker,
 so a sentence carrying both counts once. Run `verify` without a threshold first
 and read the `info: stats:` line to see the counts before picking a number.
 
+## Reference-List / Bibliography Audits
+
+When the job is to check an EXISTING reference list (does this DOI exist, are
+the authors/year/venue/pages right, does the paper support the sentence it is
+attached to) rather than to generate citations, follow
+`references/reference-metadata-verification.md`. The load-bearing rules:
+
+- Query the DOI registrar (Crossref `api.crossref.org/works/<doi>`) by DOI with
+  a contact `mailto` User-Agent; never by title search, which returns look-alikes
+  and cannot prove identity.
+- Metadata correctness and claim support are **two separate findings**. A
+  correct registrar record never proves the source says what the sentence
+  claims — read the abstract or full text for that.
+- Emit `VERIFIED` / `UNVERIFIED` / `BLOCKED` per entry, and never certify a
+  source you could not inspect. A private brief, deck, or draft doc you were not
+  given is `BLOCKED`, not assumed.
+- Keep the audit read-only and hash-pinned: copy the artifact to scratch, record
+  `sha256sum` before/after, and deliver findings rather than an edited document.
+
 ## Pitfalls
 
 - **Registering after writing.** The ledger must be populated from tool output,
@@ -243,6 +262,17 @@ and read the `info: stats:` line to see the counts before picking a number.
   retrieval, not more markers.
 - **Hand-editing the Sources block.** Use `render --replace-in <draft>`; slicing
   the file yourself risks a stale or duplicated block that `verify` then flags.
+- **Treating a resolved DOI as claim support.** The registrar confirms the
+  publication, not that it backs the sentence; report those as separate axes or
+  the audit silently over-certifies.
+- **Title-searching to confirm a DOI.** Look-alike records make a wrong citation
+  look verified; resolve the DOI itself.
+- **Probing a system's live endpoints to prove liveness during a document
+  audit.** Availability is not the audit question, and the endpoint may serve
+  personal data — ask the owner for a sanitized spec instead.
+- **Certifying sources you cannot open.** Mark unprovided private documents
+  `BLOCKED`; stating a capacity limit is the correct result, not a gap to fill
+  by inference.
 
 ## Verification
 

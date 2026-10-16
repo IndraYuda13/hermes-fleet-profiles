@@ -50,6 +50,8 @@ Ask:
 
 If the downstream effect is not proven, downgrade the wording.
 
+For destructive SQL, require both a successful guarded rehearsal with protected-row fixtures and fail-closed drift evidence; an abort alone does not prove the happy path. Separate ROLLBACK-template verification from COMMIT readiness, because deferred constraints can remain unchecked until transaction completion. Bind the claim to the exact SQL digest and migration/ledger artifacts, not merely the application revision. Follow the database recipe in `references/oracle-patterns.md`.
+
 ## Gate 4. Match wording to proof
 
 Allowed wording depends on proof quality.
@@ -66,7 +68,8 @@ Before sending the result:
 - update the relevant note, roadmap, or boundary record
 - update the project change log if code changed
 - if this lives in its own repo, finish repo hygiene
-- if this is workspace knowledge, run the workspace backup lane
+- if this is workspace knowledge, run the workspace backup lane when it is in the authorized scope
+- during independent verification, preserve production/source state and write evidence outside Git unless the review explicitly authorizes test or documentation changes
 
 ## Gate 6. Report plainly
 

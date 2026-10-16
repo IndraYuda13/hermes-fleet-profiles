@@ -25,6 +25,28 @@ Trace an internet-facing domain to the process that actually serves it on this h
 5. **Prove the path**: health-check local vs via-domain — `curl -s -m 8 -o /dev/null -w 'HTTP %{http_code} (%{time_total}s)' http://127.0.0.1:<port><ep>` and the same against the domain. For APIs, run one real authenticated request (e.g. Firecrawl `POST /v1/scrape` with the client's API key) against BOTH endpoints; identical payloads prove same origin. A 404 on a made-up endpoint is still a fingerprint: byte-identical error pages local vs domain prove the same backend.
 6. **Verdict**: running/healthy from container state + response codes, latency delta from the timing fields (via-CDN adds ~0.1s vs ~2ms direct loopback).
 
+## Reverse direction: domain → local project dir → git repo
+
+When the ask is "find MY project for this domain and which repo it's wired to"
+(common on a host that serves many self-hosted subdomains), work backwards from
+the served files, not from `find` alone:
+
+1. **Locate the nginx/vhost conf first** — it names the static root and backend
+   port in one file. Grep config dirs for the domain:
+   `grep -rl '<domain>' /etc/nginx/ /etc/nginx/conf.d/ /etc/nginx/sites-enabled/ 2>/dev/null`,
+   then read it: `root /path/to/frontend;` → project dir; `proxy_pass http://127.0.0.1:<port>` → backend. On many hosts the vhost conf lives INSIDE the project dir itself (`<domain>.conf` next to the code) — a fast filename glob with `search_files (target='files', pattern='*<first-label>*')` finds it when an /etc search is inconclusive.
+2. **Confirm the repo**: `cd <project> && git remote -v && git log --oneline -3` — this
+   answers "which GitHub repo" directly; also note `git branch --show-current` and
+   `git status --short` (untracked QA scripts do not block a clean branch, but say so).
+3. **Confirm the runtime wiring**: `systemctl status <unit>` gives ExecStart (interpreter
+   + venv + port), env vars, and uptime; then re-verify with the live health endpoint.
+   Copy the interpreter path from the unit for later dependency checks
+   (`<venv>/bin/python3 -c 'import <dep>'`).
+4. **Name every layer you touched in the answer**: domain → CF/edge → local port →
+   project dir → repo URL — same evidence discipline as tracking down an unknown service.
+
+
+
 ## Pitfalls
 
 - Read the tunnel config file instead of guessing proxying — one cloudflared instance on a multi-service host can carry dozens of hostname→port mappings, and the target's mapping sits in the list with all the others.

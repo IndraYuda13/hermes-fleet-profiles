@@ -8,6 +8,7 @@ Full reference: https://hermes-agent.nousresearch.com/docs/user-guide/configurat
 | Section | Key options |
 |---------|-------------|
 | `model` | `default`, `provider`, `base_url`, `api_key`, `context_length`, `aliases` |
+| `model_overrides` | `<provider>.<model_id>.context_window` / `supports_tools` / `supports_vision` / `supports_reasoning` / `model_family` — the per-model override that wins over the endpoint probe and the persistent cache; `_default` fills the gap only on a catalog miss. Use it to pin a true context window when a router in front reports a wrong one: `hermes -p <profile> config set model_overrides.custom.ds.context_window 524288`. See `llm-provider-benchmarking` → `references/context-window-provenance.md` for the full recipe and verification snippet. |
 | `agent` | `max_turns` (null=unlimited), `budget_warning_ratio`, `run_budget_seconds`, `reasoning_effort`, `reasoning_overrides`, `tool_use_enforcement`, `service_tier`, `verify_on_stop` |
 | `terminal` | `backend` (local/docker/ssh/modal/daytona/singularity), `cwd`, `timeout` (180) |
 | `compression` | `enabled`, `threshold` (0.50), `target_ratio` (0.20) |

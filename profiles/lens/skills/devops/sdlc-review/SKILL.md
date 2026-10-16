@@ -156,6 +156,25 @@ Explain the blocked decision and the smallest information needed to continue.
 
 Do not edit the implementation while acting as reviewer. Request changes and let the implementer produce the next candidate; then independently verify that candidate in the next review run.
 
+### 5. Route rework without duplicating it
+
+A `changes_requested` transition re-claims and re-dispatches the ORIGINAL card to its implementer. Treat that as the canonical rework vehicle; do not open a second card for the same defects.
+
+When a review-block notification reaches you, orient before acting:
+
+- Read the card and its current run with `kanban_show` first. A card already in `running` has a live worker claim: a different actor cannot close it, and attempting a terminal transition only returns a refusal (worker-ownership/`force` guard). Post the verdict as a comment on the owning card and let the owning run bind the transition.
+- Confirm rework is already routed rather than creating a replacement. A block notice is neither an approval nor a request to decompose the work.
+- If a separately created remediation card exists for the same defect set with the same `workspace_path`, flag the double-run hazard: two workers staging edits, running installs, and writing evidence into one tree. Detect it with `ps` for a second worker on the same task family plus `git status` showing a dirty working tree while `HEAD` is unmoved. Recommend exactly one vehicle and let a human cancel the redundant run; do not add a third task.
+
+### 6. Verify a blocking claim from source, not from the verdict
+
+A peer reviewer's blocking finding is a hypothesis until you reproduce it. For a CI/lint-gate claim:
+
+- Resolve the gate command from the repo's own configuration (`package.json` script, CI workflow) rather than an equivalent you invent, and run that exact command.
+- Reproduce against the exact committed revision's content: `git show <rev>:<path> | <linter> --stdin --stdin-filename <path>` with the repo's resolved config. Confirm the rule's provenance from the linter itself (`--print-config <path>`), so the severity is the repo's, not your invocation's.
+- Establish which revision introduces the offending file: `git cat-file -e <rev>:<path>` fails at revisions where the file is absent, pinning the regression to the commit under review.
+- For a claim that committed evidence was never produced at its revision, compare timestamps: an artifact (spec/probe/report) whose mtime is newer than the run that supposedly produced it was authored afterward, and a report whose `stats` show zero collected tests is not a gate. Quote both the run's own counters and the mtime ordering.
+
 ## Pitfalls
 
 - **Rubber-stamping:** A passing handoff summary is not independent evidence.
@@ -165,6 +184,9 @@ Do not edit the implementation while acting as reviewer. Request changes and let
 - **Skipping prior rounds:** Re-review must confirm both the requested corrections and preservation of previously passing behavior.
 - **Using blockers for ordinary rework:** Correctable defects belong in `kanban_request_changes`; reserve `kanban_block` for genuine external blockers or human decisions.
 - **Completing without evidence:** Every approval summary must name the checks or artifacts actually inspected.
+- **Rubber-stamping a peer's blocking finding:** reproduce it from the committed source before endorsing or disputing it. A reviewer's lint/CI claim is a hypothesis, not proof.
+- **Treating a block notification as approval or as a new task:** a review-block notice is neither a pass nor a request to decompose; return work to the existing implementation card.
+- **Creating a second rework card:** `changes_requested` already re-dispatches the original card. A duplicate remediation card runs the same fix on the same workspace and corrupts the shared tree.
 
 ## Verification
 

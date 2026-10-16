@@ -25,6 +25,12 @@ Usage:
     python3 mover_chain_extract.py 1396 tv 1 1
 Env:
     VENUS_PROXY  proxy URL (default http://127.0.0.1:31004, a local residential pool node)
+
+NOTE for wiring this into a long-lived service: this script shells out to `node` for the
+wasm decrypt (fast to iterate, but adds a binary dependency to the service environment).
+For a service, run the same tiny wasm from Python via `wasmtime`/`wasmer` if available
+(alloc/decrypt/memory; output at ptr+12) and install it into the SERVICE venv. See
+references/provider-replication-engineering.md section 3.
 """
 import json, os, re, subprocess, sys
 

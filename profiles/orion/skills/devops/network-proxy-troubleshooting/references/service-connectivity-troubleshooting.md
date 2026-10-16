@@ -49,6 +49,7 @@ A route failure can originate at the caller, proxy environment, container networ
 | Invalid credential | selected auth mechanism and non-truncated configured key reference |
 | Connection refused | listener bind address/port from caller namespace |
 | WebSocket 1006 | proxy upgrade behavior plus application origin/CORS decision |
+| SSL self-signed cert on public API | resolved IP (`curl -Iv` / `getent hosts`) vs `/etc/hosts` and local port 443 listeners (`ss -tulpn`) before modifying CA bundles |
 
 ## Common Pitfalls
 
@@ -56,6 +57,7 @@ A route failure can originate at the caller, proxy environment, container networ
 - Treating frontend logs as proof a backend endpoint should exist.
 - Assuming Docker bridge addresses or `localhost` are portable.
 - Letting an outbound proxy capture local API traffic.
+- Assuming `[SSL: CERTIFICATE_VERIFY_FAILED]` on public endpoints is a missing system CA bundle without verifying whether `/etc/hosts` redirected the domain to a local listener (`127.0.0.1`) running a mock TLS server.
 - “Fixing” a network path by bypassing SSRF, auth, or origin protections.
 
 ## Verification Checklist

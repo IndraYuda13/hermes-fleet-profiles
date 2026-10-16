@@ -1,4 +1,4 @@
-_config_version: 50
+_config_version: 51
 a2a_agents:
   atlas:
     timeout: 900
@@ -91,18 +91,38 @@ custom_providers:
     model: gpt
     models:
       ag-opus-pool:
-        context_length: 950000
+        context_length: 524288
+        supports_vision: true
       gpt:
         context_length: 500000
+      ds:
+        context_length: 524288
+        supports_vision: true
+      gpt-sol:
+        context_length: 524288
+        supports_vision: true
+      gpt-terra:
+        context_length: 524288
+        supports_vision: true
     name: 9router.indrayuda.my.id
   - api_key: REDACTED
     base_url: http://localhost:20128/v1
     model: gpt
     models:
       ag-opus-pool:
-        context_length: 950000
+        context_length: 524288
+        supports_vision: true
       gpt:
         context_length: 500000
+      ds:
+        context_length: 524288
+        supports_vision: true
+      gpt-sol:
+        context_length: 524288
+        supports_vision: true
+      gpt-terra:
+        context_length: 524288
+        supports_vision: true
     name: Local (localhost:20128)
 dashboard:
   cors_origins: '[''https://hermes.indrayuda.my.id'']'
@@ -195,6 +215,9 @@ mcp_servers:
     enabled: true
     type: sse
     url: http://127.0.0.1:9876/
+    headers:
+      Authorization: "Bearer ${BURPMCP_MCP_TOKEN}"
+    transport: sse
   rea:
     command: /usr/local/bin/rea-mcp
     connect_timeout: 60
@@ -453,3 +476,32 @@ web:
   firecrawl_url: https://firecrawl.indrayuda.my.id
   search_backend: firecrawl
   use_gateway: false
+agent:
+  image_input_mode: native
+model_overrides:
+  custom:
+    ds:
+      context_window: 524288
+      supports_vision: true
+    ag-opus-pool:
+      context_window: 524288
+      supports_vision: true
+    gpt-sol:
+      context_window: 524288
+      supports_vision: true
+    gpt-terra:
+      context_window: 524288
+      supports_vision: true
+  custom:local-(localhost:20128):
+    ds:
+      context_window: 524288
+      supports_vision: true
+    ag-opus-pool:
+      context_window: 524288
+      supports_vision: true
+    gpt-sol:
+      context_window: 524288
+      supports_vision: true
+    gpt-terra:
+      context_window: 524288
+      supports_vision: true

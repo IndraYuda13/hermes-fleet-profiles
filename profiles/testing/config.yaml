@@ -9,10 +9,36 @@ providers:
     api: http://127.0.0.1:20128/v1
     transport: chat_completions
     default_model: ds
+    models:
+      ds:
+        context_length: 524288
+        supports_vision: true
+      ag-opus-pool:
+        context_length: 524288
+        supports_vision: true
+      gpt-sol:
+        context_length: 524288
+        supports_vision: true
+      gpt-terra:
+        context_length: 524288
+        supports_vision: true
   directcg:
     api: http://127.0.0.1:8560/v1
     transport: chat_completions
     default_model: gpt-5.6-sol
+    models:
+      ds:
+        context_length: 524288
+        supports_vision: true
+      ag-opus-pool:
+        context_length: 524288
+        supports_vision: true
+      gpt-sol:
+        context_length: 524288
+        supports_vision: true
+      gpt-terra:
+        context_length: 524288
+        supports_vision: true
 toolsets:
   - a2a
   - browser
@@ -139,7 +165,7 @@ gateway:
 onboarding:
   seen:
     openclaw_residue_cleanup: true
-_config_version: 50
+_config_version: 51
 platform_toolsets:
   cli:
     - a2a
@@ -216,5 +242,81 @@ mcp_servers:
       Authorization: "Bearer ${BURP_MCP_TOKEN}"
     connect_timeout: 30
     timeout: 300
+  hackerone:
+    command: /root/.hermes/tools/node-26.7.0-linux-x64/bin/node
+    args:
+      - /root/.hermes/tools/node-26.7.0-linux-x64/lib/node_modules/hackerone-mcp/src/index.js
+    env:
+      H1_USERNAME: indrayuda
+      H1_API_TOKEN: REDACTED
+    enabled: true
 agent:
   reasoning_effort: max
+  delegation:
+    max_concurrent_children: 5
+  image_input_mode: native
+model_overrides:
+  custom:
+    ds:
+      context_window: 524288
+      supports_vision: true
+    ag-opus-pool:
+      context_window: 524288
+      supports_vision: true
+    gpt-sol:
+      context_window: 524288
+      supports_vision: true
+    gpt-terra:
+      context_window: 524288
+      supports_vision: true
+  custom:local-(localhost:20128):
+    ds:
+      context_window: 524288
+      supports_vision: true
+    ag-opus-pool:
+      context_window: 524288
+      supports_vision: true
+    gpt-sol:
+      context_window: 524288
+      supports_vision: true
+    gpt-terra:
+      context_window: 524288
+      supports_vision: true
+  via9router:
+    ds:
+      context_window: 524288
+      supports_vision: true
+    ag-opus-pool:
+      context_window: 524288
+      supports_vision: true
+    gpt-sol:
+      context_window: 524288
+      supports_vision: true
+    gpt-terra:
+      context_window: 524288
+      supports_vision: true
+  directcg:
+    ds:
+      context_window: 524288
+      supports_vision: true
+    ag-opus-pool:
+      context_window: 524288
+      supports_vision: true
+    gpt-sol:
+      context_window: 524288
+      supports_vision: true
+    gpt-terra:
+      context_window: 524288
+      supports_vision: true
+delegation:
+  max_concurrent_children: 5
+env:
+  AUTO_SUBMIT: false
+telemetry:
+  shared_metrics:
+    enabled: false
+    send: false
+    offer_version: 2
+skills:
+  external_dirs:
+    - /mnt/tools/rea-skills

@@ -94,6 +94,7 @@ Profiles use `~/.hermes/profiles/<name>/` with the same layout. When a profile i
 | In-session slash commands | `references/slash-commands.md` |
 | Provider setup, API keys, OAuth | `references/providers-and-models.md` |
 | Reasoning/thinking effort; tuning a local router (9router) in front of a custom provider; streaming tok/s benchmarks | `references/reasoning-effort-and-router-tuning.md` + `scripts/bench_stream_tok_s.py`, `scripts/inspect_9router_state.py` |
+| "My model supports 512k but Hermes/9router reports 128k" — context-window mismatch between an upstream endpoint and a router in front of it, and how to pin the true window | the `llm-provider-benchmarking` skill (research) — its `references/context-window-provenance.md` carries the verified `model_overrides` recipe, the alias-vs-upstream-id scoping rule, and the verification snippet |
 | Wiring a third-party app/tool to 9router instead of its documented provider (compatibility check, SDK override discovery, shim decision) | `references/9router-app-integration.md` |
 | Which models a 9router custom provider / prefix actually exposes (inventory, upstream diff, liveness proof) | `references/9router-model-inventory.md` + `scripts/list_9router_models.py` |
 | config.yaml sections, toolsets, voice/STT/TTS | `references/configuration.md` |
@@ -101,6 +102,7 @@ Profiles use `~/.hermes/profiles/<name>/` with the same layout. When a profile i
 | AGENTS.md / .hermes.md / CLAUDE.md project rules | `references/project-context-files.md` |
 | Secret redaction, PII, approval modes, "reset permissions" | `references/security-privacy.md` |
 | Delegation, cron, curator, kanban | `references/background-systems.md` |
+| Which installed skills are unused / safe to prune (library audit, bundled vs custom) | `references/skill-library-audit.md` + `scripts/audit_skill_usage.py` |
 | MCP servers (add, catalog, `hermes mcp`) | `references/native-mcp.md` |
 | Webhook routes and event-driven runs | `references/webhooks.md` |
 | A custom theme/skin ("synthwave theme", "change the gold ●") | `references/themes.md` + `templates/skin.yaml` |
@@ -229,4 +231,5 @@ When asked to make one profile's config match another's (e.g. copy profile A's w
 - **Never hand-edit `config.yaml` for the user** — use `hermes config set KEY VAL`; a stray indent can corrupt the file and break the live gateway.
 - **Scope config changes to the profile under discussion** — always pass `hermes -p <profile> config set ...` (never the bare global default). Hosts here run many isolated profiles side by side; a change meant for one profile must not silently alter the others, and when other profiles could be affected, report which ones you deliberately left untouched.
 - **A `config set` warning is not a failure** — `is not a recognized config key … saved anyway` means the validator schema and the runtime-resolved keys are different lists. Confirm with `hermes -p <profile> config get KEY` plus a direct resolver call (see `references/reasoning-effort-and-router-tuning.md`), not by trusting or dismissing the warning.
+- **SOUL.md (a profile's system prompt) is a plain-file edit, not `config set`** — copy a timestamped `.bak` first, then patch directly. It takes effect for NEW sessions only (the live session keeps its cached prompt), and unlike config.yaml it needs no profile bounce under multiplexing. Diagnosing a prompt problem and editing the prompt are two separate approvals — always report the diagnosis and get the user's go-ahead before touching SOUL.md.
 - **Apply a served profile's config change by bouncing THAT profile — not by restarting the host gateway** — under multiplexing one gateway process serves every profile, so a restart drops every profile's in-flight turns. A changed config.yaml/.env alone never reaches a served profile's already-live adapters (the periodic rescan skips live platforms): use `unserve-profile` → `serve-profile`, and only when the user accepts that profile's in-flight turn/batches ending. See `references/multiplex-profile-lifecycle.md`.

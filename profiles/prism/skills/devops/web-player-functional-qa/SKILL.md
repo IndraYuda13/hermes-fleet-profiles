@@ -18,6 +18,9 @@ See `references/puppeteer-ui-qa-patterns.md` for Puppeteer-specific patterns inc
 See `references/functional-qa-manifest-structure.md` for the standard PRISM QA manifest format (10-category test matrix, JSON schema, file layout).
 See `references/motion-and-scroll-reveal-verification.md` for verifying scroll-reveal, mid-animation, reduced-motion, and idle-animation claims.
 See `references/runtime-data-integrity.md` for immutable backend SQL gates and standalone IndexedDB upgrade probes.
+See `references/rendered-defect-assertion-power.md` for pixel-geometry assertions on truncated/clipped text, counterfactual proof that a peer's new assertion is not tautological, and remount-window attribution.
+See `templates/falsify-dom-assertion.spec.ts` for the copy-and-modify counterfactual probe harness.
+See `references/independent-probe-harness-setup.md` for standing up an independent Playwright probe suite against a repo you must not modify, the seed/DOM-accessor boilerplate that keeps probes from failing on their own plumbing, and API-level idempotency/isolation probes.
 
 ## Bounded functional/data gate rules
 
@@ -125,6 +128,28 @@ for (const vp of viewports) {
 - **Desktop (1024+):** Verify side-by-side split, correct width ratios (CSS % vs max-width conflicts)
 
 **Pitfall:** `max-width` on panes can silently override percentage-based widths at large viewports. Always measure actual pixel widths and compute ratios, don't trust CSS variable values alone.
+
+### Truncated / clipped text at narrow viewports (grid track collapse)
+
+Text present and readable in the DOM can still be visually cut off. Assert the **rendered glyph box**, not the element box: a collapsed grid track reports a zero-width cell while its `nowrap` text still overflows the row, so an element-box or visibility assertion passes on a broken layout.
+
+```js
+const m = await page.getByRole("link", { name: /<label>/ }).first().evaluate((el) => {
+  const cell = el.querySelector("<trailing-cell-class>");
+  const range = document.createRange();
+  range.selectNodeContents(cell);            // glyphs, not the span box
+  const text = range.getBoundingClientRect();
+  const row = el.getBoundingClientRect();
+  return {
+    textWidth: text.width,
+    overflowsRow: text.right > row.right + 0.5,
+    gridTemplateColumns: getComputedStyle(el).gridTemplateColumns,
+    cellWidth: cell.getBoundingClientRect().width,
+  };
+});
+```
+
+Fail when `textWidth === 0` or `text.right > row.right`. The cause is usually the template, not the text: a trailing cell handed only a positional `auto` track can be pushed to zero once the row's implicit children land on it. Fix `grid-template-columns` so the trailing cell keeps an explicit track (`minmax(0, 1fr) auto`). Always print `gridTemplateColumns` next to the geometry so the report names the mechanism instead of guessing, and note that the row's `overflow: hidden` silently swallows the clipped glyphs rather than producing a horizontal scrollbar.
 
 ## 5. ARIA & Accessibility Role Verification
 Programmatically verify ARIA roles rather than visual inspection:
@@ -234,4 +259,24 @@ When deterministic functional QA runs in parallel with a perceptual/visual QA ag
 - **Selector discipline:** test against stable selectors (`data-testid` or accessibility roles) from the interaction contract, never brittle styling classes.
 - **Accessibility division of labor:** automated DOM contrast engines false-positive on gradients, composites, and canvas — scope axe-core contrast to solid single-layer backgrounds and delegate layered perceptual contrast to rendered metrology. Structural/keyboard accessibility (ARIA roles, name computation, focus trapping, tab order) always stays with functional QA.
 - Fleet role manifests, artifact schemas (verification report, coverage map, defect ledger, runbook), and the full handoff contract: `references/fleet-qa-handoff-contract.md`.
+
+## 10. Independent verification of a peer-driven UI fix
+
+A peer reports "fixed X, specs pass, re-verify". You are the independent check; their self-run result is not evidence, and a verdict on the previous revision does not carry over.
+
+1. **Preflight identity before running anything.** `git status --porcelain` empty; `git rev-parse HEAD` equal to the claimed SHA; the build identifier (for Next.js, `.next/BUILD_ID`) equal to the claimed build. A green suite on the wrong revision or a stale build is not a verdict. Re-check all three again after the runs.
+2. **Bind a grep marker to the revision, not just to the product.** A feature string often exists in the parent commit too, so a bundle hit proves nothing about which revision was built. Choose a literal introduced by the diff (`git show <rev> -- <file>`) and confirm it is absent at `<rev>~1` before grepping the bundle. If no distinctive literal exists, report the build binding UNVERIFIED instead of implying proof.
+3. **Rerun the peer's specs yourself on a staging port pair, then rerun your own affected probes with outputs written to a NEW revision-scoped directory.** Never reuse a prior revision's JSON/PNG as current evidence, and say explicitly that old evidence was discarded.
+4. **Prove the peer's new assertion can fail.** An assertion added together with a fix is the easiest thing to make tautological. Run the counterfactual: neutralise the fix and show the assertion fails, restore it and show it passes (harness: `templates/falsify-dom-assertion.spec.ts`). State plainly when an assertion would also pass without the fix.
+5. **Classify your own red results before calling them regressions.** Check whether your trigger violates a documented product rule the probe ignored, whether the element was still inside a render/remount window, and whether a locator caught hidden assistive text. A probe that trips a legitimate guard, or reads before hydration settled, is a probe defect, not a product defect. When you correct your own probe mid-session, the corrected run's numbers are the only ones you report; do not present the failed attempt's output as a result.
+
+## 11. Fast re-verification loops on a moving revision
+
+Each new revision invalidates the previous verdict, so make the loop cheap and repeatable rather than re-deriving it.
+
+1. **Freeze what was already verified, then re-derive only the delta.** Preflight identity (section 10 step 1), then `git diff <previous-verified-rev>..HEAD --stat` and read the actual diff. If the touched files are styling or layout only, the functional claims are *expected* to be unchanged but still must be re-run: assert equality of the recorded values against the prior revision's JSON rather than re-reading them by eye. Report "unchanged, values identical" only after observing the same numbers.
+2. **Keep a fixed probe corpus and re-run it by name.** Run only the affected probes with `-g "<test name>|<test name>"` so a targeted loop costs seconds, not a full sweep. Every probe already on disk is a regression net; when the delta touches a shared component, add one probe rather than re-running everything.
+3. **Write each revision's outputs to its own directory** (`rev2/`, `rev3/`, or revision-named files) and scope artifact paths through an env var read by the probe at run time (`process.env["PNL_PROBE_ART"]`). Hardcoded output paths silently overwrite the previous revision's evidence, which destroys the very trail you built the corpus for.
+4. **Prove a visual/layout fix by measuring the control container, not just the label.** For "X is no longer clipped" / "the controls fit", assert the full set: each child's box inside the viewport on both edges, each child not text-clipped (`scrollWidth <= clientWidth + 1` — a `nowrap` label clips without shortening the element), glyph width greater than zero, document `scrollWidth <= innerWidth`, and the intended responsive contract (mobile stacked vs `sm+` single row) as an explicit comparison between widths. A label-only check passes on a control that overflows its container.
+5. **Re-state BLOCKERS and the residual limits on every loop.** Carry forward the limits that the delta does not touch (browser coverage, worker count) instead of dropping them, and name the revision your verdict binds to so superseded verdicts are visibly superseded.
 

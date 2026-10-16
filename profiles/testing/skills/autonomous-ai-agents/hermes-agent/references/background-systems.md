@@ -66,6 +66,9 @@ so nothing is lost.
 - **Telemetry:** sidecar at `~/.hermes/skills/.usage.json` holds
   per-skill `use_count`, `view_count`, `patch_count`,
   `last_activity_at`, `state`, `pinned`.
+- **Usage audit:** grouped kept-vs-prunable report with the
+  tracking-start caveat — `references/skill-library-audit.md` +
+  `scripts/audit_skill_usage.py`.
 
 Config: `curator.*` (`enabled`, `interval_hours`, `min_idle_hours`,
 `stale_after_days`, `archive_after_days`, `backup.*`).

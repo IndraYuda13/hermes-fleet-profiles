@@ -314,25 +314,45 @@ onboarding:
     busy_input_prompt: true
     openclaw_residue_cleanup: true
     tool_progress_prompt: true
-_config_version: 50
+_config_version: 51
 custom_providers:
   - api_key: REDACTED
     base_url: https://9router.indrayuda.my.id/v1
     model: gpt
     models:
       ag-opus-pool:
-        context_length: 950000
+        context_length: 524288
+        supports_vision: true
       gpt:
         context_length: 500000
+      ds:
+        context_length: 524288
+        supports_vision: true
+      gpt-sol:
+        context_length: 524288
+        supports_vision: true
+      gpt-terra:
+        context_length: 524288
+        supports_vision: true
     name: 9router.indrayuda.my.id
   - api_key: REDACTED
     base_url: http://localhost:20128/v1
     model: gpt
     models:
       ag-opus-pool:
-        context_length: 950000
+        context_length: 524288
+        supports_vision: true
       gpt:
         context_length: 500000
+      ds:
+        context_length: 524288
+        supports_vision: true
+      gpt-sol:
+        context_length: 524288
+        supports_vision: true
+      gpt-terra:
+        context_length: 524288
+        supports_vision: true
     name: Local (localhost:20128)
 mcp_servers: {}
 plugins:
@@ -463,7 +483,8 @@ known_builtin_toolsets:
     - yuanbao
 memory:
   write_approval: false
-agent: {}
+agent:
+  image_input_mode: native
 browser:
   use_real_profile: true
   real_profile_autoclose: true
@@ -505,3 +526,30 @@ browser:
 # fallback_model:
 #   provider: openrouter
 #   model: anthropic/claude-sonnet-4
+model_overrides:
+  custom:
+    ds:
+      context_window: 524288
+      supports_vision: true
+    ag-opus-pool:
+      context_window: 524288
+      supports_vision: true
+    gpt-sol:
+      context_window: 524288
+      supports_vision: true
+    gpt-terra:
+      context_window: 524288
+      supports_vision: true
+  custom:local-(localhost:20128):
+    ds:
+      context_window: 524288
+      supports_vision: true
+    ag-opus-pool:
+      context_window: 524288
+      supports_vision: true
+    gpt-sol:
+      context_window: 524288
+      supports_vision: true
+    gpt-terra:
+      context_window: 524288
+      supports_vision: true

@@ -70,3 +70,44 @@ Apps built with Next.js `output: 'standalone'` run out of `.next/standalone/serv
   ```bash
   systemctl daemon-reload && systemctl restart 9router.service
   ```
+
+## CLI Upgrade Traps & Guard Wrappers (Dual Global node_modules)
+
+### The Stale Version Trap on Upgraded Packages
+- **Symptom**: `npm i -g 9router@latest` reports success, but `9router --version` or running the CLI still prints an obsolete version.
+- **Mechanism**:
+  1. Node runtime is redirected or managed via toolchains (e.g. `/usr/local/bin/node -> /root/.hermes/tools/node-.../bin/node`).
+  2. `npm i -g` writes to the current Node's prefix (`$(npm root -g)` -> `/root/.hermes/tools/.../lib/node_modules/9router`).
+  3. However, an older global installation exists at `/usr/lib/node_modules/9router` from prior system packages.
+  4. The executable `9router` on PATH is a protection wrapper (`9router-guard.sh`). Its candidate scanner lists `/usr/lib/node_modules/9router/cli.js` *ahead* of tool directories and selects the first match (`head -n 1`).
+  5. The CLI continues running the legacy version without touching the newly upgraded package.
+
+### Diagnostic Verification
+```bash
+which -a 9router
+type -a 9router
+grep '"version"' /usr/lib/node_modules/9router/package.json
+grep '"version"' $(npm root -g)/9router/package.json
+/usr/local/lib/9router-guard/9router-guard.sh --guard-status
+```
+
+### Remediation Options
+- **Option 1 (Recommended - Clean Cutover)**: Remove or rename the legacy directory so the candidate scanner falls through to the active Node toolchain:
+  ```bash
+  mv /usr/lib/node_modules/9router /usr/lib/node_modules/9router.old
+  ```
+- **Option 2 (Targeted Prefix Update)**: Install directly into the legacy system prefix:
+  ```bash
+  npm i -g 9router@latest --prefix=/usr --prefer-online
+  ```
+  *Note*: The guard script auto-re-applies the containment patch to the upgraded `cli.js` on first run.
+
+### Native Dependency Compilation (`better-sqlite3`)
+- `9router` relies on native SQLite bindings. On minimal VPS images without a compiler, `npm install` crashes with gyp build errors.
+- Pre-install build tools before upgrading:
+  ```bash
+  apt update && apt install -y clang
+  ```
+
+### Active Gateway Protection Invariant
+- Port `20128` (PID `3078142`) serves live LLM proxy traffic for autonomous agents and workflows. Never restart or kill this process during ad-hoc investigation. Only execute restarts during planned cutovers.

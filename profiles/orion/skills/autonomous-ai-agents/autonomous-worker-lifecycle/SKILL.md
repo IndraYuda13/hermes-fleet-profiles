@@ -110,9 +110,22 @@ When an autonomous worker or orchestrator requires runtime command execution but
 9. **Target Card Status Gate (Superseded Relay Deduplication):** Before running an expensive inbound test request, check the target task's Kanban status (`kanban_show`). If the card was already completed (`status: done`) and certified by the worker's own subsequent run or existing on-disk reports, do not execute duplicate runs. Extract and report the bound evidence and log paths immediately.
 10. **Post-Run Disk Overwrite & Hash Reconciliation:** When an implementer completes a task but mutates files post-run (e.g. touch-ups or cleanup after the certified test), the card's completion metadata may cite a dead hash that no longer matches disk. The orchestrator must audit disk hashes against completion metadata, record both revisions in a durable card comment (`kanban_comment`), and notify downstream consumers (e.g. FRAME/LENS) which exact revision is on disk versus certified.
 
+### 10. Background Test Process Lifecycle & Orphan Teardown Invariant
+When autonomous workers (e.g. LENS, FRAME, PRISM) spawn background dev/test servers, mock providers, or test harnesses via `terminal(background=true)` (such as Next.js preview instances on custom ports or mock Supabase/PostgreSQL providers):
+1. **Mandatory Teardown Before Completion:** Any task or script launching background processes MUST execute an explicit teardown (`kill -TERM <pid>` / process cleanup) prior to invoking `kanban_complete`. Relying on subagent exit to clean up background processes is defective; gateway-supervised background processes persist indefinitely after the turn or task ends.
+2. **Profile Scope Isolation of `process_manage`:** `process_manage(action="list")` is strictly scoped to the active profile session. Background processes started by peer profiles (e.g. `lens` or `frame`) will NOT appear in another profile's process registry.
+3. **Cross-Profile Orphan Triage Protocol:** When background processes are reported lingering (e.g. 24h+ runtime) in host or gateway monitors:
+   a. **Inspect Process Trees & Bindings:** Run `ps -fp <pids> -o pid,ppid,etimes,cmd` and `pstree -ap <pid>` to determine command lines, parentage, and elapsed time.
+   b. **Verify Network Listeners:** Check listening ports via `ss -tulpn | grep <port>` to identify bound test ports versus production ports.
+   c. **Verify Production vs Test Demarcation:** Check `systemctl status <service>` to ensure the process is an ephemeral test instance rather than a live systemd production/demo daemon.
+   d. **Verify Task Completion:** Check `kanban_list` to confirm the owning card is in `status: done`. If the test run has completed and the scratch environment (e.g. `env.sh`) has expired, the process is an orphan.
+   e. **Clean Termination:** Terminate the process tree (`kill -TERM <pids>`, followed by `kill -9` if unresponsive). Re-verify that ports and memory are released.
+
 
 ## Pitfalls & Defensive Rules
 
+- **Leaving background test servers alive after task completion:** Spawning test harnesses or web servers via `terminal(background=true)` without an explicit teardown before `kanban_complete` leaves orphaned processes running indefinitely under the gateway supervisor. These lock test ports, consume host memory (~200MB+ per Next.js instance), and outlive the 24-hour scratch cache. Always enforce explicit process termination in test scripts and verifier tasks.
+- **Assuming `process_manage` lists cross-profile background processes:** `process_manage(action="list")` only inspects processes started within the current profile session. To diagnose orphaned processes spawned by other fleet profiles (e.g. `lens` or `frame`), use host inspection tools (`ps aux`, `pstree`, `ss -tulpn`) alongside Kanban status verification.
 - **Assuming cross-task conversational memory:** Every Kanban dispatch spawns a fresh worker session with no transcript memory of earlier tasks or sibling runs. Never expect a worker to remember prior chat discussions or unlinked tasks; pass all necessary context explicitly via card body, attachments, comments, or parent handoffs (`parents=[...]`).
 - **Unguided retry worker restarting from scratch:** When a task times out and restarts in run #2, the worker has no memory of run #1's reasoning. Failing to post an immediate artifact inventory and delta scope leads the worker to wipe or re-do 80% of already-completed work. Always post an immediate steering comment with the disk inventory.
 - **Fabricating output or halting when local process runners wedge:** When a container or process-capture runner hits an unrecoverable cleanup/lifecycle error, guessing output breaches evidence integrity. Delegate execution to an idle fleet peer via A2A and relay verbatim stdout.
@@ -141,3 +154,4 @@ When an autonomous worker or orchestrator requires runtime command execution but
 - [ ] Independent verifier cards dispatched in isolated execution lanes.
 - [ ] All final verification reports reference the exact same Git commit SHA.
 - [ ] When execution is delegated to a peer, provenance comment logged on task card and raw stdout retained verbatim on disk.
+- [ ] Ephemeral background test servers and mock harnesses explicitly terminated before `kanban_complete`.

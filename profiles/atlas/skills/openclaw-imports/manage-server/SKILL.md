@@ -1,91 +1,32 @@
 ---
 name: manage-server
-description: Manage recurring MYvps server operations for reseller bot screens, especially generic restart, bootstrap, and running-status verification for reseller1 to reseller5. Use for restart/start/check tasks. Do not use for new-account login routing or session deletion; those belong to account-login-router or session-cleanup.
+description: Use when checking or restarting reseller daemon fleets. Inspect the live manager, preserve sessions, and verify every worker.
 ---
 
-# Manage Server
+# Reseller Runtime Operations
 
-Execute recurring server operations consistently and safely.
+## Ordered workflow
 
-## Scope Guardrails
+1. Establish scope: which existing instances to check/start/restart, protected services, and whether login/session/config changes are forbidden. A running instance is restarted only when requested; an inactive instance is started. Never touch unrelated personal daemons or create duplicate supervisors.
+2. Discover live ownership before acting. Inspect `systemctl show` and `systemctl cat` for candidate units, `screen -ls`, process cwd/cgroups/interpreters, current cron entries, recent logs, disk and memory. Historical names and paths are hints, not authority. If systemd owns workers, use systemd rather than creating screen sessions.
+3. Inspect launcher session enumeration and every prestart/login script. Record session filenames only as private input; derive expected worker identities using the launcher's actual filename rules. Identify deletions, config copies, authentication, and process kills before invoking a prestart. Do not run a login check as a routine restart step when session/config mutation is excluded.
+4. Resolve prestart conflicts within the authorization boundary. If a narrowly scoped runtime-only bypass is authorized, use the reversible recipe in [systemd restart safety](references/systemd-restart-safety.md). Otherwise report the conflict and request a decision without stopping healthy services or silently editing units.
+5. Pause only an exact, verified live autoheal entry that could interfere. Preserve its original content and restore it in `finally`. If none exists, do not change cron.
+6. Start/restart sequentially under the current manager. Record each action's exact timestamp and exit code, then confirm running state and immediate worker inventory before advancing. On failure, stop the sequence, inspect the cause, and restore owned temporary changes. Never enter authentication codes, delete sessions, or alter application/config files to force a green result.
+7. After the last startup, wait about 20–30 seconds and verify all instances again. Check fresh main PIDs, disappearance of old supervisor/worker PIDs, correct interpreter/cwd/cgroup, and one worker per expected session identity with no missing or duplicate identities. A supervisor being active does not prove workers are healthy.
+8. Inspect journals since each exact action timestamp. Separate old-PID shutdown exceptions from new-PID startup/runtime errors. Report remaining rate limits or errors even when workers remain alive. Do not equate process inventory with end-to-end message delivery.
+9. Restore temporary overrides and paused autoheal immediately in `finally`; read back exact restored configuration and final service states. Save sanitized evidence with commands, timestamps, exit codes, before/after PIDs, worker mappings/counts, restoration readbacks, and error classification.
 
-- Use this skill for generic restart/bootstrap/status work on reseller bot screens.
-- If the request is about adding/logging in a WhatsApp account, prefer `account-login-router`.
-- If the request is about deleting/logging out a specific session file, prefer `session-cleanup`.
-- Do not delete unrelated files or kill unrelated processes.
+## Screen-only and reboot paths
 
-## Autoheal Rule
+Use screens only when live evidence shows they own the instances. Resolve full screen names, stop the existing launcher gracefully, and start the inspected launcher with its intended interpreter and cwd. Do not blindly invoke `checklogin.py`. Create missing screens only for a specifically authorized screen-managed bootstrap and after confirming no systemd or orphan supervisor already owns those workers. Apply the same worker-level stabilization checks as for systemd.
 
-Before manual restart/login/logout-style operations that touch reseller flows, pause the `autoheal.sh` cron first to avoid race/interference. Restore it immediately after the operation is complete.
+## Evidence and privacy
 
-The relevant cron entry is normally:
+- Map worker arguments against session stems internally; export stable account tags rather than phone numbers or session filenames.
+- Sanitize logs before saving or sharing. Prefer exception classes, marker counts, and PID attribution; omit customer messages, credentials, and raw account identifiers.
+- Distinguish runtime verification from application smoke verification. Flag SQLite/storage, auth, worker exits, and rate limits precisely; do not delete/relogin as an operational workaround.
 
-```cron
-*/5 * * * * /root/MYvps/autoheal.sh >/dev/null 2>&1
-```
+## Reporting for this user
 
-## Reseller Bot Restart Workflow
-
-Use this when asked to restart reseller bots in screen sessions `reseller1` to `reseller5`.
-
-1. Resolve full session names from `screen -ls` for `reseller1..reseller5`.
-2. For each existing reseller session:
-   - Send Ctrl+C (`\003`) to stop current script.
-   - Run:
-     - `clear`
-     - `python3 checklogin.py`
-3. If the user asks to start bots again, run:
-   - `clear`
-   - `python3 start4.py`
-4. Re-enable autoheal immediately after the manual flow is done.
-
-## Full Bootstrap After VPS Reboot
-
-Use this when the user asks to start everything from zero after VPS restart.
-
-1. Ensure screen sessions exist: `reseller1..reseller5`.
-2. If missing, create them.
-3. For each reseller screen:
-   - `clear`
-   - `python3 checklogin.py`
-   - `clear`
-   - `python3 start4.py`
-4. Run health checks after 10-20 seconds:
-   - confirm `start4.py` processes exist
-   - confirm many `index.py` workers exist
-   - check recent screen output for traceback/error lines
-5. Return concise status per reseller: `ok`, `warning`, or `failed`.
-
-## Verification Checklist
-
-After restart/start, verify with process list:
-
-- `python3 start4.py` exists for reseller flows
-- multiple `python3 index.py +62...` worker processes are running
-- missing sessions and recent errors are reported clearly
-
-Suggested command:
-
-```bash
-ps -eo pid,cmd --sort=pid | grep -E "python3 (index\.py|start4\.py|checklogin\.py)" | grep -v grep
-```
-
-## Failure Handling
-
-- If a reseller screen is missing, report it explicitly.
-- If `checklogin.py` or `start4.py` fails, capture latest output via `screen -X hardcopy` and summarize the key error lines.
-- If error indicates SQLite/session write issues, flag permission/storage problems clearly.
-- Do not add extra `dup.py` verification for login completion flow here; that belongs to the login-specific workflow.
-
-## Communication Style
-
-- Start the response with a short acknowledgment (e.g. "Halo Boskuu! Ada yang bisa dibantu hari ini?") or a quick "ack" if a complex task is requested. For time-consuming tasks, acknowledge first so the user isn't confused, then work and deliver the final result later.
-- Confirm exactly what was executed.
-- Distinguish between:
-  - restarted + checked login only
-  - restarted + started bots
-  - verified running status
-- Keep it short, factual, clear, and relaxed ("santai").
-- Do NOT use em dashes (—).
-- Do NOT use formal/robotic phrasing.
-- If checking LMS or using Playwright/browser tools, acknowledge and proceed with headless execution before reporting back.
+Give a quick acknowledgment for lengthy work, then a concise factual Indonesian result without em dashes. Use a per-instance table with before/after state, old/new main PID, session/expected/actual worker counts, and action. Include residual errors, rollback/restoration status, and the absolute sanitized evidence path. State partial completion honestly rather than calling the whole fleet healthy from supervisor state alone.

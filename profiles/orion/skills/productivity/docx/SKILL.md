@@ -142,6 +142,14 @@ libreoffice`). If neither exists, tell the user PDF conversion is
 unavailable in this environment rather than improvising — python-docx
 cannot render PDFs, and layout fidelity requires a real renderer.
 
+- **Isolated font rendering**: If the document requires specific fonts
+  (e.g. Times New Roman) not installed globally, LibreOffice silently
+  substitutes them (e.g. Liberation Serif), altering metrics and page count.
+  To supply fonts without root access, write a minimal fontconfig XML
+  (`fonts.conf`) with `<dir>/path/to/fonts</dir>`, run
+  `FONTCONFIG_FILE=/path/to/fonts.conf soffice ...`, and inspect embedded
+  fonts with PyMuPDF (`page.get_fonts()`).
+
 ## Pitfalls
 
 - **Tokens split across runs.** Word often fragments text into several
@@ -160,7 +168,31 @@ cannot render PDFs, and layout fidelity requires a real renderer.
   `toc`/`footer_page_numbers` spec options write *field codes*.
   Word/LibreOffice populates the actual entries and numbers when the
   file is opened (Word may prompt to update fields); python-docx never
-  computes them, so placeholder text shows until then.
+  computes them, so placeholder text shows until then. Headless LibreOffice
+  does NOT populate an empty TOC field during headless PDF export. For
+  deterministic PDF export, use a **dual TOC**: place the visual TOC
+  paragraphs (tab stops at the right margin with `w:leader="dot"`) between
+  `<w:fldChar w:fldCharType="separate"/>` and `<w:fldChar w:fldCharType="end"/>`.
+- **OpenXML Roman lower page number attribute.** In `<w:pgNumType>`, the
+  attribute for lowercase Roman numerals (i, ii, iii) is `w:fmt="lowerRoman"`,
+  NOT `romanLower`. An invalid format string silently defaults to decimal arabic.
+- **Paragraph object identity in python-docx (`p == target_p`).** Accessing
+  `doc.paragraphs` constructs fresh `Paragraph` wrapper objects on every access.
+  Comparing `p == target_p` or using `doc.paragraphs.index(target_p)` evaluates
+  wrapper identity and fails or raises `ValueError`. Always compare underlying
+  XML elements: `p._p == target_p._p`.
+- **Inherited list numbering (`w:numPr`) in template paragraphs.** When
+  transforming existing paragraphs from a Word template, paragraphs may carry
+  invisible list numbering properties (`<w:numPr>`). Even if new text is
+  assigned (e.g. `A. Title`), Word and PDF converters (LibreOffice) will render
+  the inherited numbering (e.g. `1.4.1`, `1.4.2`) before or above the text.
+  Always purge `w:numPr` via `for n in p._p.xpath('./w:pPr/w:numPr'): p._p.pPr.remove(n)`
+  when converting numbered template items to manual letters or headings.
+- **TOC paragraph search collision.** When updating headings by searching
+  paragraph text (`if "X" in p.text:`), inserting a TOC first introduces lines
+  containing those exact heading strings, causing later substring searches to
+  match TOC lines instead of actual body headings. Always mutate body chapters
+  before generating the TOC, or filter by `p.style.name == 'Heading ...'`.
 - **Validation is a health check, not schema validation.**
   `docx_validate.py` verifies the zip, required parts, relationship
   targets, image magic bytes, and referenced styles. It is NOT XSD
@@ -180,6 +212,18 @@ cannot render PDFs, and layout fidelity requires a real renderer.
   python-docx); raw text substitution in `document.xml` corrupts files
   easily. Use `patch`/`write_file` only for the JSON inputs, never on the
   `.docx` itself.
+- **Font substitution on headless convert.** Headless LibreOffice silently
+  swaps missing fonts, changing line-wrap and pagination. Verify embedded
+  font names in the resulting PDF rather than assuming layout parity.
+- **Cross-page text verification in PDF.** Substring search of DOCX
+  paragraphs against extracted PDF text fails when a paragraph splits across
+  pages because running page-number footers are inserted between lines.
+  Strip trailing footers from extracted page text before joining, but guard
+  pages where the bottom line is valid content (e.g. a date on a cover).
+- **Section break and header/footer preservation.** Deleting or replacing
+  paragraphs at section boundaries in python-docx can drop section
+  properties (`_sectPr`). Compare section properties and `word/media/`
+  parts against the original package to verify logos and headers survived.
 
 ## Verification
 

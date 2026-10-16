@@ -1,7 +1,7 @@
 ---
 name: live-ui-kanban-orchestration
 description: Use when orchestrating tasks for live production services.
-version: 1.9.0
+version: 1.10.0
 metadata:
   hermes:
     tags: [ui, kanban, orchestration, devops, docker, systemd, live-services, sqlite, postgresql, backup]
@@ -60,6 +60,13 @@ Before creating Kanban tasks for any live domain:
   3. If process filtering is required, verify working directory before killing (`pgrep -f <name> | xargs -I{} pwdx {}` and filter for staging/test paths).
 - **Pre-Audit Baseline Lint & Dead Code Check on Hotfixed Revisions:**
   When freezing a live instance that contains emergency uncommitted patches or hotfixes, run `lint` and `typecheck` on the frozen branch immediately before dispatching audit workers. Emergency fixes often delete conditional branches but leave behind unused variables and dead database/network calls (`const x = await readSync(...)`). Unused variables cause strict CI linters (e.g. `--max-warnings=0`) to fail, and extraneous I/O calls skew baseline benchmarks. Triage and cleanly excise dead hotfix debris in an initial infra/harness commit so baseline verification suites test real logic rather than crashing on lint warnings.
+- **Idempotent Test Account Seeding & Reciprocal Foreign-Key Teardown:**
+  When authoring seeders or test accounts with rich relational state in PostgreSQL/Supabase applications:
+  1. *Reciprocal Pointer Nullification:* Relational schemas with circular or reciprocal foreign keys (e.g. `runs.assignment_id -> assignments.id` and `assignments.run_id -> runs.id`, or parent-child lesson links) will abort deletions with FK violations. A clean reset must first nullify nullable cross-table pointers (`UPDATE runs SET assignment_id = null, parent_lesson_id = null WHERE owner_id = ...`) before executing deletions in strict leaf-to-root order (receipts -> progress -> assignments -> runs -> sessions -> mappings -> versions -> sets -> students -> classes) inside a single transaction.
+  2. *Native RPC-First Lifecycle Execution over Manual JSON Bypasses:* When generating multi-stage operational data (e.g. group sessions, station assignments, diagnostic evidence, rotation matrices), do not manually insert complex JSON payloads into tables. Invoke the application's native security-definer RPC functions (e.g. `group_lesson_action`) via `asUser(teacher, ...)` with local claims (`set local role authenticated; set local request.jwt.claims = ...`). This guarantees that sync schema validators (`matches_sync_schema`), clustering algorithms, and historical triggers run with production fidelity.
+  3. *Custom Key Derivation Parity:* In custom auth adapters (e.g. `scryptSync`), match the exact key derivation parameters (`N=16384, r=8, p=1, maxmem=64MB`, 32-byte salt, 64-byte hash) and salt encoding expected by the runtime's auth provider.
+- **Loopback CSRF & Origin Header Rejection on Direct API Probes:**
+  Direct loopback probes (via `fetch()` or `curl` to `http://127.0.0.1:<port>/auth/login`) will be rejected with `403 FORBIDDEN` by Next.js App Router route handlers enforcing CSRF same-origin guards (`isSameOrigin(request, acceptedOrigins)`) if the request lacks matching `Origin` and `Host` headers. In automated probe scripts, always explicitly pass the application's configured origin (`Origin: https://<domain>` or `APP_ORIGIN`) and `Host` header to satisfy same-origin verification.
 
 ### 3. Kanban Task Creation & DAG Validation
 When calling `kanban_create`:
@@ -129,7 +136,15 @@ When calling `kanban_create`:
   2. Independent Delta Verification Gate Task (PRISM) that validates all delta fixes against a frozen revision manifest hash.
   3. Gate the production deployment task strictly on the delta verification task passing (`parent = delta_verification_task_id`).
 
-### 6. Database Backup & Disaster Recovery Standards (SQLite & PostgreSQL)
+#### 5b. Evidence-Binding Invariants (Revision Freeze, Gates, Claim Locks)
+- **Freeze the revision, not a short SHA.** Amended commits keep the subject line but change the hash (observed: `c9f6130` → `c48a4a9` → `935a7c3` → `3e814ce`, same payload). Any task body that names a short SHA silently goes stale; a verifier scoped to it produces a false PASS or a false FAIL. Instead, bind verification to **payload byte-identity**: assert `git diff <verified-rev> <head> -- <scope>` is empty and compare content hashes of the exact artifacts under audit. When you must accept a verifier's older PASS on a new revision, reproduce the byte-identity yourself and state it — do not average it away or assume it.
+- **A committed test whose evidence run collected zero tests is not a gate.** A Playwright JSON whose `stats.expected == 0` proves nothing even though the file exists and looks authoritative; this exact case hid a spec that was amended in *after* the report was generated. Always assert `stats.expected > 0` (and read `unexpected`/`errors`) rather than checking that a report file is present.
+- **Run the exact CI command on the committed tree; an author's lint claim is not evidence.** `pnpm lint` (`eslint . --max-warnings=0`) is the gate a *workspace* passes or fails, not the file an implementer ran. Reproduce it yourself before clearing a build-blocking finding.
+- **Honour CI step order when triaging a red pipeline.** A repo can gate on steps that run *before* the one everyone quotes. Read `.github/workflows/ci.yml` top to bottom: `format:check` may precede `lint`, so a red pipeline may have nothing to do with the reported defect. Distinguish *pre-existing* from *caused-by-this-work* by proving the offending files are byte-identical from before the change through HEAD, then record it as a separate decision instead of silently folding it into the fix.
+- **Verify a dropped probe finding against production before accepting the correction.** Self-corrected probe bugs are legitimate (three occurred in one round: a label-vs-`label+count` comparison, a scratch DB caught mid-provision, and a self-imposed "must build the pre-fix tree" limit). Record the probe bug *and* the corrected measurement so the artifact is not re-imported as a product defect later.
+- **Stale claim locks and disk pressure kill verifiers non-deterministically.** A near-full root filesystem aborted both verifiers mid-run and left one mis-keyed claim lock; reclaim before dispatch rather than after a failure, and keep evidence on disk with hashes so a retry worker can close without re-deriving it.
+
+## 6. Database Backup & Disaster Recovery Standards (SQLite & PostgreSQL)
 - **Never use `cp` on active SQLite WAL databases:** A raw file copy misses uncheckpointed WAL frames and risks a torn page copy during concurrent writes. Always use `sqlite3 file:<db>?mode=ro ".backup <dest>"` to execute an atomic, WAL-checkpointed backup.
 - **PostgreSQL Custom-Format (`-Fc`) Table Data Ordering & TOC Hoisting:**
   Never assume `pg_restore` automatically resolves data dependency order in custom archives (`pg_dump -Fc`). While `pg_restore` reorders schema DDL items, it restores `TABLE DATA` entries in strict alphabetical order. If table A has a CHECK constraint or validation trigger depending on rows in table B, and table B sorts alphabetically after table A (e.g. `board_packages` vs `pn_private.sync_schemas`), a plain `pg_restore --exit-on-error` fails with a constraint violation. Always extract the archive TOC (`pg_restore -l <dump> > toc.list`), hoist the validator table's `TABLE DATA` entry ahead of the dependent table in the list, and restore using `pg_restore -L <ordered_toc>`. For plain-text SQL dumps, hoist the validator's COPY chunks ahead of dependent data chunks and execute under `psql --single-transaction` so constraint evaluation succeeds.
@@ -200,3 +215,13 @@ Code changes reach production ONLY via a dedicated deployment task (owned by ATL
 ### 9. Mandatory Turn Release (Anti-Polling Invariant)
 - **Zero Sleep Loop:** Never run `sleep` loops or while-loops in terminal waiting for task completion.
 - **Native Wake:** Hermes automatically subscribes the creator session via `delivery_mode="notify+wake"`. Conclude your turn immediately after dispatching; the gateway will natively wake ORION when workers finish (`completed` / `blocked`).
+
+### 10. User Progress Communication Protocol (Bottom-Line First, Anti-Chatter)
+When the user asks for status mid-flight ("Gimana?", "Udah sampai mana?", "Masih lama kah?"):
+- **Lead with the Macro Status:** State immediately where the overall mission stands in plain language (e.g. "Tahap verifikasi R3 selesai 100%, tinggal push & deploy" or "Lagi tunggu PRISM selesai verifikasi defect X").
+- **Zero Stream-of-Consciousness / Raw Telemetry:** Never narrate internal investigative confusion ("HEAD sudah berubah...", "Banyak yang terjadi...", "Now I have the full picture..."). Do not dump intermediate git SHAs, internal worker collisions, or raw tool logs into user chat.
+- **Single-Probe Constraint:** Do not chain 10+ discovery tool calls trying to reconstruct history before responding. Make one quick state check (Kanban task status or target git branch), then answer directly.
+- **Three-Part Answer Structure:**
+  1. *What is done:* Verified phases and passing gates.
+  2. *What is running right now:* Current active worker/gate and what it is testing.
+  3. *Next blocker / decision:* What remains before user delivery or deployment.

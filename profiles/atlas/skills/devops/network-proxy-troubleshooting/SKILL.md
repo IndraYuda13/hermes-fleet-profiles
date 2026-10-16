@@ -58,7 +58,7 @@ A local model gateway can have separate guard-level and handler-level auth, life
 
 ## Reverse proxies (Nginx)
 
-- Host-header rewriting: a loopback-only origin may require an internal host header; a public-origin WebSocket endpoint may reject it. Test both an HTTP request and the browser/WebSocket path before toggling. See `references/cloudflared-websocket-and-host-headers.md`.
+- Coordinate public application origin, proxy Host and untouched browser Origin before changing an auth deployment boundary; setting only the public origin can break POST checks while rewriting Origin can hide foreign-origin attacks. Verify normal HTTPS authentication, Secure/HttpOnly/SameSite cookie metadata and valid-session foreign-Origin rejection before calling the boundary resolved. Test WebSocket/interactive paths separately when applicable. See `references/cloudflared-websocket-and-host-headers.md` for the coordinated repair recipe.
 - Split proxy buffering, connect/read timeouts, and upgrade-header mapping between streaming routes and REST routes — wrong values cause either stale-silent streams or hanging clients. Full rules: `references/nginx-caching-and-streaming.md`.
 - Cache-Control + `add_header` interactions (dual headers, location-block header shadowing, CSP vs Cloudflare-injected beacon, SPA bundle staleness): `references/nginx-caching-and-streaming.md`.
 - Node/Express services behind a proxy need `trust proxy` / `N8N_PROXY_HOPS=1` or the rate limiter crashes on `X-Forwarded-For`.

@@ -97,28 +97,37 @@ Google replaces or alters `<title>` in SERP if:
 Google displays site favicons next to search results on mobile and desktop SERP. When Google cannot fetch, validate, or process the favicon, it falls back to a generic gray globe icon.
 
 ### Technical Requirements for Google SERP Favicon
-1. **Stable URL Contract (No Version Query Strings)**:
+1. **Supported File Formats (SVG is NOT Supported by Google Search SERP)**:
+   - Google Search explicitly supports only: **ICO, PNG, GIF, BMP, JPEG, PPM, and TIFF**.
+   - **Critical Pitfall**: Google Search does NOT support SVG for search results favicons! While desktop browsers support `<link rel="icon" type="image/svg+xml">`, Google Search crawler (`Googlebot-Image`) completely ignores SVG icons.
+   - If a website only provides an SVG icon or pairs it with a non-standard PNG size (e.g. 32x32), Google Search discards both and permanently defaults to the gray globe icon.
+2. **The 48px Multiple Square Rule (≥48px)**:
+   - Google guidelines explicitly state: *"Your favicon must be a multiple of 48px square, for example: 48x48px, 96x96px, 144x144px, 192x192px and so on."*
+   - A legacy 16×16 or 32×32 PNG icon does NOT satisfy the 48px multiple rule and is rejected by Google Search.
+   - Always supply raster PNGs at: `48x48`, `96x96`, `144x144`, `192x192`, `256x256`, and `512x512` px.
+3. **Multi-Resolution Root `favicon.ico`**:
+   - Always compile root `/favicon.ico` with multi-resolution layers: `(16,16), (32,32), (48,48), (64,64), (128,128), (256,256)` generated from a high-resolution 512px source PNG (`Pillow: im.save('favicon.ico', format='ICO', sizes=[...])`).
+4. **Stable URL Contract (No Version Query Strings)**:
    - Google's favicon crawler (`Googlebot-Image` / favicon bot) requires a **stable, permanent URL**.
-   - **Strict Anti-Pattern**: Never use version query strings like `<link rel="icon" href="/favicon.ico?v=20261009_02">` or `assets/img/favicon.svg?v=...`. Query strings confuse Google's favicon indexing pipeline and cause cache invalidation failures, triggering fallback to the default globe icon.
-   - Serve clean canonical paths: `/favicon.ico` (root) and `/assets/img/favicon.svg`.
-2. **Multi-Resolution Root `favicon.ico` (≥48px Rule)**:
-   - Google guidelines require the favicon to be a multiple of 48px square (48×48, 96×96, 144×144, 192×192, 256×256) or SVG.
-   - An ICO file containing only 16×16 and 32×32 is sub-optimal for high-DPI and modern desktop SERP displays.
-   - Always compile `favicon.ico` with multi-resolution layers: `(16,16), (32,32), (48,48), (64,64), (128,128), (256,256)` generated from a high-resolution 512px source PNG (`Pillow: im.save('favicon.ico', format='ICO', sizes=[...])`).
-3. **Canonical HTML Markup**:
+   - **Strict Anti-Pattern**: Never use version query strings like `<link rel="icon" href="/favicon.ico?v=20261009_02">` or `assets/img/favicon.png?v=...`. Query strings confuse Google's favicon indexing pipeline and cause cache invalidation failures, triggering fallback to the default globe icon.
+   - Serve clean canonical paths: `/favicon.ico` (root) and `/assets/img/favicon-*.png`.
+5. **Canonical HTML Markup for Google Search**:
    Declare in `<head>` across all pages (especially homepage):
    ```html
-   <!-- Favicon & Icons -->
-   <link rel="icon" href="/favicon.ico" sizes="any">
-   <link rel="icon" type="image/svg+xml" href="/assets/img/favicon.svg">
+   <!-- Favicon & Icons (Google Search & Multi-device Compliant) -->
+   <link rel="icon" type="image/x-icon" href="/favicon.ico">
+   <link rel="shortcut icon" href="/favicon.ico">
+   <link rel="icon" type="image/png" sizes="192x192" href="/assets/img/favicon-192.png">
+   <link rel="icon" type="image/png" sizes="96x96" href="/assets/img/favicon-96.png">
+   <link rel="icon" type="image/png" sizes="48x48" href="/assets/img/favicon-48.png">
    <link rel="icon" type="image/png" sizes="32x32" href="/assets/img/favicon-32.png">
    <link rel="apple-touch-icon" sizes="180x180" href="/assets/img/apple-touch-icon.png">
+   <link rel="icon" type="image/svg+xml" href="/assets/img/favicon.svg">
    ```
-4. **Homepage Discovery Dependency**:
+6. **Homepage Discovery Dependency & Crawling Schedule**:
    - Google specifically extracts the site favicon definition from the **homepage** (`/`).
    - Neither the homepage nor the favicon image files may be blocked by `robots.txt`.
-5. **Crawl Latency & Verification via Google Favicon Cache (`s2/favicons`)**:
-   - Google does NOT fetch favicons dynamically per search request; they are processed asynchronously by a dedicated low-frequency crawler.
+   - **Crawl Latency & Asynchronous Schedule**: Google's favicon crawler operates on a separate, much slower schedule than regular page indexing (typically taking 1 to 3–4 weeks for a newly indexed domain). When a domain is fresh, Google SERP displays the default globe icon until Googlebot-Favicons completes its background ingestion.
    - **Diagnostic Probe**: Check Google's internal favicon ingestion status:
      `curl -sI "https://www.google.com/s2/favicons?domain=dailyfinance.id&sz=64"`
      - HTTP 404 indicates Google has not yet crawled or processed the domain's favicon.
@@ -127,4 +136,3 @@ Google displays site favicons next to search results on mobile and desktop SERP.
      1. Update `<lastmod>` of `https://dailyfinance.id/` in `sitemap.xml`.
      2. Push homepage to Google via Indexing API (`gsc_indexing.push_urls(["https://dailyfinance.id/"])`).
      3. Request manual indexing in Google Search Console URL Inspection for the homepage.
-     4. Note that SERP display update typically takes several days to 1–2 weeks depending on Google's crawler schedule.

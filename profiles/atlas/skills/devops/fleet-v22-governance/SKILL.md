@@ -112,6 +112,14 @@ Maintain strict role-scoped capability assignment. Do not load heavy MCP servers
  alive at your timestamp as a writer no mtime census can see. Recipe in
  `references/relayed-probe-runs.md`.
 
+## Coordination-only release-hold corrections
+
+1. Locate the existing mission and inspect the named raw final log plus the relevant handoff before changing release notes. Capture the raw log's exact path and `sha256sum`, emitted totals, failing assertion locations, and actual expected/received values. If the raw log is unavailable, label the peer's evidence UNVERIFIED and retain HOLD rather than substituting earlier positive results.
+2. Separate directly observed log output, handoff-declared revision/build anchors, and peer-only tool/state attribution. Confirming a Git object exists does not prove that a test ran against it; a handoff's build ID does not intrinsically bind a raw log that lacks that ID. Report that binding limitation explicitly.
+3. When a final batch disconfirms an earlier standalone pass, withdraw the earlier result as support for release readiness without claiming every earlier observation is false. Preserve the implementation owner's reports; write the authorized correction in the existing mission, naming the release decision owner separately from the inspecting author.
+4. Keep coordination-only scope: do not spawn or restart a writer already handling remediation, edit source/config/data, or launch build/shadow checks against moving source. Record HOLD pending remediation, a fresh frozen candidate, and affected independent rendered/functional and runtime gates bound to the same revision/build/run identity. A correction is not new implementation or deployment authorization.
+5. Read back the correction and return a brief acknowledgement with observed totals, artifact path, and residual binding limits. Do not describe log inspection as an independent test rerun or a certification of current source.
+
 ## Verification Checklist
 
 - [ ] Exact Git commit SHA verified across PRISM, LENS, SENTINEL, and ORION.

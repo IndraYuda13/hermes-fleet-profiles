@@ -83,6 +83,7 @@ Endpoint: `https://garuda.kemdiktisaintek.go.id/documents?q=<query>`
   1. Inspect GARUDA's cached detail page metadata (`/documents/detail/<id>`).
   2. Use GARUDA's direct download proxy endpoint: `http://download.garuda.kemdiktisaintek.go.id/article.php?article=<id>&val=<val>&title=<title>`.
   3. Resolve the canonical DOI URL (`https://doi.org/...`).
+  4. Query Crossref API directly by ISSN: When GARUDA or OJS portals fail or block requests, query `https://api.crossref.org/journals/{issn}/works?query={query}&rows=10&filter=from-pub-date:2021-01-01`. Crossref provides unblocked JSON output, structured DOIs, exact volumes/issues/pages, and verified publication years for major SINTA 1–3 computing journals (e.g., RESTI `2580-0760`, TEKNOSI `2476-8812`, JEPIN `2460-0741`, JUITA `2086-9398`, Infotel `2085-3688`, Sistemasi `2302-8149`, JURIKOM `2407-389X`, JUTISI `2443-2210`).
 
 ### 3. Metadata & PDF Extraction
 Endpoint: `https://garuda.kemdiktisaintek.go.id/documents/detail/<doc_id>`

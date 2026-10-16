@@ -1,5 +1,5 @@
 model:
-  default: gpt-sol
+  default: ag-opus-pool
   provider: custom
   base_url: http://127.0.0.1:20128/v1
   api_key: REDACTED
@@ -13,6 +13,7 @@ toolsets:
 - skills
 agent:
   reasoning_effort: xhigh
+  image_input_mode: native
 web:
   backend: firecrawl
   search_backend: firecrawl
@@ -157,7 +158,7 @@ onboarding:
     busy_input_prompt: true
     openclaw_residue_cleanup: true
     tool_progress_prompt: true
-_config_version: 50
+_config_version: 51
 a2a_agents:
   atlas:
     timeout: 900
@@ -195,18 +196,38 @@ custom_providers:
   model: gpt
   models:
     ag-opus-pool:
-      context_length: 950000
+      context_length: 524288
+      supports_vision: true
     gpt:
       context_length: 500000
+    ds:
+      context_length: 524288
+      supports_vision: true
+    gpt-sol:
+      context_length: 524288
+      supports_vision: true
+    gpt-terra:
+      context_length: 524288
+      supports_vision: true
   name: 9router.indrayuda.my.id
 - api_key: REDACTED
   base_url: http://localhost:20128/v1
   model: gpt
   models:
     ag-opus-pool:
-      context_length: 950000
+      context_length: 524288
+      supports_vision: true
     gpt:
       context_length: 500000
+    ds:
+      context_length: 524288
+      supports_vision: true
+    gpt-sol:
+      context_length: 524288
+      supports_vision: true
+    gpt-terra:
+      context_length: 524288
+      supports_vision: true
   name: Local (localhost:20128)
 known_builtin_toolsets:
   a2a:
@@ -392,11 +413,41 @@ platforms:
       - '@Orion'
 timezone: Asia/Jakarta
 mcp_servers:
-  n8n-official:
-    url: https://n8n.indrayuda.my.id/mcp-server/http
-    auth: oauth
-    enabled: true
   rea:
     command: /usr/local/bin/rea-mcp
     connect_timeout: 60
     timeout: 300
+model_overrides:
+  custom:
+    ds:
+      context_window: 524288
+      supports_vision: true
+    ag-opus-pool:
+      context_window: 524288
+      supports_vision: true
+    gpt-sol:
+      context_window: 524288
+      supports_vision: true
+    gpt-terra:
+      context_window: 524288
+      supports_vision: true
+  custom:local-(localhost:20128):
+    ds:
+      context_window: 524288
+      supports_vision: true
+    ag-opus-pool:
+      context_window: 524288
+      supports_vision: true
+    gpt-sol:
+      context_window: 524288
+      supports_vision: true
+    gpt-terra:
+      context_window: 524288
+      supports_vision: true
+_left_core_installed:
+- langfuse
+telemetry:
+  shared_metrics:
+    enabled: false
+    send: false
+    offer_version: 2

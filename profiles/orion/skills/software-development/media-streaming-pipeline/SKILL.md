@@ -422,6 +422,25 @@ When auditing or building production on-the-fly media streaming backends (FastAP
   - Programmatic pop-up ad networks (PopAds, PropellerAds, Adsterra) predominantly serve gambling (judol) and APK injectors in Southeast Asia, creating severe legal liability under Indonesian cyber laws (UU ITE Pasal 27(2)).
   - Deceptive redirects trigger Google Safe Browsing red-screen blocks ("Deceptive site ahead"), destroying >95% of organic traffic and ruining clean UI/UX retention.
   - Monopolize the "ad-free clean UI" moat. If monetizing via ads, use strictly **Curated Direct Affiliate Cards** (VPN partnerships like Surfshark/Mullvad, anime merchandise, figure stores) implemented as static HTML/CSS components with zero external tracking scripts.
+- **Streaming SPA & Player Monetization Mechanics (Monetag MultiTag vs AdSense):**
+  - Never submit streaming/scraping domains to Google AdSense (guaranteed rejection or copyright ban). Use publisher ad networks suited for streaming (e.g. Monetag MultiTag, Popunder, In-Page Push).
+  - For Single Page Applications (SPAs) with HLS video players, inject scripts asynchronously (`data-cfasync="false"`, `async`) before `</body>` to prevent ad scripts from blocking the video playback engine, HLS chunk fetching, or UI reactivity.
+- **The Service Worker Ghost Push Ad Trap & Graceful Unregistration:**
+  - Simply commenting out or removing ad script tags from HTML does **not** stop push ads for returning visitors because the browser aggressively caches the registered Service Worker (`sw.js`).
+  - When deactivating or pausing ad network integration, implement an explicit client-side cleanup loop in the main page:
+    ```javascript
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.getRegistrations().then(function(regs) {
+          regs.forEach(function(r) { r.unregister(); });
+        });
+      });
+    }
+    ```
+    and configure `sw.js` to self-unregister during activation (`event.waitUntil(self.registration.unregister())`).
+  - Always verify deactivation with a headless browser network intercept asserting zero requests to ad network domains (`quge5.com`, `5gvci.com`, `6opo.com`).
+- **Popunder Frequency Capping & UX Guard:**
+  - If popunder/onclick ads are enabled, enforce a strict client frequency cap (e.g. 1 popunder per 30–60 minutes per session via cookie/localStorage). Uncapped popunders trigger on every episode click, destroying user retention and driving users to install aggressive adblockers.
 - **Supporter Utility Freemium Architecture:**
   - Never paywall core video playback. Keep base streaming (720p/1080p) completely open.
   - Monetize high-value convenience utilities: batch downloading seasons to Telegram via bot, priority low-latency CDN routing during peak hours (19:00–22:00 WIB), and cosmetic player custom styling/badges.

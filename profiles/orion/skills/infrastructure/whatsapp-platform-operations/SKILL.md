@@ -1,7 +1,7 @@
 ---
 name: whatsapp-platform-operations
 description: Operate WhatsApp bridge, allowlists, and group JIDs.
-version: 1.8.0
+version: 1.10.0
 author: Hermes Agent Curator
 license: MIT
 metadata:
@@ -225,7 +225,7 @@ WHATSAPP_DEBUG=true
        7. **Multi-User Collaborative Builder Sandboxing Protocol:**
           When the user intends for friends/collaborators to interact with an orchestrator profile on WhatsApp to "build websites" or execute tasks:
           - *Isolated Project Workspace:* Confine all project file generation, git repositories, and dependencies to a dedicated directory (e.g. `/root/workspace/web-collab/`), never the root directory or Hermes home.
-          - *Tiered Role Enforcement in SOUL.md:* Distinguish the primary Owner from Collaborators. Grant collaborators permissions for code generation, frontend markup, backend logic, and local preview ports. Strictly intercept and require Owner confirmation for actions touching production configs (Nginx vhosts, Cloudflare tunnels, cPanel, database services, system packages, or credential files).
+          - *Tiered Role Enforcement in SOUL.md:* Distinguish the primary Owner from Collaborators. Grant collaborators permissions for code generation, frontend markup, backend logic, and local preview比较 ports. Strictly intercept and require Owner confirmation for actions touching production configs (Nginx vhosts, Cloudflare tunnels, cPanel, database services, system packages, or credential files).
           - *Memory Pollution Defense:* Enforce an invariant in `SOUL.md` that collaborator inputs and requests must not update or overwrite the primary user profile (`USER.md`) or system memory (`MEMORY.md`).
      - Disable `telegram` on `groupbot` if sharing the same Telegram Bot token: `platforms.telegram.enabled: false`.
   6. **Dedicated Systemd Service & Profile Execution:**
@@ -379,7 +379,7 @@ WHATSAPP_DEBUG=true
      NODE=/root/.hermes/tools/node-26.7.0-linux-x64/bin/node
      rm -rf "$SESSION" && mkdir -p "$SESSION" && : > "$LOG"
      tmux kill-session -t wa-pair 2>/dev/null || true
-     tmux new-session -d -s wa-pair "$NODE /usr/local/lib/hermes-agent/scripts/whatsapp-bridge/bridge.js --port 3009 --session $SESSION --mode bot --pair-json >> $LOG 2>&1"
+     tmux new-session -d -s wa-pair "$NODE /usr/local/lib/hermes-agent/scripts/whatsapp-bridge/bridge.js --port 3099 --session $SESSION --mode bot --pair-json >> $LOG 2>&1"
      ```
   3. **QR Extraction, Rendering & Rapid Expiry Refresh Protocol (~20s Window):**
      - Baileys rotates QR codes approximately every 20 seconds.
@@ -513,3 +513,45 @@ When an operator or user requests a complete preview or audit of all WhatsApp co
 - When a user asks "can you call me on WhatsApp?", answer: no, not even a missed call. Offer instead: (a) auto-reject + auto-reply when they call the bot number (requires a local bridge patch adding a `sock.ev.on('call')` handler that calls `rejectCall`), or (b) a TTS voice note as a sound nudge.
 - Verify before answering: `grep -nE "rejectCall|createCallLink" <bridge>/node_modules/@whiskeysockets/baileys/lib/Socket/index.d.ts` and confirm the deployed `bridge.js` has no `call` listener.
 
+### 20. Truncated 0-Byte `creds.json` (ENOSPC) & Headless QR-Timeout Loop
+- **The Mechanism & Symptom:**
+  When the host filesystem runs out of disk space (`ENOSPC`) or an abrupt process kill interrupts Baileys during credential state sync (`use-multi-file-auth-state.js` -> `writeFileHandle`), `creds.json` is truncated to 0 bytes while remaining on disk.
+  - **The Preflight Exists Barrier:** In Hermes `adapter.py`, `_preflight()` checks `creds_path.exists()`. Because an empty 0-byte file returns `exists() == True`, preflight passes and spawns `bridge.js`.
+  - **The Headless 30s Timeout Loop:** `bridge.js` sees empty/invalid credentials and falls back to QR pairing mode. In headless environments, no one scans the QR code within 30 seconds. Gateway's `_connect_adapter_bounded` raises `whatsapp connect timed out after 30s`, terminates the bridge, and schedules a retry in 300s. Every 300s, the bridge restarts, prints a new QR code to `bridge.log`, times out after 30s, and is killed, repeating indefinitely while Telegram remains healthy.
+- **Fast Diagnostic & Zero-Downtime Sandbox Verification:**
+  1. Inspect file size: `ls -lh <session_path>/creds.json`. If 0 bytes, check for `<session_path>/../creds_backup.json`.
+  2. **Isolated Ephemeral Sandbox Probe:** Before modifying production or asking the user to re-pair, verify whether the backup credentials are still valid without disrupting running gateways:
+     ```python
+     import subprocess, time, os, shutil
+     scratch = "/root/.hermes/profiles/<profile>/cache/scratch"
+     test_session = os.path.join(scratch, "wa-test-session")
+     shutil.rmtree(test_session, ignore_errors=True)
+     shutil.copytree("<session_path>", test_session)
+     shutil.copyfile("<session_path>/../creds_backup.json", os.path.join(test_session, "creds.json"))
+     proc = subprocess.Popen([
+         "/root/.hermes/tools/node-26.7.0-linux-x64/bin/node",
+         "/usr/local/lib/hermes-agent/scripts/whatsapp-bridge/bridge.js",
+         "--port", "3099", "--session", test_session, "--mode", "bot"
+     ], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+     time.sleep(6)
+     proc.terminate()
+     out, _ = proc.communicate(timeout=3)
+     print("Sandbox result:", "CONNECTED" if b"WhatsApp connected!" in out else "FAILED")
+     ```
+  3. If sandbox confirms `WhatsApp connected!`, restore the credentials directly:
+     `cp -p <session_path>/../creds_backup.json <session_path>/creds.json`
+  4. On the gateway supervisor's next 300s reconnect retry tick, Baileys connects immediately without requiring the user to scan a new QR code or unlink devices on mobile WhatsApp.
+  5. **Post-Recovery Credential Hardening:** Always re-sync `<session_path>/../creds_backup.json` immediately after verifying connection, and verify root partition has sufficient disk headroom (`df -h /`).
+
+### 21. Inbound WhatsApp Document & File Intake Location (`/root/.hermes/cache/documents/`)
+- **The Mechanism:** When a user sends documents or non-image files (e.g. Word `.docx`, PDF `.pdf`, Excel `.xlsx`, presentations `.pptx`, archives `.zip`, `.csv`) via WhatsApp DM or group with a prompt referencing the attachment (e.g. *"masukkin ini ke folder X"*, *"tolong baca dokumen ini"*, *"analisis draft ini"*), the WhatsApp gateway downloads the incoming file directly to:
+  `/root/.hermes/cache/documents/doc_<hash>_<original_filename>`
+- **Zero-Refusal Invariant:** Never claim you cannot find or receive the attachment, assume the user forgot to attach the file, or ask them to re-upload without first checking `/root/.hermes/cache/documents/`.
+- **Workflow to Locate and Handle Inbound Documents:**
+  1. Locate the latest received document by modification time:
+     `ls -lrt /root/.hermes/cache/documents/ | tail -n 5`
+     or:
+     `find /root/.hermes/cache/documents/ -type f -mmin -15`
+  2. The filename pattern preserves the original uploaded name after the hash prefix (`doc_<hash>_<original_filename>`).
+  3. Inspect content directly: Hermes `read_file` automatically parses and extracts readable text from `.docx`, `.pdf`, `.xlsx`, and `.pptx` documents.
+  4. Moving/copying to project workspaces: Use `cp -p` to preserve timestamps and retain the pristine cached source file, verify SHA-256 integrity, and confirm the destination path.

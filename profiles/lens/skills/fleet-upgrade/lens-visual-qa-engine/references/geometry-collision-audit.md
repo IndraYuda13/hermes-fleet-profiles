@@ -102,6 +102,25 @@ search_files pattern='(bottom|top|left|right|margin|padding)[^;]*\b(px|em|vw|vh)
 
 Prefer container units (`cqw`/`cqh`) for anything that must track a resizable canvas; `vw`/`vh` track the viewport and will look correct only while the canvas happens to equal the viewport.
 
+## 6.5 Effective touch target vs raw control box
+
+A geometry scan that measures every `input[type=checkbox|radio]` flags every native control: a default checkbox renders ~13×13 px inside a much larger clickable label. That is a **false positive**, not a defect — the browser's hit area for a labelled control is the wrapping `<label>` (or the ancestor carrying `for`/role=switch).
+
+Correct predicate: compute the target from the control's nearest label-like ancestor, not the control box.
+
+```js
+const box = el => {
+  const lbl = el.closest('label') || (el.id && document.querySelector(`label[for="${el.id}"]`));
+  const t = lbl || el;
+  const r = t.getBoundingClientRect();
+  return { w: +r.width.toFixed(1), h: +r.height.toFixed(1) };
+};
+```
+
+Then corroborate with behaviour, not just geometry: click at the label's far edge and assert the control's `checked` flipped. Geometry says the box is big; the tap says it is *the* target. Report the effective size (`104×48`), never the raw control box, and state that the 13×13 reading was a raw-box artifact rather than a defect.
+
+The inverse also holds: a control whose only ancestor is a 1px wrapper really is a small target — the label-wrap rule rescues genuinely-labelled controls, not bare ones.
+
 ## 7. Reporting shape
 
 Per state, per mode: `{ counted_elements, non_nested_collisions, containment_pairs, overflow_elements, outside_safe_elements }`, then the control result, then the itemised lists. File every geometry finding with the element selector, the mode it fails in, the painted fraction, the cause, and an objective acceptance condition. Do not soften a confirmed collision or a confirmed clip into "minor spacing observation".

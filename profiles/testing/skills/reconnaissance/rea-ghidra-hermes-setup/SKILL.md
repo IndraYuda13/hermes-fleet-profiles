@@ -1,6 +1,6 @@
 ---
 name: rea-ghidra-hermes-setup
-description: Use when installing REA + Ghidra for a Hermes profile.
+description: Use when installing, upgrading, or extending REA + Ghidra on a Hermes profile.
 ---
 
 # REA + Ghidra on Hermes profiles
@@ -19,12 +19,15 @@ config via a wrapper — that remains the preferred multi-profile approach.
 2. **Wrapper launcher** at `/usr/local/bin/rea-mcp` (see the TMPDIR trap below).
 3. **Config:** `hermes -p <profile> config set mcp_servers.rea '{command: /usr/local/bin/rea-mcp, connect_timeout: 60, timeout: 300}'`
    — never hand-edit config.yaml. Do NOT add `args: [mcp]` when the wrapper already adds it.
-4. **Skill:** copy `<npm>/rea-agents/skills/reverse-engineer-anything/` (SKILL.md +
+4. **Skill:** preferred = `skills.external_dirs` mount of a mirrored skill tree (see
+   "Native skill auto-update" below — one upgrade refreshes every profile, no per-profile
+   copying). Legacy = copy `<npm>/rea-agents/skills/reverse-engineer-anything/` (SKILL.md +
    references/) into `<profile>/skills/<category>/`. Hermes only auto-loads skills under
    `<profile>/skills/`; `~/.agents/skills` (REA's own target) and `~/.claude/skills` are
    scanned only when listed in `skills.external_dirs`.
 5. **Verify:** `rea doctor --json` (ghidra checks healthy) -> `hermes -p <p> mcp test rea`
-   (139 tools) -> one real decompile.
+   (expect the installed version's tool count — see the cadence section below) -> one real
+   decompile.
 
 ## Isolate the install (a global npm install can vanish)
 
@@ -36,6 +39,10 @@ Symptom: every REA MCP server in every profile suddenly reports `Connection clos
 Hermes' own tooling (notably an update) can delete global npm packages under
 `<node>/lib/node_modules/` — `rea-agents` and `@21st-dev/cli` were both removed by one event,
 leaving a wrapper or `command: rea` entry pointing at a binary that no longer exists.
+The Oct 2026 update emptied the WHOLE prefix (also `hackerone-mcp` — reinstalled
+1.0.1 globally for the testing profile; its MCP then failed with MODULE_NOT_FOUND
+in the profile's `logs/mcp-stderr.log`). After any Hermes update, verify every MCP
+server whose command path lives under `<node>/lib/node_modules/`.
 
 Install REA into its own prefix on a stable volume and exec it directly, so Hermes tooling
 cannot remove it:
@@ -107,17 +114,80 @@ Likewise `registration:hermes` shows state `stale` under the wrapper launcher �
 compares against the raw-node registration `rea setup` would write, so this is expected,
 not breakage. Confirm liveness with `hermes -p <p> mcp test rea` and a real decompile.
 
-## Release cadence & version pinning (observed Oct 2026)
+## Engines beyond Ghidra
 
-REA ships frequently (4 minor releases in 3 days: 6.0.0 → 6.4.0, all with breaking changes;
-`always-bump-minor` policy — a minor bump is NOT a compatibility promise). Keep the install
-pinned to an exact version as this skill already recommends. Upgrade procedure that worked
-(staged in scratch first): bump `rea-agents` to the target in `/mnt/tools/rea/package.json`,
-`npm install --no-audit --no-fund` (~13s), re-copy the skill tree, restart the gateway so
-MCP children respawn, then verify: `--version`, `doctor --json` (ghidra checks), `hermes -p
-<profile> mcp test <server>` (expect the new tool count), and one real `open_binary` +
-`analyze_function` E2E with a worst-case TMPDIR. Tool count went 139 (6.0.0) → 170 (6.4.0).
-Ghidra pin stayed `SUPPORTED_GHIDRA_VERSION=12.1.4` in 6.4.0; JDK 21 still accepted.
+Each engine is an independent provider and a missing one never breaks the others:
+`doctor` audits only hopper/ghidra/ida/jadx (`missing_analysis_engine` when absent), while
+the 6.5.0 additions (cutter, rizin, frida, gdb, objdump) are runtime PATH/env-discovered —
+`REA_GDB_COMMAND ?? "gdb"`, `REA_RIZIN_COMMAND ?? "rizin"`, argv built for `objdump`,
+dynamic `import("frida")` (the npm package, not a bundled dep), and a TCP socket bridge to
+the Cutter GUI. Absent ones surface as `provider_unavailable` at call time, NOT as doctor
+failures — do not chase `doctor` for them. Full inventory, install commands, and the
+worth-it ranking for this user's pentest/Android/RE work: `references/engines.md`.
+
+## Native skill auto-update via skills.external_dirs (and the node_modules trap)
+
+`skills.external_dirs` (profile config: `hermes -p <p> config set skills.external_dirs
+'["/mnt/tools/rea-skills"]'`) mounts a shared skill dir so ONE REA upgrade refreshes every
+profile. Two verified traps:
+
+1. Pointing external_dirs INTO node_modules scans NOTHING —
+   `agent/skill_utils.py::EXCLUDED_SKILL_DIRS` skips any path containing `node_modules`
+   (the runtime external index comes back empty; no error, silent).
+2. A symlinked skill dir is also invisible — pathlib `rglob` does not descend into
+   symlinked directories.
+
+Fix = mirror to a clean path. `/mnt/tools/rea/update-rea.sh [version]` runs
+`npm install rea-agents@<ver>` in the isolated prefix, then
+`cp -a node_modules/rea-agents/skills/. /mnt/tools/rea-skills/`. Precedence is
+`project → local → create_dir → external_dirs`, so the OLD per-profile copy must be
+removed (back it up to /mnt/tools/rea/skill-backups/` first — that dir already holds
+timestamped tarballs per profile) or the stale local copy keeps winning silently.
+After the swap `hermes -p <p> skills list` shows the skill with source `external`, and
+`hermes -p <p> mcp test rea` is unaffected (skill and MCP registration are separate).
+
+## Hub skill installs for RE work
+
+`hermes -p <p> skills install <identifier>` (identifiers from `hermes skills search <kw>`)
+needs `--yes` — without it the interactive confirm cancels. Community skills can trip the
+guard scanner (`hermes skills install` -> BLOCKED, verdict CAUTION): ALWAYS read the
+finding before `--force`. The cached verdict JSON under
+`<profile>/skills/.hub/scan-cache/` carries the exact matched line — e.g. rev-frida was
+blocked on pattern `deception_hide` matching the benign hooking advice "Do not tell the
+user to hook `.init`, `.init_array`, constructors, or `JNI_OnLoad` blindly." (false
+positive; forced). Installed for this setup: `frida-17` (API compat),
+`rev-frida` (script generator), `binary-analysis` (strings/objdump/readelf/nm).
+`apk-reverse` hub candidates were Chinese-only with sibling refs outside the skill dir —
+skipped in favour of the local `android-game-modding` skill.
+
+## Release cadence & version pinning
+
+REA ships frequently and every minor can carry breaking changes (`always-bump-minor`
+policy — a minor bump is NOT a compatibility promise; one stretch shipped 4 minor releases
+in 3 days). Keep the install pinned to an exact version as this skill already recommends.
+
+### Pre-flight before any upgrade
+
+1. Compare versions: `npm view rea-agents version` vs the installed one
+   (`/mnt/tools/rea/package.json` + `node_modules/rea-agents/package.json`).
+2. Download the target tarball to scratch, extract it, and read
+   `package/dist/ghidra/GhidraInstallationPolicy.js`: if `SUPPORTED_GHIDRA_VERSION` moved
+   off the installed Ghidra, plan the Ghidra upgrade FIRST — `doctor` hard-fails on a
+   mismatched pin. (6.4.0 -> 6.5.0 kept 12.1.4; JDK 21 still accepted.)
+3. Diff the tool surface over the MCP protocol (recipe in the verify section below): dump
+   `tools/list` for the installed and the target version, then `comm -23 old new` MUST be
+   empty (no removed tool) before touching a shared install — a purely additive upgrade is
+   safe for every profile at once.
+
+### Upgrade procedure that worked
+
+Stage in scratch first: a FRESH dir with a minimal `package.json` pinning `rea-agents` at
+the target, `npm install --no-audit --no-fund` (~13s) — do NOT `npm install` inside the
+extracted tarball (unreliable). Then bump the real `/mnt/tools/rea/package.json`, install
+there, re-copy the skill tree, restart the gateway so MCP children respawn, and verify:
+`--version`, `doctor --json` (ghidra checks), `hermes -p <profile> mcp test <server>`
+(expect the new tool count), and one real `open_binary` + `analyze_function` E2E with a
+worst-case TMPDIR. Tool count: 139 (6.0.0) -> 170 (6.4.0) -> 207 (6.5.0).
 
 ## Verify end-to-end through the MCP protocol
 
@@ -145,6 +215,13 @@ Note: `open_binary` requires `path`; `analyze_function` requires **`procedure`**
 address), not `address` (CLI uses `address`; MCP uses `procedure`). MCP arg names differ
 from CLI arg names.
 
+The same `initialize` + `notifications/initialized` + request pattern also counts tools:
+send `tools/list` and take `len(result["tools"])`. NEVER count tools by grepping `dist/`
+for `name: "..."` — tool names are spread across many registration files and grep
+undercounts badly. For a version check, run the count against both the installed and the
+staged target install (stage the target with the fresh-dir `npm install` from the cadence
+section), write both name lists to files, and `comm -23` them.
+
 ## Gateway-profile gotchas
 
 - The MCP process is spawned by the long-running **gateway** (parent of every profile).
@@ -159,6 +236,12 @@ from CLI arg names.
   a 0-byte `~/.gemini/config/mcp_config.json` -> whole transaction blocked. Clean those first.
 - `rea mcp add --agent generic` needs the third-party `add-mcp` package and fails in
   unattended/offline setups; hand-register instead.
+- Several profiles can share ONE isolated install through the same wrapper (each profile's
+  `mcp_servers.rea` = `command: /usr/local/bin/rea-mcp`): one `npm install` upgrades them
+  all, but the gateway must respawn the MCP children. Skill updates propagate either via
+  the external_dirs mirror (preferred, one place) or a per-profile skill-tree copy (legacy).
+  After an upgrade verify PER profile (`hermes -p <p> mcp test rea`,
+  expect the new tool count) — a profile still reporting the old count has a stale child.
 
 ## Repairing an existing profile's REA registration
 
@@ -170,7 +253,7 @@ connected. Deep analysis on such a profile is inert because `rea doctor` reports
 
 Repair = same three edits (wrapper launcher -> config `command: /usr/local/bin/rea-mcp`
 with no `args` -> official skill), then `hermes -p <profile> mcp test rea` (expect exit 0 and
-the tool count of the installed REA version — 139 at 6.0.0, 170 at 6.4.0). Back up
+the tool count of the installed REA version — 139 at 6.0.0, 170 at 6.4.0, 207 at 6.5.0). Back up
 `config.yaml` with `cp -a` first: `hermes config set` rewrites the whole section, so keep a
 timestamped copy.
 

@@ -24,6 +24,16 @@ Use this umbrella for the common control loop around a persistent service: inspe
 4. Change one configuration or runtime condition; restart/recreate only the affected unit.
 5. Verify health, logs, external behavior, and disk/resource state after the change.
 
+## Stateful application release preflight
+
+- Finish all code, rendered-UI and security gates before stopping production writers; this keeps a verifier/setup delay from becoming prolonged public downtime.
+- Build with the real public configuration on an immutable release path, then exercise that exact artifact against an isolated database. If public URLs are inlined, explicitly redirect both server and browser transports to real isolated endpoints and verify live-table fingerprints remain unchanged.
+- Inspect the entire service startup chain before restart. Run reviewed migrations explicitly during maintenance; do not let a legacy launcher reset schemas or reseed sample data when a persistent production service boots.
+- Verify public-origin policy through the actual proxy. Preserve the browser Origin instead of rewriting every request to an accepted value; configure the public HTTPS origin and independently check Secure/HttpOnly/SameSite cookies, rejected foreign-origin mutations, refresh and logout.
+- Freeze fixed account-deletion targets before opening signup. Exclude credential-bearing and anonymous identities dynamically, rehearse the exact guarded transaction on a fresh restore, check deferred constraints immediately, and compare retained full-row fingerprints before COMMIT.
+- After reopening writes, use forward-compatible repair. Never restore a pre-release dump over new accounts or downgrade to a passwordless authentication path.
+- Distinguish deployed app SHA/build from a later CI-only commit. Read the exact remote head and native CI conclusion; missing tools such as `pdftotext` belong in CI prerequisites, not skipped assertions or fabricated green status.
+
 ## Resource and log maintenance
 
 Start with filesystem and journal measurements. Inspect stopped Docker containers before pruning; never use an aggressive volume prune without explicit confirmation. Truncate an actively written log rather than removing its open file, and validate logrotate configuration after remediation. Flag disk ≥75% on `/` or `/mnt` in health reports even if not critical yet.
@@ -119,6 +129,20 @@ When the user says unused failed services can be deleted:
 
 See `references/systemd-unit-lifecycle.md`.
 
+## Full service retirement (units + ingress + project dirs)
+
+When the user authorizes deleting unused services *and* their project trees, extend the unit-removal loop with the integration surfaces that outlive the unit:
+
+1. **Inventory before mutation.** `systemctl is-enabled` / `is-active` for each candidate, then map dependencies in one pass: nginx `server_name` blocks referencing the projects, Cloudflare tunnel hostnames (`grep -E '^\s*-\s*hostname:' /etc/cloudflared/config*.yml`), and any compose/Docker service sharing the path. Keep an explicit keep-list of the services the user named to preserve.
+2. **Retire in dependency order:** `systemctl disable --now <units>` → `rm` unit files → drop the nginx site block → `nginx -t` (must pass *before* `systemctl reload nginx`) → `systemctl daemon-reload && systemctl reset-failed`.
+3. **Purge project dirs last, behind a recycle bin.** For code not pushed to a remote, stage code-only archives plus dirty patches into `/mnt/.recycle_<YYYYMMDD>/` before `rm -rf`, and report that recovery path with sizes. Purge one path per command so a runtime guard refusal does not mask the rest.
+4. **Reconcile orphaned ingress as its own decision.** Removing the origin leaves tunnel hostnames and DNS records pointing at dead backends; they keep resolving to errors. List them as a follow-up question (delete tunnel entries / keep parked) instead of editing tunnel config unasked.
+5. **Verify the whole surface:** every retired name returns `not-found` from `systemctl is-enabled`, `systemctl --failed` empty, `nginx -t` OK, `docker ps` count unchanged, `ss -tln` on known service ports, and a real `curl -s -o /dev/null -w '%{http_code}' -I <url>` per kept ingress (a 30x redirect is healthy).
+
+**Pitfalls**
+- **Attribute reclaimed space to the right partition:** a path under `/root` can be a bind mount onto the secondary disk (check with `findmnt -T <path>`, e.g. `/root/.cache` → `/mnt`), so `df -h /` barely moves while `/mnt` absorbs the whole win. Run `findmnt -T <path>` for every delete target and report per-partition deltas, never one "freed X GB" claim.
+- **A general cleanup request authorizes the audit, not the deletion:** present candidates with sizes, then wait for explicit approval per target class; a keep-list item stays untouched even when it looks like garbage.
+
 ## Containerized search and proxy services
 
 For SearXNG-like services, distinguish upstream engine blocking from local networking failure by inspecting container logs and testing proxy connectivity inside the container. Prefer a shared Docker network/service DNS over brittle host-bridge routes. Treat commercial/VPS proxy reputation as a separate issue from rotation configuration. See `references/searxng-operations.md`.
@@ -201,9 +225,25 @@ For self-hosted web scrapers and AI agents (e.g., Firecrawl, n8n, Vibe-Trading):
 - Environment configuration quirks: unsupported auth modules, brittle docker-compose variables. See `references/firecrawl-operations.md`.
 - **Cloudflare Serverless Services (Temp Mail, Workers, D1)**: Self-hosting serverless applications built on Cloudflare Workers/Pages/D1 (e.g. `cloudflare_temp_email`). Prefers GitHub Actions deployment for automated updates or CLI via Wrangler. Requires Cloudflare Email Routing Catch-all binding to Worker. See `references/cloudflare-temp-email.md`.
 
-## Node.js / Next.js Daemons
+## Node.js / Next.js Daemons (9router & Standalone Servers)
 
-For Next.js standalone builds (like 9router), test PRs without modifying the global system path by isolating the build and running the standalone server directly. Next.js standalone requires the `PORT` env var instead of `-p` flags. Watch out for bash auto-restart scripts outpacing standard kills — use `fuser -k` on the port immediately before starting the test instance. Also covers resolving a 9router combo alias (e.g. `ag-opus-pool`) to its real upstream model via `/v1/models` plus the `combos` table in `~/.9router/db/data.sqlite`. See `references/nextjs-node-daemon.md` for standalone mode, PR swapping, model resolution, and dashboard auth recovery.
+- **Production Gateway Invariant**: Never restart, reload, or SIGKILL an active AI gateway (e.g., 9router on port `20128`, PID `3078142`) during troubleshooting or investigations without explicit maintenance intent. Check active listeners (`ss -tulpn | grep 20128`) and process trees before executing service modifications.
+- **Dual Global Installs & npm Prefix Collisions on Relocated Node**:
+  - When the default Node binary on PATH (`/usr/local/bin/node`) points to a version-managed or tool-specific directory (e.g., `/root/.hermes/tools/node-26.7.0-linux-x64/bin/node`), `npm i -g <pkg>@latest` installs under that tool's prefix (`$(npm root -g)` = `/root/.hermes/tools/node-.../lib/node_modules/`).
+  - If a legacy installation exists under `/usr/lib/node_modules/<pkg>`, and a wrapper script/launcher (such as `9router-guard.sh`) evaluates candidates in order (`/usr/lib/node_modules` before tool directories) using `head -n 1`, running the command will execute the obsolete version despite a successful npm upgrade.
+  - *Diagnostics*: Compare versions across paths:
+    ```bash
+    grep '"version"' /usr/lib/node_modules/<pkg>/package.json
+    grep '"version"' $(npm root -g)/<pkg>/package.json
+    which -a <pkg>
+    ```
+  - *Remediation*: Purge or move the stale legacy directory (`mv /usr/lib/node_modules/<pkg> /usr/lib/node_modules/<pkg>.old`), or explicitly specify prefix on upgrade (`npm i -g <pkg>@latest --prefix=/usr --prefer-online`).
+- **Native Dependency Build Tools (`better-sqlite3`)**: Packages relying on native C++ extensions like `better-sqlite3` require a C/C++ compiler toolchain. On lean Debian/Ubuntu VPS images, ensure `clang` or `build-essential` is installed (`apt update && apt install -y clang`) before running `npm install -g`.
+- **Wrapper Launcher Execution Safety (`9router-guard.sh`)**:
+  - Guard scripts that wrap binaries to prevent catastrophic actions (e.g. 9router killing all `next-server` instances) must defer resolution checks (`resolve_cli`) until after all candidate discovery functions are declared to avoid early bash unbound-function failures.
+  - When swapping or testing Next.js standalone PRs, isolate the build directory and set `PORT` via environment variable (`PORT=20128 node .next/standalone/server.js`) rather than CLI `-p` flags.
+
+See `references/nextjs-node-daemon.md` for standalone mode, PR swapping, combo alias resolution, and dashboard auth recovery.
 
 ## Firecrawl and browser-heavy scraping services
 

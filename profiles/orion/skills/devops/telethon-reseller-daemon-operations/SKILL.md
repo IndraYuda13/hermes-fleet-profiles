@@ -64,6 +64,11 @@ python3 index.py +628xxx
 ```
 
 ## Common Customer Issues & Pitfalls
+
+- **Inspect prestart side effects before a bounded restart:** Read the current unit's `ExecStartPre` and its script before executing `systemctl restart`. `checklogin.py` may kill session holders, copy customer configs, and unlink failed session/config files. A restart-only request does not authorize destructive session cleanup. If cleanup is outside scope, have the runtime owner use an explicitly authorized, uniquely named runtime-only drop-in under `/run/systemd/system/custX.service.d/` that resets `ExecStartPre=` for the operation. Never overwrite existing drop-ins or edit persistent units. Confirm the effective prestart is empty using `systemctl show custX.service --property=ExecStartPre --value`; systemd may omit empty fields even with `show --all`. Remove only the operation's own drop-in in `finally`, reload, and read back the exact original `ExecStartPre` and `DropInPaths`. Restart sequentially and verify old PIDs gone, session-to-worker inventory and stabilized running state. Classify journal errors by old vs new process PID so shutdown `CancelledError` is not misreported as startup failure.
+
+- **Choose the live manager, not historical screen instructions:** Inspect unit definitions, `/proc` cwd/cgroups, screens and actual autoheal entries. Use the manager currently owning the reseller workers and never start a second copy. Pause only a live interfering autoheal entry, and restore it in `finally`; do not change unrelated cron.
+
 - **"Silent Worker Drop / Zombie Service" (Deceptive `active (running)`):**
   - In `start4.py`, child `index.py` workers run via `await process.wait()` without an auto-restart loop. When an account hits an MTProto connection drop (`[Errno 110] Connection timed out`, server closed connection, or DC reset), `index.py` exits cleanly.
   - Because `start4.py` remains running as long as at least one worker is still connected, systemd reports `custX.service` as `active (running)`, creating a zombie state where the service appears alive but 80–90% of customer bots are dead.

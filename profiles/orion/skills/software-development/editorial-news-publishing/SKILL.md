@@ -28,6 +28,7 @@ Use this skill when:
 7. Deploying news stories via the automated publishing pipeline to ensure instant, synchronized presence across the homepage (`index.html`), archive (`blog.html`), sitemap, cPanel hosting, and Google Indexing API.
 8. Implementing or maintaining mobile-first news layouts (e.g. ANTARA News style headline + vertical list feed) while preserving multi-column desktop parity.
 9. Publishing content for time-sensitive commercial and entertainment events (airline travel fairs, music festivals & concerts, bank card flash promotions, auto expos) with triple Schema markup (`Event`/`MusicEvent` + `FAQPage` + `Article`).
+10. Ingesting viral social media news posts (Instagram, X) with auth/login walls, extracting high-resolution visual assets via DOM evaluation, and triangulating public policy claims against verified financial wires.
 
 ---
 

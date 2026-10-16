@@ -14,9 +14,13 @@ Execute recurring server operations consistently and safely.
 - If the request is about deleting/logging out a specific session file, prefer `session-cleanup`.
 - Do not delete unrelated files or kill unrelated processes.
 
-## Autoheal Rule
+## Live Manager and Autoheal Rule
 
-Before manual restart/login/logout-style operations that touch reseller flows, pause the `autoheal.sh` cron first to avoid race/interference. Restore it immediately after the operation is complete.
+Inspect the current manager before acting. Screen instructions below apply only when screens currently own the reseller processes. If systemd `cust1..cust5` owns them, use that manager instead and never create duplicate screens/workers. Prefer the current interpreter defined by the unit, commonly `/usr/local/lib/hermes-agent/venv/bin/python3`.
+
+Before a systemd restart, inspect `ExecStartPre` and its implementation. `checklogin.py` may delete sessions/configs or copy configs, so a bounded restart must not silently authorize that cleanup. Load `telethon-reseller-daemon-operations` when available for the runtime-only prestart bypass and guaranteed restoration procedure, or obtain a scoped runtime-owner decision. Never edit persistent units or customer data as a restart workaround.
+
+Pause an `autoheal.sh` cron only if the exact entry exists and can interfere with this operation. Restore it immediately in `finally`. If no such live entry exists, leave cron unchanged.
 
 The relevant cron entry is normally:
 

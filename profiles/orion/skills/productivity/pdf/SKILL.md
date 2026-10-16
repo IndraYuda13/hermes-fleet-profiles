@@ -58,6 +58,7 @@ python scripts/pdf_watermark.py doc.pdf --stamp mark.pdf -o stamped.pdf [--under
 python scripts/pdf_stamp.py doc.pdf -o out.pdf --text "DRAFT" --x 150 --y 400 \
     --font-size 60 --rotation 45 --opacity 0.3 --color "#cc0000" [--pages 1-3]
 python scripts/pdf_stamp.py doc.pdf -o out.pdf --image sig.png --x 400 --y 60 --width 120
+python scripts/image_to_pdf.py img.jpg -o out.pdf [--a4] [--title "T"] # lossless zero-dep image to PDF
 python scripts/pdf_page_image.py doc.pdf --pages 1-3 --dpi 150 --out-dir imgs/
 python scripts/pdf_meta.py doc.pdf --set-meta --title "T" --author "A" -o out.pdf
 python scripts/pdf_meta.py doc.pdf --attach data.csv -o out.pdf
@@ -80,6 +81,7 @@ python scripts/pdf_meta.py doc.pdf --list-attachments | --extract-attachments di
 | Encrypt / decrypt (AES-256) | pypdf | `pdf_secure.py --encrypt/--decrypt` |
 | Watermark / stamp PDF page | pypdf | `pdf_watermark.py f.pdf --stamp w.pdf` |
 | Stamp text/image at coordinates | reportlab + pypdf | `pdf_stamp.py f.pdf --text "Sign here" --x 400 --y 60` |
+| Image to PDF (lossless, zero-dep) | pure python stdlib | `image_to_pdf.py img.jpg -o out.pdf [--a4]` |
 | Pages → PNG (review / OCR hand-off) | pypdfium2 or pdftoppm | `pdf_page_image.py f.pdf --pages 1-3 --out-dir imgs/` |
 | Set/clear metadata, attachments | pypdf | `pdf_meta.py --set-meta / --attach / --extract-attachments` |
 | Compress content streams | pypdf | `pdf_split.py f.pdf --pages 1-N --compress` |
@@ -111,6 +113,7 @@ python scripts/pdf_meta.py doc.pdf --list-attachments | --extract-attachments di
 - **Metadata scope**: `pdf_meta.py` writes the classic DocInfo dictionary only; embedded XMP metadata (if any) is left untouched and may show different values in some viewers.
 - **PDF/A is out of scope**: pypdf/reportlab cannot produce or validate conformant PDF/A. If archival conformance is required, run Ghostscript via the `terminal` tool (e.g. `gs -dPDFA=2 -dPDFACompatibilityPolicy=1 -sColorConversionStrategy=UseDeviceIndependentColor -sDEVICE=pdfwrite -o out.pdf in.pdf` with a suitable ICC profile) and validate with veraPDF — both are external installs, and the result still needs validation, not assumption.
 - Rotation must be a multiple of 90; encrypted inputs must be decrypted before any other operation.
+- **Image-to-PDF recompression loss**: Running ImageMagick `convert` decompresses and re-compresses JPEG by default, introducing compression artifacts, altering file size, and risking policy blocks in `/etc/ImageMagick-*/policy.xml`. Direct JPEG stream embedding into a PDF container (`/Filter /DCTDecode` via `scripts/image_to_pdf.py`) is completely lossless, preserves the original byte-for-byte fidelity, and runs with zero external Python dependencies. When converting ID cards, student cards, or certificates, deliver both full-bleed (for digital portal uploads) and A4-centered (for physical printing).
 
 ## Verification
 

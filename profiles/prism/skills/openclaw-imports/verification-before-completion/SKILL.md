@@ -47,6 +47,8 @@ Skip any step = lying, not verifying
 | Bug fixed | Test original symptom: passes | Code changed, assumed fixed |
 | Regression test works | Red-green cycle verified | Test passes once |
 | Agent completed | VCS diff shows changes | Agent reports "success" |
+| A run succeeded | The tool call that produced it, in this message | An expectation, a plan, or a recollection of a similar run |
+| A probe/suite exists | The write call plus the run that exercised it | Referring to a suite you intend to create |
 | Requirements met | Line-by-line checklist | Tests passing |
 
 ## Red Flags - STOP
@@ -59,6 +61,8 @@ Skip any step = lying, not verifying
 - Thinking "just this once"
 - Tired and wanting work over
 - **ANY wording implying success without having run verification**
+- Describing a **pending** job as finished. A background process is not evidence until its completion result is in hand; narrating its outcome while it still runs is a fabricated claim, even when you expect it to pass.
+- Referring to a probe, suite, or artifact as if it exists because you planned it. Create it and run it first, or say it is not yet written.
 
 ## Rationalization Prevention
 
@@ -97,6 +101,14 @@ Skip any step = lying, not verifying
 ```
 ✅ Re-read plan → Create checklist → Verify each → Report gaps or completion
 ❌ "Tests pass, phase complete"
+```
+
+**Pending jobs and planned artifacts:**
+```
+✅ Wait for the completion result → Read exit code and counts → Report them
+✅ No suite yet → Create it → Run it → Report its output
+❌ "The follow-up suite has now completed green" (while the job is still running, or before the file exists)
+❌ A long pause explained away as work in progress you cannot evidence
 ```
 
 **Agent delegation:**

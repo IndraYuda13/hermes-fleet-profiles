@@ -14,7 +14,7 @@ metadata:
 
 ## When to Use
 
-Use when a target is a JavaScript SPA (Vue/React/Next/Nuxt/Svelte), or when a host returns the same catch-all shell for every path, or when the user asks how a given web product works and whether its architecture can be rebuilt — the bundle is the specification. Modern JS sites hide their real attack surface behind a single HTML shell. The shell is nearly empty; the application lives in the JS bundle and, when misconfigured, its source map. Recover that, harvest the backend hosts and endpoints it calls, then pivot. Assess only assets you are authorized to test.
+Use when a target is a JavaScript SPA (Vue/React/Next/Nuxt/Svelte), or when a host returns the same catch-all shell for every path, or when the user asks how a given web product works and whether its architecture can be rebuilt, or asks to make their own site look/behave exactly like the target (UI cloning) — the bundle is the specification. Modern JS sites hide their real attack surface behind a single HTML shell. The shell is nearly empty; the application lives in the JS bundle and, when misconfigured, its source map. Recover that, harvest the backend hosts and endpoints it calls, then pivot. Assess only assets you are authorized to test.
 
 ## Signals
 
@@ -95,6 +95,8 @@ Grep the app files (exclude `node_modules`) for:
 - XSS sinks: `v-html`/`innerHTML`/`dangerouslySetInnerHTML`/`:href` bound to API data
 - Internal hostnames (`127.0.0.1:PORT`, staging names) and environment leftovers
 - **Media/streaming pipeline apps** (providers, extractors, `/api/stream`, `window.fetch` patches, WASM modules): follow `references/fetch-hook-and-media-pipeline-recon.md` — fetch-hook detection, static-host vs API-host splitting, the multi-layer proxy pattern, and the one-live-call verification recipe.
+- **UI cloning phase** (the user asks to make their own site look/work exactly like the target — hero, cards, "More Like This", homepage rails, search): follow `references/ui-spec-extraction-from-bundles.md` — derive the chunk list from today's entry bundle (hashes rotate), landmark-context class extraction, Tailwind→concrete-CSS porting, legacy-shell suppression per route, and per-selector browser QA.
+- **Replication phase** (the user asks to rebuild the pipeline as their own backend): follow `references/provider-replication-engineering.md` — byte-exact cipher porting, provider-class architecture, the per-provider verification ladder, and the pitfalls (Content-Type lies, per-level token gating, IP-bound sessions).
 
 ## Step 5 — Pivot to discovered hosts and fingerprint each
 
