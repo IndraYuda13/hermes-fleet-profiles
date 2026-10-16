@@ -1,7 +1,7 @@
 ---
 name: fleet-backup-and-recovery
 description: Use when syncing, backing up, or recovering fleet profiles.
-version: 1.8.0
+version: 1.9.0
 author: Hermes Fleet Architecture
 license: MIT
 metadata:
@@ -46,6 +46,7 @@ When running the declarative fleet sync script (`sync.sh`):
 4. **Governance & Role-Separation Checks:**
    - Enforce profile role boundaries before running test suites. Non-design profiles (e.g. `orion`) must have UI-only toolsets like `ui-ux-pro-max` explicitly disabled (`enabled: false`) to pass `validate_fleet.py`.
    - When `validate_fleet.py` reports `model differs from role manifest` across profiles, a live model re-route has occurred; align `governance/roles.yaml` to the current live `model.default` values before staging. Audit that same re-route for dropped capability flags (`model.supports_vision`, `context_length`): a full model-block rewrite silently strips them and native image routing degrades to text.
+  - **Clean-Tree Pre-Commit Invariant:** `sync.sh --apply` aborts if `git status --porcelain` is non-empty (`Refusing --apply: Git worktree is not clean`). If `governance/roles.yaml` was edited to align models, commit it first (`git commit -m "fix(governance): align ..."`). If dirty uncommitted files remain from an aborted sync or manual copy in `profiles/`, run `git restore profiles/` — `sync.sh` rsyncs fresh from live `$HERMES_ROOT` anyway.
    - `checksum drift between global and <profile>` (or `checksum drift in profile <name>`) from the canonical-skill parity checks means one copy was updated without fan-out; copy the newest copy byte-for-byte to every location `validate_fleet.py` checks, then re-stage.
 5. **Secret Sanitization Audit:**
    - Run `python3 scripts/sanitize_config.py --check profiles/*/config.yaml` before staging or committing. Ensure raw API keys and tokens are never staged.
@@ -53,6 +54,7 @@ When running the declarative fleet sync script (`sync.sh`):
    - Execute `python3 validate_fleet.py` (policy checks).
    - Execute `python3 validate_contracts.py` (A2A timeout and schema checks).
    - Run the full pytest suite (`pytest -q`).
+   - Use an explicit timeout (>= 120s) when chaining verification gates (`pytest` + `validate_fleet` + `sync.sh`) as rsyncing and testing across 13 profiles can exceed standard 60s execution limits.
    - Push to Git remote only when 100% of tests and policy checks pass.
 
 ## Backup Verification & Drift Audit Procedure

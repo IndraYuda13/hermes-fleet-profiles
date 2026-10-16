@@ -243,6 +243,17 @@ hermes pm repair
 - For HTTP/SSE servers, probe the endpoint directly before touching config: the `mcp-server-integration` skill ships `scripts/mcp_sse_probe.py`, which performs the real handshake and tool list (running it once without the token also proves the auth layer is alive via a 401). A healthy endpoint plus zero registered tools points at the registration/reload step, not the server.
 - `hermes mcp list` only shows inventory (configured/enabled) — it never proves a live connection. Only a real tool call does.
 
+### Diagnosing a server that is down, missing tools, or serving stale tools
+
+Run this ladder before touching config — each rung is cheap and rules out a whole class:
+
+1. **Prove the config with a fresh spawn.** `hermes -p <profile> mcp test <server>` opens a brand-new connection independent of the live gateway children and prints the discovered tool count. Green here plus a red live session means the session's connection is stale, not the config.
+2. **Suspect a stale child after any on-disk upgrade.** The gateway's already-spawned MCP child keeps executing the OLD code in memory — a server upgraded on disk still reports its old tool count until the child dies. Confirm with `ps -eo pid,ppid,lstart,cmd | grep <server-marker>`: a spawn time predating the upgrade is the smoking gun. Kill the child by PID (never `pkill` where a deny rule blocks it); it respawns on the next `/reload-mcp`.
+3. **stdio server dies instantly** — read `<profile>/logs/mcp-stderr.log`. `MODULE_NOT_FOUND` for the package the `command` path resolves into means the npm global install was removed (a Hermes update can empty the whole global prefix) — reinstall that package globally, then re-test.
+4. **HTTP/SSE server answers 401** — check whether THAT profile's entry carries the `headers.Authorization` the server requires. A 401 proves the server itself is alive; diff the entry against a known-good profile's entry for the same server, copy the header, and pin `transport: sse`. Copy tokens programmatically (read the source config in Python) so they are never printed.
+5. **Remote OAuth server** — "non-interactive environment and no cached tokens found" is not a bug: only the user can authorize, interactively (`hermes -p <profile> mcp login <server>`). Report it as a user action; never attempt OAuth non-interactively.
+6. **Removing a bad server** — `hermes -p <profile> config unset mcp_servers.<name>` (there is no delete via `config set`). Timestamp-backup the profile's config.yaml first, and re-test the remaining servers on that profile afterwards.
+
 ### Connection keeps dropping
 
 The client retries up to 5 times with exponential backoff (1s, 2s, 4s, 8s, 16s, capped at 60s). If the server is fundamentally unreachable, it gives up after 5 attempts. Check the server process and network connectivity.
